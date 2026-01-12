@@ -136,11 +136,37 @@ export class InventarioService {
   }
 
   async getAlertas() {
-    return this.prisma.alertaStock.findMany({
-      where: { resuelta: false },
-      include: { producto: true },
-      orderBy: { createdAt: 'desc' },
+    // Devolver productos con stock bajo o agotado como alertas
+    const productosEnAlerta = await this.prisma.producto.findMany({
+      where: {
+        activo: true,
+        OR: [
+          { estado: 'ALERTA' },
+          { estado: 'ALERTA_W' },
+          { estado: 'AGOTADO' },
+        ],
+      },
+      orderBy: [
+        { estado: 'asc' },
+        { stockActual: 'asc' },
+      ],
     });
+
+    // Mapear a formato de alerta
+    return productosEnAlerta.map(producto => ({
+      id: producto.id,
+      tipoAlerta: producto.estado === 'AGOTADO' ? 'AGOTADO' :
+                  producto.estado === 'ALERTA' ? 'STOCK_MINIMO' : 'STOCK_BAJO',
+      stockActual: producto.stockActual,
+      stockMinimo: producto.stockMinimo,
+      resuelta: false,
+      producto: {
+        id: producto.id,
+        codigo: producto.codigo,
+        nombre: producto.nombre,
+      },
+      createdAt: producto.updatedAt,
+    }));
   }
 
   async resolverAlerta(alertaId: number) {

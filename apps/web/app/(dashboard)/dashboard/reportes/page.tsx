@@ -126,7 +126,7 @@ function KPICard({
 }
 
 export default function ReportesPage() {
-  const [filtroFecha, setFiltroFecha] = useState<FiltroFecha>('este_mes');
+  const [filtroFecha, setFiltroFecha] = useState<FiltroFecha>('todo');
   const [fechaDesdeCustom, setFechaDesdeCustom] = useState('');
   const [fechaHastaCustom, setFechaHastaCustom] = useState('');
 
