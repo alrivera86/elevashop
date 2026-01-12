@@ -75,7 +75,11 @@ function SidebarContent({ onNavigate }: { onNavigate?: () => void }) {
       {/* Navigation */}
       <nav className="flex-1 space-y-1 px-3 py-4">
         {navigation
-          .filter((item) => !item.roles || item.roles.includes(user?.rol?.nombre || ''))
+          .filter((item) => {
+            if (!item.roles) return true;
+            const userRole = user?.rol?.nombre?.toUpperCase() || '';
+            return item.roles.some(role => role.toUpperCase() === userRole);
+          })
           .map((item) => {
             const isActive = pathname === item.href || pathname.startsWith(item.href + '/');
             return (
@@ -100,7 +104,11 @@ function SidebarContent({ onNavigate }: { onNavigate?: () => void }) {
       {/* Bottom section */}
       <div className="border-t px-3 py-4">
         {bottomNavigation
-          .filter((item) => !item.roles || item.roles.includes(user?.rol?.nombre || ''))
+          .filter((item) => {
+            if (!item.roles) return true;
+            const userRole = user?.rol?.nombre?.toUpperCase() || '';
+            return item.roles.some(role => role.toUpperCase() === userRole);
+          })
           .map((item) => {
             const isActive = pathname === item.href;
             return (
@@ -123,10 +131,10 @@ function SidebarContent({ onNavigate }: { onNavigate?: () => void }) {
 
         {/* User info & logout */}
         <div className="mt-4 flex items-center justify-between rounded-lg bg-muted px-3 py-2">
-          <div className="flex-1 truncate">
+          <Link href="/dashboard/perfil" onClick={onNavigate} className="flex-1 truncate hover:opacity-80">
             <p className="text-sm font-medium">{user?.nombre || 'Usuario'}</p>
             <p className="text-xs text-muted-foreground truncate">{user?.email}</p>
-          </div>
+          </Link>
           <Button
             variant="ghost"
             size="icon"
