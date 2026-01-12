@@ -798,3 +798,67 @@ export interface EstadisticasSeriales {
   totalVendido: number;
   utilidadTotal: number;
 }
+
+// ============ TIPOS DE USUARIOS ============
+
+export interface UsuarioCompleto {
+  id: number;
+  email: string;
+  nombreCompleto: string;
+  activo: boolean;
+  ultimoLogin?: string;
+  createdAt: string;
+  updatedAt: string;
+  rol: Rol;
+}
+
+export interface Rol {
+  id: number;
+  nombre: string;
+  descripcion?: string;
+  permisos: string[];
+}
+
+export interface CreateUsuarioData {
+  email: string;
+  password: string;
+  nombreCompleto: string;
+  rolId: number;
+}
+
+export interface UpdateUsuarioData {
+  email?: string;
+  password?: string;
+  nombreCompleto?: string;
+  rolId?: number;
+  activo?: boolean;
+}
+
+export interface UsuarioStats {
+  total: number;
+  activos: number;
+  inactivos: number;
+  porRol: { rol: string; cantidad: number }[];
+}
+
+export interface ResetPasswordResponse {
+  message: string;
+  temporaryPassword?: string;
+}
+
+export const usuariosApi = {
+  getAll: () => get<UsuarioCompleto[]>('/usuarios'),
+  getOne: (id: number) => get<UsuarioCompleto>(`/usuarios/${id}`),
+  create: (data: CreateUsuarioData) => post<UsuarioCompleto>('/usuarios', data),
+  update: (id: number, data: UpdateUsuarioData) =>
+    api.patch<UsuarioCompleto>(`/usuarios/${id}`, data).then(r => r.data),
+  delete: (id: number) => del<void>(`/usuarios/${id}`),
+  reactivate: (id: number) =>
+    api.patch<UsuarioCompleto>(`/usuarios/${id}/reactivar`).then(r => r.data),
+  resetPassword: (id: number, newPassword?: string) =>
+    post<ResetPasswordResponse>(`/usuarios/${id}/reset-password`, { newPassword }),
+  changePassword: (id: number, currentPassword: string, newPassword: string) =>
+    post<{ message: string }>(`/usuarios/${id}/change-password`, { currentPassword, newPassword }),
+  getRoles: () => get<Rol[]>('/usuarios/roles'),
+  getStats: () => get<UsuarioStats>('/usuarios/stats'),
+};
