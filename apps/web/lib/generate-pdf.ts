@@ -1,0 +1,216 @@
+import jsPDF from 'jspdf';
+import autoTable from 'jspdf-autotable';
+import { formatCurrency } from './utils';
+
+export interface VentaPDF {
+  id: number;
+  numero?: string;
+  fecha: string;
+  cliente: {
+    nombre: string;
+    telefono?: string;
+    email?: string;
+    direccion?: string;
+  };
+  detalles: {
+    producto: { codigo: string; nombre: string };
+    cantidad: number;
+    precioUnitario: number;
+    descuento: number;
+    subtotal: number;
+    serial?: string;
+  }[];
+  subtotal: number;
+  descuento: number;
+  impuesto: number;
+  total: number;
+  pagos: {
+    metodoPago: string;
+    monto: number;
+    moneda: string;
+  }[];
+  notas?: string;
+}
+
+const METODO_PAGO_LABELS: Record<string, string> = {
+  EFECTIVO_USD: 'Efectivo USD',
+  EFECTIVO_BS: 'Efectivo Bs',
+  ZELLE: 'Zelle',
+  BANESCO: 'Banesco',
+  TRANSFERENCIA_BS: 'Transferencia Bs',
+  TRANSFERENCIA_USD: 'Transferencia USD',
+  PAGO_MOVIL: 'Pago Móvil',
+  BINANCE: 'Binance',
+  MIXTO: 'Mixto',
+};
+
+export function generarOrdenSalida(venta: VentaPDF): void {
+  const doc = new jsPDF();
+  const pageWidth = doc.internal.pageSize.getWidth();
+
+  // Header
+  doc.setFillColor(59, 130, 246); // Blue
+  doc.rect(0, 0, pageWidth, 35, 'F');
+
+  doc.setTextColor(255, 255, 255);
+  doc.setFontSize(24);
+  doc.setFont('helvetica', 'bold');
+  doc.text('ELEVASHOP', 14, 18);
+
+  doc.setFontSize(10);
+  doc.setFont('helvetica', 'normal');
+  doc.text('Sistema de Gestión de Inventario', 14, 26);
+
+  // Título Orden de Salida
+  doc.setFontSize(14);
+  doc.text('ORDEN DE SALIDA', pageWidth - 14, 18, { align: 'right' });
+  doc.setFontSize(11);
+  doc.text(`#${venta.numero || venta.id}`, pageWidth - 14, 26, { align: 'right' });
+
+  // Reset color
+  doc.setTextColor(0, 0, 0);
+
+  // Información de venta y cliente
+  const yStart = 45;
+
+  // Columna izquierda - Info Venta
+  doc.setFontSize(10);
+  doc.setFont('helvetica', 'bold');
+  doc.text('Información de Venta', 14, yStart);
+
+  doc.setFont('helvetica', 'normal');
+  doc.setFontSize(9);
+  const fechaFormateada = new Date(venta.fecha).toLocaleString('es-VE', {
+    dateStyle: 'long',
+    timeStyle: 'short',
+  });
+  doc.text(`Fecha: ${fechaFormateada}`, 14, yStart + 7);
+  doc.text(`N° Orden: ${venta.numero || venta.id}`, 14, yStart + 13);
+
+  // Columna derecha - Info Cliente
+  doc.setFont('helvetica', 'bold');
+  doc.text('Cliente', pageWidth / 2, yStart);
+
+  doc.setFont('helvetica', 'normal');
+  doc.text(venta.cliente.nombre, pageWidth / 2, yStart + 7);
+  if (venta.cliente.telefono) {
+    doc.text(`Tel: ${venta.cliente.telefono}`, pageWidth / 2, yStart + 13);
+  }
+  if (venta.cliente.email) {
+    doc.text(venta.cliente.email, pageWidth / 2, yStart + 19);
+  }
+  if (venta.cliente.direccion) {
+    doc.text(venta.cliente.direccion, pageWidth / 2, yStart + 25, { maxWidth: 80 });
+  }
+
+  // Tabla de productos
+  const tableStartY = yStart + 35;
+
+  const tableData = venta.detalles.map((d) => [
+    d.producto.codigo,
+    d.producto.nombre + (d.serial ? `\n(S/N: ${d.serial})` : ''),
+    d.cantidad.toString(),
+    formatCurrency(d.precioUnitario),
+    d.descuento > 0 ? formatCurrency(d.descuento) : '-',
+    formatCurrency(d.subtotal),
+  ]);
+
+  autoTable(doc, {
+    startY: tableStartY,
+    head: [['Código', 'Producto', 'Cant.', 'P. Unit.', 'Desc.', 'Subtotal']],
+    body: tableData,
+    theme: 'striped',
+    headStyles: {
+      fillColor: [59, 130, 246],
+      textColor: 255,
+      fontSize: 9,
+      fontStyle: 'bold',
+    },
+    bodyStyles: {
+      fontSize: 8,
+    },
+    columnStyles: {
+      0: { cellWidth: 25 },
+      1: { cellWidth: 'auto' },
+      2: { cellWidth: 15, halign: 'center' },
+      3: { cellWidth: 25, halign: 'right' },
+      4: { cellWidth: 22, halign: 'right' },
+      5: { cellWidth: 28, halign: 'right' },
+    },
+    margin: { left: 14, right: 14 },
+  });
+
+  // Resumen de totales
+  const finalY = (doc as any).lastAutoTable.finalY + 10;
+
+  // Box de totales
+  const boxX = pageWidth - 90;
+  const boxWidth = 76;
+
+  doc.setDrawColor(200, 200, 200);
+  doc.setLineWidth(0.5);
+
+  let currentY = finalY;
+
+  // Subtotal
+  doc.setFont('helvetica', 'normal');
+  doc.setFontSize(9);
+  doc.text('Subtotal:', boxX, currentY);
+  doc.text(formatCurrency(venta.subtotal), boxX + boxWidth, currentY, { align: 'right' });
+  currentY += 6;
+
+  // Descuento
+  if (venta.descuento > 0) {
+    doc.setTextColor(220, 38, 38); // Red
+    doc.text('Descuento:', boxX, currentY);
+    doc.text(`-${formatCurrency(venta.descuento)}`, boxX + boxWidth, currentY, { align: 'right' });
+    doc.setTextColor(0, 0, 0);
+    currentY += 6;
+  }
+
+  // IVA
+  if (venta.impuesto > 0) {
+    doc.text('IVA (16%):', boxX, currentY);
+    doc.text(formatCurrency(venta.impuesto), boxX + boxWidth, currentY, { align: 'right' });
+    currentY += 6;
+  }
+
+  // Línea separadora
+  doc.line(boxX, currentY, boxX + boxWidth, currentY);
+  currentY += 5;
+
+  // Total
+  doc.setFont('helvetica', 'bold');
+  doc.setFontSize(12);
+  doc.text('TOTAL:', boxX, currentY);
+  doc.setTextColor(22, 163, 74); // Green
+  doc.text(formatCurrency(venta.total), boxX + boxWidth, currentY, { align: 'right' });
+  doc.setTextColor(0, 0, 0);
+
+  // Método de pago
+  currentY += 10;
+  doc.setFont('helvetica', 'normal');
+  doc.setFontSize(9);
+  const metodoPago = venta.pagos.map(p => METODO_PAGO_LABELS[p.metodoPago] || p.metodoPago).join(', ');
+  doc.text(`Método de pago: ${metodoPago}`, boxX, currentY);
+
+  // Notas (si hay)
+  if (venta.notas) {
+    doc.setFont('helvetica', 'bold');
+    doc.setFontSize(9);
+    doc.text('Notas:', 14, finalY);
+    doc.setFont('helvetica', 'normal');
+    doc.text(venta.notas, 14, finalY + 5, { maxWidth: 80 });
+  }
+
+  // Footer
+  const footerY = doc.internal.pageSize.getHeight() - 20;
+  doc.setFontSize(8);
+  doc.setTextColor(128, 128, 128);
+  doc.text('Gracias por su compra', pageWidth / 2, footerY, { align: 'center' });
+  doc.text('Elevashop - Sistema de Gestión de Inventario', pageWidth / 2, footerY + 5, { align: 'center' });
+
+  // Descargar PDF
+  const fileName = `orden_salida_${venta.numero || venta.id}_${new Date().toISOString().split('T')[0]}.pdf`;
+  doc.save(fileName);
+}
