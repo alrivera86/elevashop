@@ -1,0 +1,8037 @@
+--
+-- PostgreSQL database dump
+--
+
+
+-- Dumped from database version 15.15
+-- Dumped by pg_dump version 15.15
+
+SET statement_timeout = 0;
+SET lock_timeout = 0;
+SET idle_in_transaction_session_timeout = 0;
+SET client_encoding = 'UTF8';
+SET standard_conforming_strings = on;
+SELECT pg_catalog.set_config('search_path', '', false);
+SET check_function_bodies = false;
+SET xmloption = content;
+SET client_min_messages = warning;
+SET row_security = off;
+
+--
+-- Name: EstadoGasto; Type: TYPE; Schema: public; Owner: -
+--
+
+CREATE TYPE public."EstadoGasto" AS ENUM (
+    'PENDIENTE',
+    'PAGADO',
+    'ANULADO'
+);
+
+
+--
+-- Name: EstadoImportacion; Type: TYPE; Schema: public; Owner: -
+--
+
+CREATE TYPE public."EstadoImportacion" AS ENUM (
+    'PENDIENTE',
+    'EN_TRANSITO',
+    'EN_ADUANA',
+    'NACIONALIZADA',
+    'RECIBIDA'
+);
+
+
+--
+-- Name: EstadoOrdenCompra; Type: TYPE; Schema: public; Owner: -
+--
+
+CREATE TYPE public."EstadoOrdenCompra" AS ENUM (
+    'PENDIENTE',
+    'CONFIRMADA',
+    'EN_TRANSITO',
+    'RECIBIDA',
+    'CANCELADA'
+);
+
+
+--
+-- Name: EstadoPago; Type: TYPE; Schema: public; Owner: -
+--
+
+CREATE TYPE public."EstadoPago" AS ENUM (
+    'PENDIENTE',
+    'PARCIAL',
+    'PAGADO'
+);
+
+
+--
+-- Name: EstadoStock; Type: TYPE; Schema: public; Owner: -
+--
+
+CREATE TYPE public."EstadoStock" AS ENUM (
+    'OK',
+    'ALERTA-W',
+    'ALERTA',
+    'AGOTADO'
+);
+
+
+--
+-- Name: EstadoUnidad; Type: TYPE; Schema: public; Owner: -
+--
+
+CREATE TYPE public."EstadoUnidad" AS ENUM (
+    'DISPONIBLE',
+    'RESERVADO',
+    'VENDIDO',
+    'DEFECTUOSO',
+    'DEVUELTO'
+);
+
+
+--
+-- Name: EstadoVenta; Type: TYPE; Schema: public; Owner: -
+--
+
+CREATE TYPE public."EstadoVenta" AS ENUM (
+    'COTIZACION',
+    'PENDIENTE',
+    'CONFIRMADA',
+    'EN_PREPARACION',
+    'ENVIADA',
+    'ENTREGADA',
+    'CANCELADA'
+);
+
+
+--
+-- Name: MetodoPago; Type: TYPE; Schema: public; Owner: -
+--
+
+CREATE TYPE public."MetodoPago" AS ENUM (
+    'EFECTIVO_USD',
+    'EFECTIVO_BS',
+    'ZELLE',
+    'BANESCO',
+    'TRANSFERENCIA_BS',
+    'TRANSFERENCIA_USD',
+    'PAGO_MOVIL',
+    'BINANCE',
+    'MIXTO'
+);
+
+
+--
+-- Name: Moneda; Type: TYPE; Schema: public; Owner: -
+--
+
+CREATE TYPE public."Moneda" AS ENUM (
+    'USD',
+    'VES'
+);
+
+
+--
+-- Name: OrigenUnidad; Type: TYPE; Schema: public; Owner: -
+--
+
+CREATE TYPE public."OrigenUnidad" AS ENUM (
+    'COMPRA',
+    'PRODUCCION',
+    'IMPORTACION',
+    'DEVOLUCION',
+    'AJUSTE'
+);
+
+
+--
+-- Name: SegmentoCliente; Type: TYPE; Schema: public; Owner: -
+--
+
+CREATE TYPE public."SegmentoCliente" AS ENUM (
+    'VIP',
+    'FRECUENTE',
+    'OCASIONAL',
+    'NUEVO'
+);
+
+
+--
+-- Name: TipoAlerta; Type: TYPE; Schema: public; Owner: -
+--
+
+CREATE TYPE public."TipoAlerta" AS ENUM (
+    'STOCK_BAJO',
+    'STOCK_MINIMO',
+    'AGOTADO',
+    'SOBRESTOCK'
+);
+
+
+--
+-- Name: TipoGasto; Type: TYPE; Schema: public; Owner: -
+--
+
+CREATE TYPE public."TipoGasto" AS ENUM (
+    'NOMINA',
+    'COMISION',
+    'SERVICIO',
+    'IMPUESTO',
+    'OPERATIVO',
+    'MARKETING',
+    'IMPORTACION',
+    'INVERSION'
+);
+
+
+--
+-- Name: TipoMovimiento; Type: TYPE; Schema: public; Owner: -
+--
+
+CREATE TYPE public."TipoMovimiento" AS ENUM (
+    'ENTRADA',
+    'SALIDA',
+    'AJUSTE',
+    'DEVOLUCION'
+);
+
+
+--
+-- Name: TipoTasa; Type: TYPE; Schema: public; Owner: -
+--
+
+CREATE TYPE public."TipoTasa" AS ENUM (
+    'OFICIAL',
+    'PARALELO',
+    'BCV',
+    'BINANCE'
+);
+
+
+--
+-- Name: TipoTransaccion; Type: TYPE; Schema: public; Owner: -
+--
+
+CREATE TYPE public."TipoTransaccion" AS ENUM (
+    'ENTRADA',
+    'SALIDA'
+);
+
+
+SET default_tablespace = '';
+
+SET default_table_access_method = heap;
+
+--
+-- Name: alertas_stock; Type: TABLE; Schema: public; Owner: -
+--
+
+CREATE TABLE public.alertas_stock (
+    id integer NOT NULL,
+    producto_id integer NOT NULL,
+    tipo_alerta public."TipoAlerta" NOT NULL,
+    stock_actual integer NOT NULL,
+    stock_minimo integer NOT NULL,
+    mensaje text,
+    resuelta boolean DEFAULT false NOT NULL,
+    created_at timestamp(3) without time zone DEFAULT CURRENT_TIMESTAMP NOT NULL,
+    resuelta_at timestamp(3) without time zone
+);
+
+
+--
+-- Name: alertas_stock_id_seq; Type: SEQUENCE; Schema: public; Owner: -
+--
+
+CREATE SEQUENCE public.alertas_stock_id_seq
+    AS integer
+    START WITH 1
+    INCREMENT BY 1
+    NO MINVALUE
+    NO MAXVALUE
+    CACHE 1;
+
+
+--
+-- Name: alertas_stock_id_seq; Type: SEQUENCE OWNED BY; Schema: public; Owner: -
+--
+
+ALTER SEQUENCE public.alertas_stock_id_seq OWNED BY public.alertas_stock.id;
+
+
+--
+-- Name: categorias; Type: TABLE; Schema: public; Owner: -
+--
+
+CREATE TABLE public.categorias (
+    id integer NOT NULL,
+    nombre text NOT NULL,
+    descripcion text
+);
+
+
+--
+-- Name: categorias_gasto; Type: TABLE; Schema: public; Owner: -
+--
+
+CREATE TABLE public.categorias_gasto (
+    id integer NOT NULL,
+    nombre text NOT NULL,
+    tipo public."TipoGasto" NOT NULL
+);
+
+
+--
+-- Name: categorias_gasto_id_seq; Type: SEQUENCE; Schema: public; Owner: -
+--
+
+CREATE SEQUENCE public.categorias_gasto_id_seq
+    AS integer
+    START WITH 1
+    INCREMENT BY 1
+    NO MINVALUE
+    NO MAXVALUE
+    CACHE 1;
+
+
+--
+-- Name: categorias_gasto_id_seq; Type: SEQUENCE OWNED BY; Schema: public; Owner: -
+--
+
+ALTER SEQUENCE public.categorias_gasto_id_seq OWNED BY public.categorias_gasto.id;
+
+
+--
+-- Name: categorias_id_seq; Type: SEQUENCE; Schema: public; Owner: -
+--
+
+CREATE SEQUENCE public.categorias_id_seq
+    AS integer
+    START WITH 1
+    INCREMENT BY 1
+    NO MINVALUE
+    NO MAXVALUE
+    CACHE 1;
+
+
+--
+-- Name: categorias_id_seq; Type: SEQUENCE OWNED BY; Schema: public; Owner: -
+--
+
+ALTER SEQUENCE public.categorias_id_seq OWNED BY public.categorias.id;
+
+
+--
+-- Name: clientes; Type: TABLE; Schema: public; Owner: -
+--
+
+CREATE TABLE public.clientes (
+    id integer NOT NULL,
+    nombre text NOT NULL,
+    nombre_normalizado text NOT NULL,
+    rif_cedula text,
+    email text,
+    telefono text,
+    direccion text,
+    ciudad text,
+    estado text,
+    segmento public."SegmentoCliente" DEFAULT 'NUEVO'::public."SegmentoCliente" NOT NULL,
+    total_compras numeric(12,2) DEFAULT 0 NOT NULL,
+    cantidad_ordenes integer DEFAULT 0 NOT NULL,
+    activo boolean DEFAULT true NOT NULL,
+    created_at timestamp(3) without time zone DEFAULT CURRENT_TIMESTAMP NOT NULL,
+    updated_at timestamp(3) without time zone NOT NULL
+);
+
+
+--
+-- Name: clientes_id_seq; Type: SEQUENCE; Schema: public; Owner: -
+--
+
+CREATE SEQUENCE public.clientes_id_seq
+    AS integer
+    START WITH 1
+    INCREMENT BY 1
+    NO MINVALUE
+    NO MAXVALUE
+    CACHE 1;
+
+
+--
+-- Name: clientes_id_seq; Type: SEQUENCE OWNED BY; Schema: public; Owner: -
+--
+
+ALTER SEQUENCE public.clientes_id_seq OWNED BY public.clientes.id;
+
+
+--
+-- Name: costos_importacion; Type: TABLE; Schema: public; Owner: -
+--
+
+CREATE TABLE public.costos_importacion (
+    id integer NOT NULL,
+    importacion_id integer NOT NULL,
+    producto_id integer NOT NULL,
+    precio_unitario_fob numeric(12,2) NOT NULL,
+    descuento numeric(12,2),
+    flete_seguros numeric(12,2),
+    costo_cif numeric(12,2),
+    porcentaje_nac numeric(5,4),
+    iva_unidad numeric(12,2),
+    comisiones numeric(12,2),
+    costo_total numeric(12,2)
+);
+
+
+--
+-- Name: costos_importacion_id_seq; Type: SEQUENCE; Schema: public; Owner: -
+--
+
+CREATE SEQUENCE public.costos_importacion_id_seq
+    AS integer
+    START WITH 1
+    INCREMENT BY 1
+    NO MINVALUE
+    NO MAXVALUE
+    CACHE 1;
+
+
+--
+-- Name: costos_importacion_id_seq; Type: SEQUENCE OWNED BY; Schema: public; Owner: -
+--
+
+ALTER SEQUENCE public.costos_importacion_id_seq OWNED BY public.costos_importacion.id;
+
+
+--
+-- Name: distribucion_fondos; Type: TABLE; Schema: public; Owner: -
+--
+
+CREATE TABLE public.distribucion_fondos (
+    id integer NOT NULL,
+    concepto character varying(50) NOT NULL,
+    moneda character varying(10) DEFAULT 'USD'::character varying NOT NULL,
+    monto numeric(14,2) DEFAULT 0 NOT NULL,
+    porcentaje numeric(5,2),
+    actualizado_en timestamp without time zone DEFAULT CURRENT_TIMESTAMP
+);
+
+
+--
+-- Name: distribucion_fondos_id_seq; Type: SEQUENCE; Schema: public; Owner: -
+--
+
+CREATE SEQUENCE public.distribucion_fondos_id_seq
+    AS integer
+    START WITH 1
+    INCREMENT BY 1
+    NO MINVALUE
+    NO MAXVALUE
+    CACHE 1;
+
+
+--
+-- Name: distribucion_fondos_id_seq; Type: SEQUENCE OWNED BY; Schema: public; Owner: -
+--
+
+ALTER SEQUENCE public.distribucion_fondos_id_seq OWNED BY public.distribucion_fondos.id;
+
+
+--
+-- Name: gastos; Type: TABLE; Schema: public; Owner: -
+--
+
+CREATE TABLE public.gastos (
+    id integer NOT NULL,
+    categoria_id integer NOT NULL,
+    monto numeric(12,2) NOT NULL,
+    moneda public."Moneda" DEFAULT 'USD'::public."Moneda" NOT NULL,
+    tasa_cambio numeric(10,4),
+    fecha timestamp(3) without time zone NOT NULL,
+    mes integer NOT NULL,
+    anio integer NOT NULL,
+    descripcion text,
+    comprobante text,
+    metodo_pago public."MetodoPago",
+    estado public."EstadoGasto" DEFAULT 'PAGADO'::public."EstadoGasto" NOT NULL,
+    es_recurrente boolean DEFAULT false NOT NULL,
+    created_at timestamp(3) without time zone DEFAULT CURRENT_TIMESTAMP NOT NULL
+);
+
+
+--
+-- Name: gastos_id_seq; Type: SEQUENCE; Schema: public; Owner: -
+--
+
+CREATE SEQUENCE public.gastos_id_seq
+    AS integer
+    START WITH 1
+    INCREMENT BY 1
+    NO MINVALUE
+    NO MAXVALUE
+    CACHE 1;
+
+
+--
+-- Name: gastos_id_seq; Type: SEQUENCE OWNED BY; Schema: public; Owner: -
+--
+
+ALTER SEQUENCE public.gastos_id_seq OWNED BY public.gastos.id;
+
+
+--
+-- Name: importaciones; Type: TABLE; Schema: public; Owner: -
+--
+
+CREATE TABLE public.importaciones (
+    id integer NOT NULL,
+    factura text NOT NULL,
+    proveedor_id integer NOT NULL,
+    monto_factura numeric(12,2) NOT NULL,
+    monto_transferido numeric(12,2),
+    diferencia numeric(12,2),
+    numero_transferencia text,
+    comision_banco_banesco numeric(10,2),
+    comision_banco_controles numeric(10,2),
+    porcentaje_nacionalizacion numeric(5,4),
+    seguro_nacionalizacion numeric(12,2),
+    sub_total numeric(12,2),
+    estado public."EstadoImportacion" DEFAULT 'PENDIENTE'::public."EstadoImportacion" NOT NULL,
+    descripcion text,
+    fecha_factura timestamp(3) without time zone,
+    fecha_llegada timestamp(3) without time zone,
+    created_at timestamp(3) without time zone DEFAULT CURRENT_TIMESTAMP NOT NULL,
+    updated_at timestamp(3) without time zone NOT NULL
+);
+
+
+--
+-- Name: importaciones_id_seq; Type: SEQUENCE; Schema: public; Owner: -
+--
+
+CREATE SEQUENCE public.importaciones_id_seq
+    AS integer
+    START WITH 1
+    INCREMENT BY 1
+    NO MINVALUE
+    NO MAXVALUE
+    CACHE 1;
+
+
+--
+-- Name: importaciones_id_seq; Type: SEQUENCE OWNED BY; Schema: public; Owner: -
+--
+
+ALTER SEQUENCE public.importaciones_id_seq OWNED BY public.importaciones.id;
+
+
+--
+-- Name: movimientos_stock; Type: TABLE; Schema: public; Owner: -
+--
+
+CREATE TABLE public.movimientos_stock (
+    id integer NOT NULL,
+    producto_id integer NOT NULL,
+    tipo public."TipoMovimiento" NOT NULL,
+    cantidad integer NOT NULL,
+    stock_anterior integer NOT NULL,
+    stock_nuevo integer NOT NULL,
+    referencia text,
+    motivo text,
+    created_at timestamp(3) without time zone DEFAULT CURRENT_TIMESTAMP NOT NULL
+);
+
+
+--
+-- Name: movimientos_stock_id_seq; Type: SEQUENCE; Schema: public; Owner: -
+--
+
+CREATE SEQUENCE public.movimientos_stock_id_seq
+    AS integer
+    START WITH 1
+    INCREMENT BY 1
+    NO MINVALUE
+    NO MAXVALUE
+    CACHE 1;
+
+
+--
+-- Name: movimientos_stock_id_seq; Type: SEQUENCE OWNED BY; Schema: public; Owner: -
+--
+
+ALTER SEQUENCE public.movimientos_stock_id_seq OWNED BY public.movimientos_stock.id;
+
+
+--
+-- Name: operaciones_cambio; Type: TABLE; Schema: public; Owner: -
+--
+
+CREATE TABLE public.operaciones_cambio (
+    id integer NOT NULL,
+    cuenta text NOT NULL,
+    plataforma text DEFAULT 'BINANCE'::text NOT NULL,
+    vendedor text NOT NULL,
+    fecha timestamp(3) without time zone NOT NULL,
+    monto_usd numeric(12,2) NOT NULL,
+    monto_bs numeric(12,2) NOT NULL,
+    tasa_cambio numeric(10,4) NOT NULL,
+    monto_elevashop numeric(12,2),
+    estado text DEFAULT 'AUN EN BINANCE'::text NOT NULL,
+    created_at timestamp(3) without time zone DEFAULT CURRENT_TIMESTAMP NOT NULL
+);
+
+
+--
+-- Name: operaciones_cambio_id_seq; Type: SEQUENCE; Schema: public; Owner: -
+--
+
+CREATE SEQUENCE public.operaciones_cambio_id_seq
+    AS integer
+    START WITH 1
+    INCREMENT BY 1
+    NO MINVALUE
+    NO MAXVALUE
+    CACHE 1;
+
+
+--
+-- Name: operaciones_cambio_id_seq; Type: SEQUENCE OWNED BY; Schema: public; Owner: -
+--
+
+ALTER SEQUENCE public.operaciones_cambio_id_seq OWNED BY public.operaciones_cambio.id;
+
+
+--
+-- Name: ordenes_compra; Type: TABLE; Schema: public; Owner: -
+--
+
+CREATE TABLE public.ordenes_compra (
+    id integer NOT NULL,
+    numero_orden text NOT NULL,
+    proveedor_id integer NOT NULL,
+    fecha timestamp(3) without time zone DEFAULT CURRENT_TIMESTAMP NOT NULL,
+    total numeric(12,2) NOT NULL,
+    estado public."EstadoOrdenCompra" DEFAULT 'PENDIENTE'::public."EstadoOrdenCompra" NOT NULL,
+    importacion_id integer,
+    created_at timestamp(3) without time zone DEFAULT CURRENT_TIMESTAMP NOT NULL
+);
+
+
+--
+-- Name: ordenes_compra_detalle; Type: TABLE; Schema: public; Owner: -
+--
+
+CREATE TABLE public.ordenes_compra_detalle (
+    id integer NOT NULL,
+    orden_compra_id integer NOT NULL,
+    producto_id integer NOT NULL,
+    cantidad_ordenada integer NOT NULL,
+    cantidad_recibida integer DEFAULT 0 NOT NULL,
+    precio_unitario numeric(12,2) NOT NULL,
+    precio_descuento numeric(12,2)
+);
+
+
+--
+-- Name: ordenes_compra_detalle_id_seq; Type: SEQUENCE; Schema: public; Owner: -
+--
+
+CREATE SEQUENCE public.ordenes_compra_detalle_id_seq
+    AS integer
+    START WITH 1
+    INCREMENT BY 1
+    NO MINVALUE
+    NO MAXVALUE
+    CACHE 1;
+
+
+--
+-- Name: ordenes_compra_detalle_id_seq; Type: SEQUENCE OWNED BY; Schema: public; Owner: -
+--
+
+ALTER SEQUENCE public.ordenes_compra_detalle_id_seq OWNED BY public.ordenes_compra_detalle.id;
+
+
+--
+-- Name: ordenes_compra_id_seq; Type: SEQUENCE; Schema: public; Owner: -
+--
+
+CREATE SEQUENCE public.ordenes_compra_id_seq
+    AS integer
+    START WITH 1
+    INCREMENT BY 1
+    NO MINVALUE
+    NO MAXVALUE
+    CACHE 1;
+
+
+--
+-- Name: ordenes_compra_id_seq; Type: SEQUENCE OWNED BY; Schema: public; Owner: -
+--
+
+ALTER SEQUENCE public.ordenes_compra_id_seq OWNED BY public.ordenes_compra.id;
+
+
+--
+-- Name: productos; Type: TABLE; Schema: public; Owner: -
+--
+
+CREATE TABLE public.productos (
+    id integer NOT NULL,
+    codigo text NOT NULL,
+    nombre text NOT NULL,
+    descripcion text,
+    categoria_id integer,
+    precio_mercado_libre numeric(12,2) NOT NULL,
+    precio_mercado numeric(12,2) NOT NULL,
+    precio_elevapartes numeric(12,2) NOT NULL,
+    precio_costo numeric(12,2),
+    stock_actual integer DEFAULT 0 NOT NULL,
+    stock_minimo integer DEFAULT 0 NOT NULL,
+    stock_advertencia integer DEFAULT 0 NOT NULL,
+    estado public."EstadoStock" DEFAULT 'OK'::public."EstadoStock" NOT NULL,
+    ubicacion text,
+    notificacion_enviada boolean DEFAULT false NOT NULL,
+    activo boolean DEFAULT true NOT NULL,
+    created_at timestamp(3) without time zone DEFAULT CURRENT_TIMESTAMP NOT NULL,
+    updated_at timestamp(3) without time zone NOT NULL
+);
+
+
+--
+-- Name: productos_id_seq; Type: SEQUENCE; Schema: public; Owner: -
+--
+
+CREATE SEQUENCE public.productos_id_seq
+    AS integer
+    START WITH 1
+    INCREMENT BY 1
+    NO MINVALUE
+    NO MAXVALUE
+    CACHE 1;
+
+
+--
+-- Name: productos_id_seq; Type: SEQUENCE OWNED BY; Schema: public; Owner: -
+--
+
+ALTER SEQUENCE public.productos_id_seq OWNED BY public.productos.id;
+
+
+--
+-- Name: proveedores; Type: TABLE; Schema: public; Owner: -
+--
+
+CREATE TABLE public.proveedores (
+    id integer NOT NULL,
+    nombre text NOT NULL,
+    razon_social text,
+    contacto text,
+    email text,
+    telefono text,
+    pais text,
+    activo boolean DEFAULT true NOT NULL,
+    created_at timestamp(3) without time zone DEFAULT CURRENT_TIMESTAMP NOT NULL
+);
+
+
+--
+-- Name: proveedores_id_seq; Type: SEQUENCE; Schema: public; Owner: -
+--
+
+CREATE SEQUENCE public.proveedores_id_seq
+    AS integer
+    START WITH 1
+    INCREMENT BY 1
+    NO MINVALUE
+    NO MAXVALUE
+    CACHE 1;
+
+
+--
+-- Name: proveedores_id_seq; Type: SEQUENCE OWNED BY; Schema: public; Owner: -
+--
+
+ALTER SEQUENCE public.proveedores_id_seq OWNED BY public.proveedores.id;
+
+
+--
+-- Name: roles; Type: TABLE; Schema: public; Owner: -
+--
+
+CREATE TABLE public.roles (
+    id integer NOT NULL,
+    nombre text NOT NULL,
+    descripcion text,
+    permisos jsonb NOT NULL
+);
+
+
+--
+-- Name: roles_id_seq; Type: SEQUENCE; Schema: public; Owner: -
+--
+
+CREATE SEQUENCE public.roles_id_seq
+    AS integer
+    START WITH 1
+    INCREMENT BY 1
+    NO MINVALUE
+    NO MAXVALUE
+    CACHE 1;
+
+
+--
+-- Name: roles_id_seq; Type: SEQUENCE OWNED BY; Schema: public; Owner: -
+--
+
+ALTER SEQUENCE public.roles_id_seq OWNED BY public.roles.id;
+
+
+--
+-- Name: tasas_cambio; Type: TABLE; Schema: public; Owner: -
+--
+
+CREATE TABLE public.tasas_cambio (
+    id integer NOT NULL,
+    fecha date NOT NULL,
+    moneda_origen public."Moneda" NOT NULL,
+    moneda_destino public."Moneda" NOT NULL,
+    tipo public."TipoTasa" DEFAULT 'PARALELO'::public."TipoTasa" NOT NULL,
+    tasa numeric(10,4) NOT NULL,
+    created_at timestamp(3) without time zone DEFAULT CURRENT_TIMESTAMP NOT NULL
+);
+
+
+--
+-- Name: tasas_cambio_id_seq; Type: SEQUENCE; Schema: public; Owner: -
+--
+
+CREATE SEQUENCE public.tasas_cambio_id_seq
+    AS integer
+    START WITH 1
+    INCREMENT BY 1
+    NO MINVALUE
+    NO MAXVALUE
+    CACHE 1;
+
+
+--
+-- Name: tasas_cambio_id_seq; Type: SEQUENCE OWNED BY; Schema: public; Owner: -
+--
+
+ALTER SEQUENCE public.tasas_cambio_id_seq OWNED BY public.tasas_cambio.id;
+
+
+--
+-- Name: transacciones; Type: TABLE; Schema: public; Owner: -
+--
+
+CREATE TABLE public.transacciones (
+    id integer NOT NULL,
+    tipo public."TipoTransaccion" NOT NULL,
+    producto_id integer NOT NULL,
+    cliente_id integer,
+    cantidad integer NOT NULL,
+    precio_unitario numeric(12,2),
+    costo_unitario numeric(12,2),
+    total numeric(12,2),
+    utilidad numeric(12,2),
+    serial text,
+    produccion text,
+    metodo_pago public."MetodoPago",
+    usuario_id integer NOT NULL,
+    fecha_entrada timestamp(3) without time zone,
+    fecha_salida timestamp(3) without time zone,
+    numero_orden text,
+    ubicacion text,
+    mes integer,
+    anio integer,
+    monto_efectivo_usd numeric(12,2),
+    monto_bs numeric(12,2),
+    monto_zelle numeric(12,2),
+    monto_banesco numeric(12,2),
+    tasa_cambio numeric(10,4),
+    created_at timestamp(3) without time zone DEFAULT CURRENT_TIMESTAMP NOT NULL
+);
+
+
+--
+-- Name: transacciones_id_seq; Type: SEQUENCE; Schema: public; Owner: -
+--
+
+CREATE SEQUENCE public.transacciones_id_seq
+    AS integer
+    START WITH 1
+    INCREMENT BY 1
+    NO MINVALUE
+    NO MAXVALUE
+    CACHE 1;
+
+
+--
+-- Name: transacciones_id_seq; Type: SEQUENCE OWNED BY; Schema: public; Owner: -
+--
+
+ALTER SEQUENCE public.transacciones_id_seq OWNED BY public.transacciones.id;
+
+
+--
+-- Name: unidades_inventario; Type: TABLE; Schema: public; Owner: -
+--
+
+CREATE TABLE public.unidades_inventario (
+    id integer NOT NULL,
+    producto_id integer NOT NULL,
+    serial text NOT NULL,
+    estado public."EstadoUnidad" DEFAULT 'DISPONIBLE'::public."EstadoUnidad" NOT NULL,
+    fecha_entrada timestamp(3) without time zone DEFAULT CURRENT_TIMESTAMP NOT NULL,
+    origen_tipo public."OrigenUnidad",
+    costo_unitario numeric(12,2) NOT NULL,
+    lote text,
+    fecha_venta timestamp(3) without time zone,
+    cliente_id integer,
+    precio_venta numeric(12,2),
+    metodo_pago public."MetodoPago",
+    venta_id integer,
+    utilidad numeric(12,2),
+    garantia_meses integer DEFAULT 6 NOT NULL,
+    garantia_hasta timestamp(3) without time zone,
+    notas text,
+    created_at timestamp(3) without time zone DEFAULT CURRENT_TIMESTAMP NOT NULL,
+    updated_at timestamp(3) without time zone NOT NULL
+);
+
+
+--
+-- Name: unidades_inventario_id_seq; Type: SEQUENCE; Schema: public; Owner: -
+--
+
+CREATE SEQUENCE public.unidades_inventario_id_seq
+    AS integer
+    START WITH 1
+    INCREMENT BY 1
+    NO MINVALUE
+    NO MAXVALUE
+    CACHE 1;
+
+
+--
+-- Name: unidades_inventario_id_seq; Type: SEQUENCE OWNED BY; Schema: public; Owner: -
+--
+
+ALTER SEQUENCE public.unidades_inventario_id_seq OWNED BY public.unidades_inventario.id;
+
+
+--
+-- Name: usuarios; Type: TABLE; Schema: public; Owner: -
+--
+
+CREATE TABLE public.usuarios (
+    id integer NOT NULL,
+    email text NOT NULL,
+    password_hash text NOT NULL,
+    nombre_completo text NOT NULL,
+    rol_id integer NOT NULL,
+    activo boolean DEFAULT true NOT NULL,
+    ultimo_login timestamp(3) without time zone,
+    created_at timestamp(3) without time zone DEFAULT CURRENT_TIMESTAMP NOT NULL,
+    updated_at timestamp(3) without time zone NOT NULL
+);
+
+
+--
+-- Name: usuarios_id_seq; Type: SEQUENCE; Schema: public; Owner: -
+--
+
+CREATE SEQUENCE public.usuarios_id_seq
+    AS integer
+    START WITH 1
+    INCREMENT BY 1
+    NO MINVALUE
+    NO MAXVALUE
+    CACHE 1;
+
+
+--
+-- Name: usuarios_id_seq; Type: SEQUENCE OWNED BY; Schema: public; Owner: -
+--
+
+ALTER SEQUENCE public.usuarios_id_seq OWNED BY public.usuarios.id;
+
+
+--
+-- Name: ventas; Type: TABLE; Schema: public; Owner: -
+--
+
+CREATE TABLE public.ventas (
+    id integer NOT NULL,
+    numero_orden text,
+    cliente_id integer NOT NULL,
+    usuario_id integer NOT NULL,
+    fecha timestamp(3) without time zone DEFAULT CURRENT_TIMESTAMP NOT NULL,
+    subtotal numeric(12,2) NOT NULL,
+    descuento numeric(12,2) DEFAULT 0 NOT NULL,
+    impuesto numeric(12,2) DEFAULT 0 NOT NULL,
+    total numeric(12,2) NOT NULL,
+    estado_pago public."EstadoPago" DEFAULT 'PENDIENTE'::public."EstadoPago" NOT NULL,
+    estado public."EstadoVenta" DEFAULT 'CONFIRMADA'::public."EstadoVenta" NOT NULL,
+    notas text,
+    created_at timestamp(3) without time zone DEFAULT CURRENT_TIMESTAMP NOT NULL,
+    updated_at timestamp(3) without time zone NOT NULL
+);
+
+
+--
+-- Name: ventas_detalle; Type: TABLE; Schema: public; Owner: -
+--
+
+CREATE TABLE public.ventas_detalle (
+    id integer NOT NULL,
+    venta_id integer NOT NULL,
+    producto_id integer NOT NULL,
+    cantidad integer NOT NULL,
+    precio_unitario numeric(12,2) NOT NULL,
+    costo_unitario numeric(12,2),
+    descuento numeric(12,2) DEFAULT 0 NOT NULL,
+    subtotal numeric(12,2) NOT NULL,
+    serial text
+);
+
+
+--
+-- Name: ventas_detalle_id_seq; Type: SEQUENCE; Schema: public; Owner: -
+--
+
+CREATE SEQUENCE public.ventas_detalle_id_seq
+    AS integer
+    START WITH 1
+    INCREMENT BY 1
+    NO MINVALUE
+    NO MAXVALUE
+    CACHE 1;
+
+
+--
+-- Name: ventas_detalle_id_seq; Type: SEQUENCE OWNED BY; Schema: public; Owner: -
+--
+
+ALTER SEQUENCE public.ventas_detalle_id_seq OWNED BY public.ventas_detalle.id;
+
+
+--
+-- Name: ventas_id_seq; Type: SEQUENCE; Schema: public; Owner: -
+--
+
+CREATE SEQUENCE public.ventas_id_seq
+    AS integer
+    START WITH 1
+    INCREMENT BY 1
+    NO MINVALUE
+    NO MAXVALUE
+    CACHE 1;
+
+
+--
+-- Name: ventas_id_seq; Type: SEQUENCE OWNED BY; Schema: public; Owner: -
+--
+
+ALTER SEQUENCE public.ventas_id_seq OWNED BY public.ventas.id;
+
+
+--
+-- Name: ventas_pagos; Type: TABLE; Schema: public; Owner: -
+--
+
+CREATE TABLE public.ventas_pagos (
+    id integer NOT NULL,
+    venta_id integer NOT NULL,
+    metodo_pago public."MetodoPago" NOT NULL,
+    monto numeric(12,2) NOT NULL,
+    moneda public."Moneda" DEFAULT 'USD'::public."Moneda" NOT NULL,
+    tasa_cambio numeric(10,4),
+    monto_bs numeric(12,2),
+    referencia text,
+    created_at timestamp(3) without time zone DEFAULT CURRENT_TIMESTAMP NOT NULL
+);
+
+
+--
+-- Name: ventas_pagos_id_seq; Type: SEQUENCE; Schema: public; Owner: -
+--
+
+CREATE SEQUENCE public.ventas_pagos_id_seq
+    AS integer
+    START WITH 1
+    INCREMENT BY 1
+    NO MINVALUE
+    NO MAXVALUE
+    CACHE 1;
+
+
+--
+-- Name: ventas_pagos_id_seq; Type: SEQUENCE OWNED BY; Schema: public; Owner: -
+--
+
+ALTER SEQUENCE public.ventas_pagos_id_seq OWNED BY public.ventas_pagos.id;
+
+
+--
+-- Name: alertas_stock id; Type: DEFAULT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.alertas_stock ALTER COLUMN id SET DEFAULT nextval('public.alertas_stock_id_seq'::regclass);
+
+
+--
+-- Name: categorias id; Type: DEFAULT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.categorias ALTER COLUMN id SET DEFAULT nextval('public.categorias_id_seq'::regclass);
+
+
+--
+-- Name: categorias_gasto id; Type: DEFAULT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.categorias_gasto ALTER COLUMN id SET DEFAULT nextval('public.categorias_gasto_id_seq'::regclass);
+
+
+--
+-- Name: clientes id; Type: DEFAULT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.clientes ALTER COLUMN id SET DEFAULT nextval('public.clientes_id_seq'::regclass);
+
+
+--
+-- Name: costos_importacion id; Type: DEFAULT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.costos_importacion ALTER COLUMN id SET DEFAULT nextval('public.costos_importacion_id_seq'::regclass);
+
+
+--
+-- Name: distribucion_fondos id; Type: DEFAULT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.distribucion_fondos ALTER COLUMN id SET DEFAULT nextval('public.distribucion_fondos_id_seq'::regclass);
+
+
+--
+-- Name: gastos id; Type: DEFAULT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.gastos ALTER COLUMN id SET DEFAULT nextval('public.gastos_id_seq'::regclass);
+
+
+--
+-- Name: importaciones id; Type: DEFAULT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.importaciones ALTER COLUMN id SET DEFAULT nextval('public.importaciones_id_seq'::regclass);
+
+
+--
+-- Name: movimientos_stock id; Type: DEFAULT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.movimientos_stock ALTER COLUMN id SET DEFAULT nextval('public.movimientos_stock_id_seq'::regclass);
+
+
+--
+-- Name: operaciones_cambio id; Type: DEFAULT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.operaciones_cambio ALTER COLUMN id SET DEFAULT nextval('public.operaciones_cambio_id_seq'::regclass);
+
+
+--
+-- Name: ordenes_compra id; Type: DEFAULT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.ordenes_compra ALTER COLUMN id SET DEFAULT nextval('public.ordenes_compra_id_seq'::regclass);
+
+
+--
+-- Name: ordenes_compra_detalle id; Type: DEFAULT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.ordenes_compra_detalle ALTER COLUMN id SET DEFAULT nextval('public.ordenes_compra_detalle_id_seq'::regclass);
+
+
+--
+-- Name: productos id; Type: DEFAULT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.productos ALTER COLUMN id SET DEFAULT nextval('public.productos_id_seq'::regclass);
+
+
+--
+-- Name: proveedores id; Type: DEFAULT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.proveedores ALTER COLUMN id SET DEFAULT nextval('public.proveedores_id_seq'::regclass);
+
+
+--
+-- Name: roles id; Type: DEFAULT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.roles ALTER COLUMN id SET DEFAULT nextval('public.roles_id_seq'::regclass);
+
+
+--
+-- Name: tasas_cambio id; Type: DEFAULT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.tasas_cambio ALTER COLUMN id SET DEFAULT nextval('public.tasas_cambio_id_seq'::regclass);
+
+
+--
+-- Name: transacciones id; Type: DEFAULT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.transacciones ALTER COLUMN id SET DEFAULT nextval('public.transacciones_id_seq'::regclass);
+
+
+--
+-- Name: unidades_inventario id; Type: DEFAULT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.unidades_inventario ALTER COLUMN id SET DEFAULT nextval('public.unidades_inventario_id_seq'::regclass);
+
+
+--
+-- Name: usuarios id; Type: DEFAULT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.usuarios ALTER COLUMN id SET DEFAULT nextval('public.usuarios_id_seq'::regclass);
+
+
+--
+-- Name: ventas id; Type: DEFAULT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.ventas ALTER COLUMN id SET DEFAULT nextval('public.ventas_id_seq'::regclass);
+
+
+--
+-- Name: ventas_detalle id; Type: DEFAULT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.ventas_detalle ALTER COLUMN id SET DEFAULT nextval('public.ventas_detalle_id_seq'::regclass);
+
+
+--
+-- Name: ventas_pagos id; Type: DEFAULT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.ventas_pagos ALTER COLUMN id SET DEFAULT nextval('public.ventas_pagos_id_seq'::regclass);
+
+
+--
+-- Data for Name: alertas_stock; Type: TABLE DATA; Schema: public; Owner: -
+--
+
+COPY public.alertas_stock (id, producto_id, tipo_alerta, stock_actual, stock_minimo, mensaje, resuelta, created_at, resuelta_at) FROM stdin;
+\.
+
+
+--
+-- Data for Name: categorias; Type: TABLE DATA; Schema: public; Owner: -
+--
+
+COPY public.categorias (id, nombre, descripcion) FROM stdin;
+1	Controladores	Controladores de ascensor CEA
+2	Displays	Displays e indicadores
+3	Sensores	Sensores opticos y magneticos
+4	Adaptadores	Adaptadores USB, Bluetooth, etc
+5	Accesorios	Extensiones, coordinadores, expansiones
+\.
+
+
+--
+-- Data for Name: categorias_gasto; Type: TABLE DATA; Schema: public; Owner: -
+--
+
+COPY public.categorias_gasto (id, nombre, tipo) FROM stdin;
+18	NOMINA	NOMINA
+19	VACACIONES	NOMINA
+20	UTILIDAD	NOMINA
+21	COMISION	COMISION
+22	PUBLICIDAD	MARKETING
+23	CONDOMINIO	OPERATIVO
+24	CANTV	SERVICIO
+25	CELULAR	SERVICIO
+26	LUZ	SERVICIO
+27	ALCALDIA	IMPUESTO
+28	GASTOS VARIOS	OPERATIVO
+29	GASTOS OFICINA	OPERATIVO
+30	GASTO IMPORTACION	IMPORTACION
+31	INVERSION	INVERSION
+\.
+
+
+--
+-- Data for Name: clientes; Type: TABLE DATA; Schema: public; Owner: -
+--
+
+COPY public.clientes (id, nombre, nombre_normalizado, rif_cedula, email, telefono, direccion, ciudad, estado, segmento, total_compras, cantidad_ordenes, activo, created_at, updated_at) FROM stdin;
+189	FRANCISCO VELIZ	FRANCISCO VELIZ	\N	\N	\N	\N	\N	\N	NUEVO	4410.00	10	t	2026-01-02 15:21:18.193	2026-01-02 15:23:53.37
+198	LUIS VASQUEZ	LUIS VASQUEZ	\N	\N	\N	\N	\N	\N	NUEVO	2540.00	4	t	2026-01-02 15:21:18.215	2026-01-02 15:23:53.345
+202	SERV TECNO-MYELIS	SERV TECNO-MYELIS	\N	\N	\N	\N	\N	\N	NUEVO	1210.00	6	t	2026-01-02 15:21:18.224	2026-01-02 15:23:54.958
+191	JOSE ROMERO	JOSE ROMERO	\N	\N	\N	\N	\N	\N	NUEVO	17990.00	28	t	2026-01-02 15:21:18.198	2026-01-02 15:23:54.932
+213	JULIO GONZALES	JULIO GONZALES	\N	\N	\N	\N	\N	\N	NUEVO	1650.00	2	t	2026-01-02 15:21:18.252	2026-01-02 15:23:51.108
+222	EDF BRICEMONIT	EDF BRICEMONIT	\N	\N	\N	\N	\N	\N	NUEVO	160.00	2	t	2026-01-02 15:21:18.27	2026-01-02 15:23:51.157
+193	G. FONSELEVEZ 2022 C.A	G. FONSELEVEZ 2022 C.A	\N	\N	\N	\N	\N	\N	NUEVO	121990.00	194	t	2026-01-02 15:21:18.202	2026-01-02 15:23:54.941
+259	CARLOS MOGOLLON	CARLOS MOGOLLON	\N	\N	\N	\N	\N	\N	NUEVO	2480.00	6	t	2026-01-02 15:21:18.37	2026-01-02 15:23:51.991
+231	HECTOR MONTILLA	HECTOR MONTILLA	\N	\N	\N	\N	\N	\N	NUEVO	1180.00	2	t	2026-01-02 15:21:18.296	2026-01-02 15:23:51.249
+243	ANGEL ALVARADO	ANGEL ALVARADO	\N	\N	\N	\N	\N	\N	NUEVO	1530.00	6	t	2026-01-02 15:21:18.332	2026-01-02 15:23:52.067
+224	FELIPE VILLEGAS	FELIPE VILLEGAS	\N	\N	\N	\N	\N	\N	NUEVO	5498.00	10	t	2026-01-02 15:21:18.274	2026-01-02 15:23:53.941
+206	JUAN ORTIZ	JUAN ORTIZ	\N	\N	\N	\N	\N	\N	NUEVO	2500.00	4	t	2026-01-02 15:21:18.234	2026-01-02 15:23:54.04
+210	FELIPE VEGA	FELIPE VEGA	\N	\N	\N	\N	\N	\N	NUEVO	1370.00	2	t	2026-01-02 15:21:18.244	2026-01-02 15:23:51.08
+218	NESTOR RODRIGUEZ	NESTOR RODRIGUEZ	\N	\N	\N	\N	\N	\N	NUEVO	160.00	2	t	2026-01-02 15:21:18.262	2026-01-02 15:23:51.135
+204	CARLOS LIRA	CARLOS LIRA	\N	\N	\N	\N	\N	\N	NUEVO	440.00	2	t	2026-01-02 15:21:18.229	2026-01-02 15:23:51.025
+205	FRANCISCO MOTSI	FRANCISCO MOTSI	\N	\N	\N	\N	\N	\N	NUEVO	300.00	2	t	2026-01-02 15:21:18.232	2026-01-02 15:23:51.029
+257	WILFREDO DOMINGUEZ	WILFREDO DOMINGUEZ	\N	\N	\N	\N	\N	\N	NUEVO	1250.00	8	t	2026-01-02 15:21:18.366	2026-01-02 15:23:54.583
+192	ARGELIO RAMOS	ARGELIO RAMOS	\N	\N	\N	\N	\N	\N	NUEVO	5350.00	8	t	2026-01-02 15:21:18.2	2026-01-02 15:23:54.186
+201	SERV TECNO-MIYELIS	SERV TECNO-MIYELIS	\N	\N	\N	\N	\N	\N	NUEVO	1340.00	6	t	2026-01-02 15:21:18.222	2026-01-02 15:23:53.793
+244	MARIO CARABALLO	MARIO CARABALLO	\N	\N	\N	\N	\N	\N	NUEVO	2370.00	8	t	2026-01-02 15:21:18.335	2026-01-02 15:23:54.26
+216	OMAR PARRA	OMAR PARRA	\N	\N	\N	\N	\N	\N	NUEVO	1700.00	6	t	2026-01-02 15:21:18.258	2026-01-02 15:23:52.881
+246	JOSE ESPINOZA	JOSE ESPINOZA	\N	\N	\N	\N	\N	\N	NUEVO	1190.00	6	t	2026-01-02 15:21:18.339	2026-01-02 15:23:53.708
+217	LEONEL CHACIN	LEONEL CHACIN	\N	\N	\N	\N	\N	\N	NUEVO	2340.00	2	t	2026-01-02 15:21:18.26	2026-01-02 15:23:51.131
+214	EDUARDO SANCHEZ	EDUARDO SANCHEZ	\N	\N	\N	\N	\N	\N	NUEVO	1220.00	2	t	2026-01-02 15:21:18.254	2026-01-02 15:23:51.113
+215	FREDDY SUAREZ	FREDDY SUAREZ	\N	\N	\N	\N	\N	\N	NUEVO	1220.00	2	t	2026-01-02 15:21:18.256	2026-01-02 15:23:51.117
+254	FELIX ROJAS	FELIX ROJAS	\N	\N	\N	\N	\N	\N	NUEVO	5920.00	12	t	2026-01-02 15:21:18.36	2026-01-02 15:23:52.552
+221	HECTOR LINARES	HECTOR LINARES	\N	\N	\N	\N	\N	\N	NUEVO	3400.00	12	t	2026-01-02 15:21:18.268	2026-01-02 15:23:54.751
+260	COVEMA	COVEMA	\N	\N	\N	\N	\N	\N	NUEVO	2400.00	4	t	2026-01-02 15:21:18.372	2026-01-02 15:23:54
+223	JOHAN CASANOVA	JOHAN CASANOVA	\N	\N	\N	\N	\N	\N	NUEVO	3670.00	10	t	2026-01-02 15:21:18.272	2026-01-02 15:23:54.594
+232	DOMINGO MORA	DOMINGO MORA	\N	\N	\N	\N	\N	\N	NUEVO	4080.00	8	t	2026-01-02 15:21:18.299	2026-01-02 15:23:52.637
+253	JOSE RVAS	JOSE RVAS	\N	\N	\N	\N	\N	\N	NUEVO	140.00	2	t	2026-01-02 15:21:18.356	2026-01-02 15:23:51.757
+228	SIMA	SIMA	\N	\N	\N	\N	\N	\N	NUEVO	5600.00	12	t	2026-01-02 15:21:18.29	2026-01-02 15:23:54.709
+229	SALVATORE PAULIN	SALVATORE PAULIN	\N	\N	\N	\N	\N	\N	NUEVO	60.00	2	t	2026-01-02 15:21:18.292	2026-01-02 15:23:51.229
+203	SERV TECNO-MIYELS	SERV TECNO-MIYELS	\N	\N	\N	\N	\N	\N	NUEVO	300.00	2	t	2026-01-02 15:21:18.226	2026-01-02 15:23:51.02
+235	JOSE PEÑA	JOSE PEÑA	\N	\N	\N	\N	\N	\N	NUEVO	2320.00	4	t	2026-01-02 15:21:18.306	2026-01-02 15:23:54.782
+208	SOMERINCA	SOMERINCA	\N	\N	\N	\N	\N	\N	NUEVO	16890.00	26	t	2026-01-02 15:21:18.241	2026-01-02 15:23:54.896
+250	MULTISERVICIOS JEPS	MULTISERVICIOS JEPS	\N	\N	\N	\N	\N	\N	NUEVO	6690.00	12	t	2026-01-02 15:21:18.348	2026-01-02 15:23:54.856
+245	GERMAN NUÑEZ	GERMAN NUÑEZ	\N	\N	\N	\N	\N	\N	NUEVO	2760.00	6	t	2026-01-02 15:21:18.337	2026-01-02 15:23:54.715
+240	ANGEL SANCHEZ	ANGEL SANCHEZ	\N	\N	\N	\N	\N	\N	NUEVO	1090.00	2	t	2026-01-02 15:21:18.323	2026-01-02 15:23:51.349
+242	YONATHAN GUERRERO	YONATHAN GUERRERO	\N	\N	\N	\N	\N	\N	NUEVO	140.00	2	t	2026-01-02 15:21:18.328	2026-01-02 15:23:51.397
+263	G FONSELEVEZ 2022 CA	G FONSELEVEZ 2022 CA	\N	\N	\N	\N	\N	\N	NUEVO	350.00	4	t	2026-01-02 15:21:18.379	2026-01-02 15:23:52.076
+255	ADRIAN MAGO	ADRIAN MAGO	\N	\N	\N	\N	\N	\N	NUEVO	1170.00	4	t	2026-01-02 15:21:18.362	2026-01-02 15:23:52.102
+252	EDUARDO RIAÑE	EDUARDO RIAÑE	\N	\N	\N	\N	\N	\N	NUEVO	3300.00	6	t	2026-01-02 15:21:18.352	2026-01-02 15:23:52.972
+227	JOSE CHACIN	JOSE CHACIN	\N	\N	\N	\N	\N	\N	NUEVO	2220.00	6	t	2026-01-02 15:21:18.285	2026-01-02 15:23:53.879
+209	ASCENSORES 2020	ASCENSORES 2020	\N	\N	\N	\N	\N	\N	NUEVO	160.00	2	t	2026-01-02 15:21:18.243	2026-01-02 15:23:51.07
+258	RICHARD MONTENEGRO	RICHARD MONTENEGRO	\N	\N	\N	\N	\N	\N	NUEVO	1550.00	4	t	2026-01-02 15:21:18.368	2026-01-02 15:23:53.301
+236	JOSE BOADA	JOSE BOADA	\N	\N	\N	\N	\N	\N	NUEVO	1190.00	4	t	2026-01-02 15:21:18.31	2026-01-02 15:23:52.17
+256	CESAR ARGUELLO	CESAR ARGUELLO	\N	\N	\N	\N	\N	\N	NUEVO	2500.00	6	t	2026-01-02 15:21:18.364	2026-01-02 15:23:53.591
+239	JOSE BUSTAMANTE	JOSE BUSTAMANTE	\N	\N	\N	\N	\N	\N	NUEVO	2230.00	4	t	2026-01-02 15:21:18.32	2026-01-02 15:23:53.741
+248	JOSE RINCON	JOSE RINCON	\N	\N	\N	\N	\N	\N	NUEVO	70.00	2	t	2026-01-02 15:21:18.343	2026-01-02 15:23:51.667
+199	OSWALDO BLANCO	OSWALDO BLANCO	\N	\N	\N	\N	\N	\N	NUEVO	1800.00	2	t	2026-01-02 15:21:18.217	2026-01-02 15:23:50.994
+190	DOMINGO EDUARTE	DOMINGO EDUARTE	\N	\N	\N	\N	\N	\N	NUEVO	2290.00	6	t	2026-01-02 15:21:18.195	2026-01-02 15:23:54.415
+197	RAUL MORA	RAUL MORA	\N	\N	\N	\N	\N	\N	NUEVO	3730.00	4	t	2026-01-02 15:21:18.212	2026-01-02 15:23:53.826
+238	MANUEL CEDEÑO	MANUEL CEDEÑO	\N	\N	\N	\N	\N	\N	NUEVO	4108.00	10	t	2026-01-02 15:21:18.317	2026-01-02 15:23:54.805
+261	ADRIAN CHACIN	ADRIAN CHACIN	\N	\N	\N	\N	\N	\N	NUEVO	13880.00	26	t	2026-01-02 15:21:18.374	2026-01-02 15:23:54.731
+194	ISIDRO SANCHEZ	ISIDRO SANCHEZ	\N	\N	\N	\N	\N	\N	NUEVO	2580.00	6	t	2026-01-02 15:21:18.204	2026-01-02 15:23:53.642
+211	YANKY PEREZ	YANKY PEREZ	\N	\N	\N	\N	\N	\N	NUEVO	2450.00	2	t	2026-01-02 15:21:18.247	2026-01-02 15:23:51.09
+247	JORGE TERAN	JORGE TERAN	\N	\N	\N	\N	\N	\N	NUEVO	2250.00	4	t	2026-01-02 15:21:18.341	2026-01-02 15:23:53.995
+196	FRANCISCO MOTISI	FRANCISCO MOTISI	\N	\N	\N	\N	\N	\N	NUEVO	11310.00	26	t	2026-01-02 15:21:18.21	2026-01-02 15:23:54.737
+207	JORGE ROJAS	JORGE ROJAS	\N	\N	\N	\N	\N	\N	NUEVO	6570.00	10	t	2026-01-02 15:21:18.238	2026-01-02 15:23:54.881
+187	JOSE LUGO	JOSE LUGO	\N	\N	\N	\N	\N	\N	NUEVO	1700.00	8	t	2026-01-02 15:21:18.189	2026-01-02 15:23:52.469
+241	GHELBINSON BRICEÑO	GHELBINSON BRICEÑO	\N	\N	\N	\N	\N	\N	NUEVO	2320.00	6	t	2026-01-02 15:21:18.326	2026-01-02 15:23:54.427
+230	JHONIEL ALTUVE	JHONIEL ALTUVE	\N	\N	\N	\N	\N	\N	NUEVO	22090.00	32	t	2026-01-02 15:21:18.294	2026-01-02 15:23:54.159
+262	JUAN MACHADO	JUAN MACHADO	\N	\N	\N	\N	\N	\N	NUEVO	3300.00	8	t	2026-01-02 15:21:18.377	2026-01-02 15:23:54.014
+251	JOSE MORA	JOSE MORA	\N	\N	\N	\N	\N	\N	NUEVO	1130.00	4	t	2026-01-02 15:21:18.35	2026-01-02 15:23:54.045
+195	FREDDY MARIN	FREDDY MARIN	\N	\N	\N	\N	\N	\N	NUEVO	73520.00	59	t	2026-01-02 15:21:18.207	2026-01-02 15:23:54.603
+237	MANUEL DIAZ	MANUEL DIAZ	\N	\N	\N	\N	\N	\N	NUEVO	1830.00	2	t	2026-01-02 15:21:18.314	2026-01-02 15:23:51.305
+225	JUAN CASTILLO	JUAN CASTILLO	\N	\N	\N	\N	\N	\N	NUEVO	2830.00	8	t	2026-01-02 15:21:18.28	2026-01-02 15:23:52.085
+233	GUILLERMO CEDEÑO	GUILLERMO CEDEÑO	\N	\N	\N	\N	\N	\N	NUEVO	140.00	4	t	2026-01-02 15:21:18.301	2026-01-02 15:23:51.29
+249	RAUL SASO	RAUL SASO	\N	\N	\N	\N	\N	\N	NUEVO	6490.00	10	t	2026-01-02 15:21:18.345	2026-01-02 15:23:54.173
+219	RAFAEL ESTEVEZ	RAFAEL ESTEVEZ	\N	\N	\N	\N	\N	\N	NUEVO	5510.00	14	t	2026-01-02 15:21:18.264	2026-01-02 15:23:53.02
+307	ARQUIMEDES ROMAN	ARQUIMEDES ROMAN	\N	\N	\N	\N	\N	\N	NUEVO	2610.00	4	t	2026-01-02 15:21:18.483	2026-01-02 15:23:54.064
+317	RAFAEL PEÑARANDA	RAFAEL PEÑARANDA	\N	\N	\N	\N	\N	\N	NUEVO	900.00	2	t	2026-01-02 15:21:18.504	2026-01-02 15:23:52.868
+313	ELEVADORES VERTICO	ELEVADORES VERTICO	\N	\N	\N	\N	\N	\N	NUEVO	1120.00	4	t	2026-01-02 15:21:18.497	2026-01-02 15:23:54.705
+291	JORFRE PACHECO	JORFRE PACHECO	\N	\N	\N	\N	\N	\N	NUEVO	5840.00	10	t	2026-01-02 15:21:18.45	2026-01-02 15:23:53.272
+309	GELTRUDIS CARABALLO	GELTRUDIS CARABALLO	\N	\N	\N	\N	\N	\N	NUEVO	880.00	2	t	2026-01-02 15:21:18.487	2026-01-02 15:23:52.652
+269	JOSE GOADA	JOSE GOADA	\N	\N	\N	\N	\N	\N	NUEVO	230.00	4	t	2026-01-02 15:21:18.392	2026-01-02 15:23:54.662
+273	ALBERTO SARABIA	ALBERTO SARABIA	\N	\N	\N	\N	\N	\N	NUEVO	2130.00	6	t	2026-01-02 15:21:18.399	2026-01-02 15:23:54.364
+327	JESUS MIERES	JESUS MIERES	\N	\N	\N	\N	\N	\N	NUEVO	2350.00	4	t	2026-01-02 15:21:18.527	2026-01-02 15:23:54.629
+277	MIGUEL SAN JUAN	MIGUEL SAN JUAN	\N	\N	\N	\N	\N	\N	NUEVO	2550.00	6	t	2026-01-02 15:21:18.411	2026-01-02 15:23:53.443
+320	G FONSELEVEZ 2022	G FONSELEVEZ 2022	\N	\N	\N	\N	\N	\N	NUEVO	1500.00	6	t	2026-01-02 15:21:18.51	2026-01-02 15:23:54.917
+272	MAICKEL PINZON	MAICKEL PINZON	\N	\N	\N	\N	\N	\N	NUEVO	1040.00	2	t	2026-01-02 15:21:18.397	2026-01-02 15:23:52.027
+276	ASC GRAP	ASC GRAP	\N	\N	\N	\N	\N	\N	NUEVO	280.00	4	t	2026-01-02 15:21:18.409	2026-01-02 15:23:52.063
+295	SALVATORE PASCUALE	SALVATORE PASCUALE	\N	\N	\N	\N	\N	\N	NUEVO	560.00	2	t	2026-01-02 15:21:18.459	2026-01-02 15:23:52.382
+315	FRAMBERT BENITEZ	FRAMBERT BENITEZ	\N	\N	\N	\N	\N	\N	NUEVO	9360.00	6	t	2026-01-02 15:21:18.5	2026-01-02 15:23:54.608
+281	JAIRO ESCOBAR	JAIRO ESCOBAR	\N	\N	\N	\N	\N	\N	NUEVO	560.00	2	t	2026-01-02 15:21:18.421	2026-01-02 15:23:52.14
+326	JUNIOR COLMENAREZ	JUNIOR COLMENAREZ	\N	\N	\N	\N	\N	\N	NUEVO	1140.00	2	t	2026-01-02 15:21:18.525	2026-01-02 15:23:53.375
+337	CARLOS CAICEDO	CARLOS CAICEDO	\N	\N	\N	\N	\N	\N	NUEVO	1050.00	2	t	2026-01-02 15:21:18.548	2026-01-02 15:23:53.873
+300	RAFAEL OSUNA	RAFAEL OSUNA	\N	\N	\N	\N	\N	\N	NUEVO	960.00	2	t	2026-01-02 15:21:18.469	2026-01-02 15:23:52.479
+301	GERVACIO ZAMORA	GERVACIO ZAMORA	\N	\N	\N	\N	\N	\N	NUEVO	960.00	2	t	2026-01-02 15:21:18.471	2026-01-02 15:23:52.501
+290	G.FONSELEVVEZ 2022 C.A	G.FONSELEVVEZ 2022 C.A	\N	\N	\N	\N	\N	\N	NUEVO	530.00	2	t	2026-01-02 15:21:18.447	2026-01-02 15:23:52.264
+274	DOUGLAS CUAREZ	DOUGLAS CUAREZ	\N	\N	\N	\N	\N	\N	NUEVO	1040.00	4	t	2026-01-02 15:21:18.401	2026-01-02 15:23:52.98
+287	G. FONSELEVEZ	G. FONSELEVEZ	\N	\N	\N	\N	\N	\N	NUEVO	1600.00	4	t	2026-01-02 15:21:18.438	2026-01-02 15:23:52.219
+333	CEVERINO BALLONA	CEVERINO BALLONA	\N	\N	\N	\N	\N	\N	NUEVO	2090.00	4	t	2026-01-02 15:21:18.54	2026-01-02 15:23:53.821
+279	ALEJANDRO HERNANDEZ	ALEJANDRO HERNANDEZ	\N	\N	\N	\N	\N	\N	NUEVO	17780.00	24	t	2026-01-02 15:21:18.415	2026-01-02 15:23:54.037
+280	EFRAIN MENDOZA	EFRAIN MENDOZA	\N	\N	\N	\N	\N	\N	NUEVO	2380.00	2	t	2026-01-02 15:21:18.418	2026-01-02 15:23:52.127
+332	WILFRIDO AVILA	WILFRIDO AVILA	\N	\N	\N	\N	\N	\N	NUEVO	1050.00	2	t	2026-01-02 15:21:18.538	2026-01-02 15:23:53.681
+335	EDUARDO MONTILLA	EDUARDO MONTILLA	\N	\N	\N	\N	\N	\N	NUEVO	1050.00	2	t	2026-01-02 15:21:18.544	2026-01-02 15:23:53.841
+297	EDISON CHACON	EDISON CHACON	\N	\N	\N	\N	\N	\N	NUEVO	3320.00	8	t	2026-01-02 15:21:18.463	2026-01-02 15:23:54.677
+339	EDWARD FARIAS	EDWARD FARIAS	\N	\N	\N	\N	\N	\N	NUEVO	1050.00	2	t	2026-01-02 15:21:18.552	2026-01-02 15:23:53.917
+316	DAVID ARISTIGUEETA	DAVID ARISTIGUEETA	\N	\N	\N	\N	\N	\N	NUEVO	880.00	2	t	2026-01-02 15:21:18.502	2026-01-02 15:23:52.831
+319	MIGUEL MORILLO	MIGUEL MORILLO	\N	\N	\N	\N	\N	\N	NUEVO	1950.00	4	t	2026-01-02 15:21:18.508	2026-01-02 15:23:53.047
+303	FRANCISCO BONILLO	FRANCISCO BONILLO	\N	\N	\N	\N	\N	\N	NUEVO	980.00	2	t	2026-01-02 15:21:18.475	2026-01-02 15:23:52.523
+329	ROBERT DELGADO	ROBERT DELGADO	\N	\N	\N	\N	\N	\N	NUEVO	1830.00	2	t	2026-01-02 15:21:18.533	2026-01-02 15:23:53.526
+306	ESTRONVIA	ESTRONVIA	\N	\N	\N	\N	\N	\N	NUEVO	4750.00	10	t	2026-01-02 15:21:18.481	2026-01-02 15:23:52.862
+336	RAUL MORALES	RAUL MORALES	\N	\N	\N	\N	\N	\N	NUEVO	3170.00	6	t	2026-01-02 15:21:18.546	2026-01-02 15:23:54.082
+298	CHRISTOFHER CARBALLO	CHRISTOFHER CARBALLO	\N	\N	\N	\N	\N	\N	NUEVO	2270.00	4	t	2026-01-02 15:21:18.465	2026-01-02 15:23:53.765
+302	RENALDO LORENZO	RENALDO LORENZO	\N	\N	\N	\N	\N	\N	NUEVO	8140.00	16	t	2026-01-02 15:21:18.473	2026-01-02 15:23:53.99
+266	ELEVADORES LOZMAR	ELEVADORES LOZMAR	\N	\N	\N	\N	\N	\N	NUEVO	140.00	2	t	2026-01-02 15:21:18.386	2026-01-02 15:23:51.929
+308	ASCENSORES GRAP	ASCENSORES GRAP	\N	\N	\N	\N	\N	\N	NUEVO	1920.00	2	t	2026-01-02 15:21:18.484	2026-01-02 15:23:52.644
+285	CARLOS ROMERO	CARLOS ROMERO	\N	\N	\N	\N	\N	\N	NUEVO	3610.00	8	t	2026-01-02 15:21:18.434	2026-01-02 15:23:53.867
+312	VICTOR CHAVEZ	VICTOR CHAVEZ	\N	\N	\N	\N	\N	\N	NUEVO	9140.00	16	t	2026-01-02 15:21:18.495	2026-01-02 15:23:54.541
+311	HENDRY ARAUJO	HENDRY ARAUJO	\N	\N	\N	\N	\N	\N	NUEVO	1680.00	6	t	2026-01-02 15:21:18.491	2026-01-02 15:23:54.744
+322	LUIS PINO	LUIS PINO	\N	\N	\N	\N	\N	\N	NUEVO	1232.00	2	t	2026-01-02 15:21:18.516	2026-01-02 15:23:53.085
+292	EDWIN SARDI	EDWIN SARDI	\N	\N	\N	\N	\N	\N	NUEVO	16160.00	24	t	2026-01-02 15:21:18.452	2026-01-02 15:23:54.862
+305	JOSE RAMOS	JOSE RAMOS	\N	\N	\N	\N	\N	\N	NUEVO	1990.00	4	t	2026-01-02 15:21:18.479	2026-01-02 15:23:53.728
+331	ADRAIN CHACIN	ADRAIN CHACIN	\N	\N	\N	\N	\N	\N	NUEVO	1050.00	2	t	2026-01-02 15:21:18.536	2026-01-02 15:23:53.671
+314	FERNANDO ZAMBRANO	FERNANDO ZAMBRANO	\N	\N	\N	\N	\N	\N	NUEVO	1890.00	4	t	2026-01-02 15:21:18.499	2026-01-02 15:23:52.809
+304	ELEVADORES CONFORT & LIVE	ELEVADORES CONFORT & LIVE	\N	\N	\N	\N	\N	\N	NUEVO	2830.00	6	t	2026-01-02 15:21:18.477	2026-01-02 15:23:52.847
+270	JEAN MALDONADO	JEAN MALDONADO	\N	\N	\N	\N	\N	\N	NUEVO	3700.00	8	t	2026-01-02 15:21:18.394	2026-01-02 15:23:54.812
+325	GRUPO ASC (SIMPLE)	GRUPO ASC (SIMPLE)	\N	\N	\N	\N	\N	\N	NUEVO	1070.00	2	t	2026-01-02 15:21:18.523	2026-01-02 15:23:53.33
+321	EDINSON CHACON	EDINSON CHACON	\N	\N	\N	\N	\N	\N	NUEVO	9380.00	12	t	2026-01-02 15:21:18.512	2026-01-02 15:23:54.404
+275	DAMIAN GOMEZ	DAMIAN GOMEZ	\N	\N	\N	\N	\N	\N	NUEVO	70.00	2	t	2026-01-02 15:21:18.402	2026-01-02 15:23:52.051
+296	HUBERT ALVEZ	HUBERT ALVEZ	\N	\N	\N	\N	\N	\N	NUEVO	9610.00	14	t	2026-01-02 15:21:18.461	2026-01-02 15:23:54.912
+294	FONSELEVEZ	FONSELEVEZ	\N	\N	\N	\N	\N	\N	NUEVO	2930.00	8	t	2026-01-02 15:21:18.456	2026-01-02 15:23:53.028
+282	GIOVANNY GOMEZ	GIOVANNY GOMEZ	\N	\N	\N	\N	\N	\N	NUEVO	1640.00	4	t	2026-01-02 15:21:18.426	2026-01-02 15:23:53.334
+284	EDUARDO MARQUEZ	EDUARDO MARQUEZ	\N	\N	\N	\N	\N	\N	NUEVO	560.00	2	t	2026-01-02 15:21:18.431	2026-01-02 15:23:52.161
+338	JUAN ORTEZ	JUAN ORTEZ	\N	\N	\N	\N	\N	\N	NUEVO	1050.00	2	t	2026-01-02 15:21:18.55	2026-01-02 15:23:53.898
+278	FRANCISCO LUGO	FRANCISCO LUGO	\N	\N	\N	\N	\N	\N	NUEVO	160.00	2	t	2026-01-02 15:21:18.413	2026-01-02 15:23:52.105
+330	JOSE OTTATI	JOSE OTTATI	\N	\N	\N	\N	\N	\N	NUEVO	1040.00	2	t	2026-01-02 15:21:18.534	2026-01-02 15:23:53.55
+318	FELIX RONDON	FELIX RONDON	\N	\N	\N	\N	\N	\N	NUEVO	1980.00	4	t	2026-01-02 15:21:18.506	2026-01-02 15:23:54.537
+323	LUIS MORENO	LUIS MORENO	\N	\N	\N	\N	\N	\N	NUEVO	1120.00	2	t	2026-01-02 15:21:18.519	2026-01-02 15:23:53.109
+293	WILMAN SANCHEZ	WILMAN SANCHEZ	\N	\N	\N	\N	\N	\N	NUEVO	4260.00	10	t	2026-01-02 15:21:18.454	2026-01-02 15:23:54.839
+334	JESUS ORTIZ	JESUS ORTIZ	\N	\N	\N	\N	\N	\N	NUEVO	1050.00	2	t	2026-01-02 15:21:18.542	2026-01-02 15:23:53.774
+267	PILAR ZAMBRANO	PILAR ZAMBRANO	\N	\N	\N	\N	\N	\N	NUEVO	1200.00	4	t	2026-01-02 15:21:18.388	2026-01-02 15:23:54.022
+340	LUIS CLARO	LUIS CLARO	\N	\N	\N	\N	\N	\N	NUEVO	1050.00	2	t	2026-01-02 15:21:18.553	2026-01-02 15:23:53.946
+271	ALIRIO COLMENAREZ	ALIRIO COLMENAREZ	\N	\N	\N	\N	\N	\N	NUEVO	2170.00	6	t	2026-01-02 15:21:18.395	2026-01-02 15:23:53.937
+286	FREDDY GARCIA	FREDDY GARCIA	\N	\N	\N	\N	\N	\N	NUEVO	2660.00	6	t	2026-01-02 15:21:18.436	2026-01-02 15:23:53.801
+299	RICARDO SEIJAS	RICARDO SEIJAS	\N	\N	\N	\N	\N	\N	NUEVO	13390.00	28	t	2026-01-02 15:21:18.467	2026-01-02 15:23:54.822
+328	MARIA QUINTERO	MARIA QUINTERO	\N	\N	\N	\N	\N	\N	NUEVO	1000.00	2	t	2026-01-02 15:21:18.53	2026-01-02 15:23:53.512
+268	VICENTE RIVAS	VICENTE RIVAS	\N	\N	\N	\N	\N	\N	NUEVO	1200.00	2	t	2026-01-02 15:21:18.39	2026-01-02 15:23:51.97
+365	ELEVAPARTES	ELEVAPARTES	\N	\N	\N	\N	\N	\N	NUEVO	0.00	0	t	2026-01-02 15:21:18.606	2026-01-02 15:21:18.606
+366	FRANCISCO MOTISI (GARANTIA)	FRANCISCO MOTISI (GARANTIA)	\N	\N	\N	\N	\N	\N	NUEVO	0.00	0	t	2026-01-02 15:21:18.608	2026-01-02 15:21:18.608
+186	ELEVARAGUA	ELEVARAGUA	\N	\N	\N	\N	\N	\N	NUEVO	13710.00	22	t	2026-01-02 15:21:18.184	2026-01-02 15:23:54.589
+345	RENE LAZO	RENE LAZO	\N	\N	\N	\N	\N	\N	NUEVO	1150.00	4	t	2026-01-02 15:21:18.565	2026-01-02 15:23:54.599
+264	NOEL SALAZAR	NOEL SALAZAR	\N	\N	\N	\N	\N	\N	NUEVO	1040.00	2	t	2026-01-02 15:21:18.381	2026-01-02 15:23:51.875
+359	LORENZO RONDON	LORENZO RONDON	\N	\N	\N	\N	\N	\N	NUEVO	90.00	2	t	2026-01-02 15:21:18.59	2026-01-02 15:23:54.62
+346	MAYORIS VERDE	MAYORIS VERDE	\N	\N	\N	\N	\N	\N	NUEVO	1070.00	2	t	2026-01-02 15:21:18.567	2026-01-02 15:23:54.139
+347	EDUARD VALDEBENITO	EDUARD VALDEBENITO	\N	\N	\N	\N	\N	\N	NUEVO	1080.00	2	t	2026-01-02 15:21:18.57	2026-01-02 15:23:54.163
+348	DORIAN GONZALES	DORIAN GONZALES	\N	\N	\N	\N	\N	\N	NUEVO	1060.00	2	t	2026-01-02 15:21:18.572	2026-01-02 15:23:54.181
+349	VICTOR MOROS	VICTOR MOROS	\N	\N	\N	\N	\N	\N	NUEVO	1080.00	2	t	2026-01-02 15:21:18.573	2026-01-02 15:23:54.191
+351	SERGIO QUISPE	SERGIO QUISPE	\N	\N	\N	\N	\N	\N	NUEVO	1080.00	2	t	2026-01-02 15:21:18.577	2026-01-02 15:23:54.206
+360	CARLA OSORIO	CARLA OSORIO	\N	\N	\N	\N	\N	\N	NUEVO	180.00	2	t	2026-01-02 15:21:18.592	2026-01-02 15:23:54.635
+212	VECTOR ELEVATOR PART C.A.	VECTOR ELEVATOR PART C.A.	\N	\N	\N	\N	\N	\N	NUEVO	32595.00	38	t	2026-01-02 15:21:18.25	2026-01-02 15:23:54.64
+226	SALVATORE PAULINI	SALVATORE PAULINI	\N	\N	\N	\N	\N	\N	NUEVO	11090.00	32	t	2026-01-02 15:21:18.283	2026-01-02 15:23:54.649
+361	ARGENIS MENDEZ	ARGENIS MENDEZ	\N	\N	\N	\N	\N	\N	NUEVO	180.00	2	t	2026-01-02 15:21:18.594	2026-01-02 15:23:54.681
+362	ARMANDO PARRA	ARMANDO PARRA	\N	\N	\N	\N	\N	\N	NUEVO	220.00	2	t	2026-01-02 15:21:18.6	2026-01-02 15:23:54.691
+363	DAVID VARGAS	DAVID VARGAS	\N	\N	\N	\N	\N	\N	NUEVO	220.00	2	t	2026-01-02 15:21:18.602	2026-01-02 15:23:54.696
+364	JIRSON CORDOBA	JIRSON CORDOBA	\N	\N	\N	\N	\N	\N	NUEVO	220.00	2	t	2026-01-02 15:21:18.604	2026-01-02 15:23:54.7
+188	EDGAR BUSTAMANTE	EDGAR BUSTAMANTE	\N	\N	\N	\N	\N	\N	NUEVO	5750.00	14	t	2026-01-02 15:21:18.191	2026-01-02 15:23:54.755
+367	INGTECH	INGTECH	\N	\N	\N	\N	\N	\N	NUEVO	520.00	2	t	2026-01-02 15:21:18.61	2026-01-02 15:23:54.867
+350	GRUPO ASC	GRUPO ASC	\N	\N	\N	\N	\N	\N	NUEVO	3570.00	10	t	2026-01-02 15:21:18.575	2026-01-02 15:23:54.936
+352	DAVID ARISTIGUIETA	DAVID ARISTIGUIETA	\N	\N	\N	\N	\N	\N	NUEVO	1020.00	2	t	2026-01-02 15:21:18.579	2026-01-02 15:23:54.315
+289	DARWIN BLANQUICETT	DARWIN BLANQUICETT	\N	\N	\N	\N	\N	\N	NUEVO	26050.00	32	t	2026-01-02 15:21:18.445	2026-01-02 15:23:54.952
+310	SALVATORE PAOLINI	SALVATORE PAOLINI	\N	\N	\N	\N	\N	\N	NUEVO	1760.00	4	t	2026-01-02 15:21:18.489	2026-01-02 15:23:52.705
+353	CARLO LIRA	CARLO LIRA	\N	\N	\N	\N	\N	\N	NUEVO	1000.00	2	t	2026-01-02 15:21:18.58	2026-01-02 15:23:54.32
+354	MANUEL MEDINA	MANUEL MEDINA	\N	\N	\N	\N	\N	\N	NUEVO	2060.00	2	t	2026-01-02 15:21:18.582	2026-01-02 15:23:54.346
+324	FRANYER MOGOLLON	FRANYER MOGOLLON	\N	\N	\N	\N	\N	\N	NUEVO	4250.00	8	t	2026-01-02 15:21:18.521	2026-01-02 15:23:54.369
+355	YOLFRE ALEMAN	YOLFRE ALEMAN	\N	\N	\N	\N	\N	\N	NUEVO	1020.00	2	t	2026-01-02 15:21:18.584	2026-01-02 15:23:54.444
+265	GIANCARLO PETROCCHI	GIANCARLO PETROCCHI	\N	\N	\N	\N	\N	\N	NUEVO	2000.00	6	t	2026-01-02 15:21:18.384	2026-01-02 15:23:52.896
+288	CESAR ARAUJO	CESAR ARAUJO	\N	\N	\N	\N	\N	\N	NUEVO	2650.00	6	t	2026-01-02 15:21:18.441	2026-01-02 15:23:53.924
+341	BENITO MOSQUERA	BENITO MOSQUERA	\N	\N	\N	\N	\N	\N	NUEVO	1050.00	2	t	2026-01-02 15:21:18.555	2026-01-02 15:23:53.95
+220	VALERIO BRICEÑO	VALERIO BRICEÑO	\N	\N	\N	\N	\N	\N	NUEVO	3640.00	14	t	2026-01-02 15:21:18.266	2026-01-02 15:23:52.319
+342	LOGIC & CONTROL C.A	LOGIC & CONTROL C.A	\N	\N	\N	\N	\N	\N	NUEVO	1050.00	2	t	2026-01-02 15:21:18.559	2026-01-02 15:23:53.955
+234	ANTONIO GONZALES	ANTONIO GONZALES	\N	\N	\N	\N	\N	\N	NUEVO	1260.00	2	t	2026-01-02 15:21:18.304	2026-01-02 15:23:51.279
+343	CARLOS ARIZA	CARLOS ARIZA	\N	\N	\N	\N	\N	\N	NUEVO	1050.00	2	t	2026-01-02 15:21:18.561	2026-01-02 15:23:53.974
+344	NELSON MACHADO	NELSON MACHADO	\N	\N	\N	\N	\N	\N	NUEVO	1050.00	2	t	2026-01-02 15:21:18.563	2026-01-02 15:23:53.98
+200	VECTOR ELEVATOR PART	VECTOR ELEVATOR PART	\N	\N	\N	\N	\N	\N	NUEVO	1810.00	6	t	2026-01-02 15:21:18.219	2026-01-02 15:23:54.058
+356	CESAR TACHON	CESAR TACHON	\N	\N	\N	\N	\N	\N	NUEVO	2200.00	2	t	2026-01-02 15:21:18.585	2026-01-02 15:23:54.565
+357	DARWINSON CASTRILLO	DARWINSON CASTRILLO	\N	\N	\N	\N	\N	\N	NUEVO	1100.00	2	t	2026-01-02 15:21:18.587	2026-01-02 15:23:54.57
+283	MOISES VILLASMIL	MOISES VILLASMIL	\N	\N	\N	\N	\N	\N	NUEVO	12290.00	20	t	2026-01-02 15:21:18.429	2026-01-02 15:23:54.096
+358	JUAN PEREIRA	JUAN PEREIRA	\N	\N	\N	\N	\N	\N	NUEVO	1100.00	2	t	2026-01-02 15:21:18.589	2026-01-02 15:23:54.576
+\.
+
+
+--
+-- Data for Name: costos_importacion; Type: TABLE DATA; Schema: public; Owner: -
+--
+
+COPY public.costos_importacion (id, importacion_id, producto_id, precio_unitario_fob, descuento, flete_seguros, costo_cif, porcentaje_nac, iva_unidad, comisiones, costo_total) FROM stdin;
+\.
+
+
+--
+-- Data for Name: distribucion_fondos; Type: TABLE DATA; Schema: public; Owner: -
+--
+
+COPY public.distribucion_fondos (id, concepto, moneda, monto, porcentaje, actualizado_en) FROM stdin;
+1	EFECTIVO_USD	USD	322549.00	83.06	2025-12-24 13:19:35.616251
+2	ZELLE	USD	20251.00	5.21	2025-12-24 13:19:35.621215
+3	BANESCO	USD	12440.00	3.20	2025-12-24 13:19:35.622199
+4	BOLIVARES	BS	872958.20	\N	2025-12-24 13:19:35.624472
+5	TOTAL_VENTAS	USD	388349.00	100.00	2025-12-24 13:19:35.625735
+\.
+
+
+--
+-- Data for Name: gastos; Type: TABLE DATA; Schema: public; Owner: -
+--
+
+COPY public.gastos (id, categoria_id, monto, moneda, tasa_cambio, fecha, mes, anio, descripcion, comprobante, metodo_pago, estado, es_recurrente, created_at) FROM stdin;
+10	18	125.00	USD	\N	2023-03-15 03:00:00	3	2023	WILMEN VALERA - marzo 2023	\N	\N	PAGADO	f	2026-01-02 15:20:05.46
+11	18	125.00	USD	\N	2023-04-15 04:00:00	4	2023	WILMEN VALERA - abril 2023	\N	\N	PAGADO	f	2026-01-02 15:20:05.469
+12	18	125.00	USD	\N	2023-05-15 04:00:00	5	2023	WILMEN VALERA - mayo 2023	\N	\N	PAGADO	f	2026-01-02 15:20:05.474
+13	18	125.00	USD	\N	2023-06-15 04:00:00	6	2023	WILMEN VALERA - junio 2023	\N	\N	PAGADO	f	2026-01-02 15:20:05.477
+14	18	125.00	USD	\N	2023-07-15 04:00:00	7	2023	WILMEN VALERA - julio 2023	\N	\N	PAGADO	f	2026-01-02 15:20:05.479
+15	18	125.00	USD	\N	2023-08-15 04:00:00	8	2023	WILMEN VALERA - agosto 2023	\N	\N	PAGADO	f	2026-01-02 15:20:05.483
+16	18	125.00	USD	\N	2023-09-15 03:00:00	9	2023	WILMEN VALERA - septiembre 2023	\N	\N	PAGADO	f	2026-01-02 15:20:05.486
+17	18	125.00	USD	\N	2023-10-15 03:00:00	10	2023	WILMEN VALERA - octubre 2023	\N	\N	PAGADO	f	2026-01-02 15:20:05.491
+18	18	125.00	USD	\N	2023-11-15 03:00:00	11	2023	WILMEN VALERA - noviembre 2023	\N	\N	PAGADO	f	2026-01-02 15:20:05.493
+19	18	125.00	USD	\N	2023-12-15 03:00:00	12	2023	WILMEN VALERA - diciembre 2023	\N	\N	PAGADO	f	2026-01-02 15:20:05.494
+20	18	125.00	USD	\N	2024-01-15 03:00:00	1	2024	WILMEN VALERA - enero 2024	\N	\N	PAGADO	f	2026-01-02 15:20:05.496
+21	18	125.00	USD	\N	2024-02-15 03:00:00	2	2024	WILMEN VALERA - febrero 2024	\N	\N	PAGADO	f	2026-01-02 15:20:05.498
+22	18	125.00	USD	\N	2024-03-15 03:00:00	3	2024	WILMEN VALERA - marzo 2024	\N	\N	PAGADO	f	2026-01-02 15:20:05.501
+23	18	125.00	USD	\N	2024-04-15 04:00:00	4	2024	WILMEN VALERA - abril 2024	\N	\N	PAGADO	f	2026-01-02 15:20:05.503
+24	18	125.00	USD	\N	2024-05-15 04:00:00	5	2024	WILMEN VALERA - mayo 2024	\N	\N	PAGADO	f	2026-01-02 15:20:05.506
+25	18	125.00	USD	\N	2024-06-15 04:00:00	6	2024	WILMEN VALERA - junio 2024	\N	\N	PAGADO	f	2026-01-02 15:20:05.511
+26	18	125.00	USD	\N	2024-07-15 04:00:00	7	2024	WILMEN VALERA - julio 2024	\N	\N	PAGADO	f	2026-01-02 15:20:05.515
+27	18	125.00	USD	\N	2024-08-15 04:00:00	8	2024	WILMEN VALERA - agosto 2024	\N	\N	PAGADO	f	2026-01-02 15:20:05.517
+28	18	125.00	USD	\N	2024-09-15 03:00:00	9	2024	WILMEN VALERA - septiembre 2024	\N	\N	PAGADO	f	2026-01-02 15:20:05.52
+29	18	125.00	USD	\N	2024-10-15 03:00:00	10	2024	WILMEN VALERA - octubre 2024	\N	\N	PAGADO	f	2026-01-02 15:20:05.523
+30	18	125.00	USD	\N	2024-11-15 03:00:00	11	2024	WILMEN VALERA - noviembre 2024	\N	\N	PAGADO	f	2026-01-02 15:20:05.526
+31	18	125.00	USD	\N	2024-12-15 03:00:00	12	2024	WILMEN VALERA - diciembre 2024	\N	\N	PAGADO	f	2026-01-02 15:20:05.535
+32	18	125.00	USD	\N	2025-01-15 03:00:00	1	2025	WILMEN VALERA - enero 2025	\N	\N	PAGADO	f	2026-01-02 15:20:05.542
+33	18	125.00	USD	\N	2025-02-15 03:00:00	2	2025	WILMEN VALERA - febrero 2025	\N	\N	PAGADO	f	2026-01-02 15:20:05.546
+34	18	125.00	USD	\N	2025-03-15 03:00:00	3	2025	WILMEN VALERA - marzo 2025	\N	\N	PAGADO	f	2026-01-02 15:20:05.548
+35	18	125.00	USD	\N	2025-04-15 04:00:00	4	2025	WILMEN VALERA - abril 2025	\N	\N	PAGADO	f	2026-01-02 15:20:05.555
+36	18	125.00	USD	\N	2025-05-15 04:00:00	5	2025	WILMEN VALERA - mayo 2025	\N	\N	PAGADO	f	2026-01-02 15:20:05.571
+37	18	125.00	USD	\N	2025-06-15 04:00:00	6	2025	WILMEN VALERA - junio 2025	\N	\N	PAGADO	f	2026-01-02 15:20:05.576
+38	18	125.00	USD	\N	2025-07-15 04:00:00	7	2025	WILMEN VALERA - julio 2025	\N	\N	PAGADO	f	2026-01-02 15:20:05.58
+39	18	125.00	USD	\N	2025-08-15 04:00:00	8	2025	WILMEN VALERA - agosto 2025	\N	\N	PAGADO	f	2026-01-02 15:20:05.584
+40	18	125.00	USD	\N	2025-09-15 03:00:00	9	2025	WILMEN VALERA - septiembre 2025	\N	\N	PAGADO	f	2026-01-02 15:20:05.588
+41	18	125.00	USD	\N	2025-10-15 03:00:00	10	2025	WILMEN VALERA - octubre 2025	\N	\N	PAGADO	f	2026-01-02 15:20:05.59
+42	18	125.00	USD	\N	2025-11-15 03:00:00	11	2025	WILMEN VALERA - noviembre 2025	\N	\N	PAGADO	f	2026-01-02 15:20:05.595
+43	18	125.00	USD	\N	2025-12-15 03:00:00	12	2025	WILMEN VALERA - diciembre 2025	\N	\N	PAGADO	f	2026-01-02 15:20:05.601
+44	19	21.00	USD	\N	2023-01-15 03:00:00	1	2023	VACACIONES - enero 2023	\N	\N	PAGADO	f	2026-01-02 15:20:05.607
+45	19	21.00	USD	\N	2023-02-15 03:00:00	2	2023	VACACIONES - febrero 2023	\N	\N	PAGADO	f	2026-01-02 15:20:05.614
+46	19	10.50	USD	\N	2023-03-15 03:00:00	3	2023	VACACIONES - marzo 2023	\N	\N	PAGADO	f	2026-01-02 15:20:05.63
+47	19	10.50	USD	\N	2023-04-15 04:00:00	4	2023	VACACIONES - abril 2023	\N	\N	PAGADO	f	2026-01-02 15:20:05.639
+48	19	10.50	USD	\N	2023-05-15 04:00:00	5	2023	VACACIONES - mayo 2023	\N	\N	PAGADO	f	2026-01-02 15:20:05.649
+49	19	10.50	USD	\N	2023-06-15 04:00:00	6	2023	VACACIONES - junio 2023	\N	\N	PAGADO	f	2026-01-02 15:20:05.654
+50	19	10.50	USD	\N	2023-07-15 04:00:00	7	2023	VACACIONES - julio 2023	\N	\N	PAGADO	f	2026-01-02 15:20:05.66
+51	19	10.50	USD	\N	2023-08-15 04:00:00	8	2023	VACACIONES - agosto 2023	\N	\N	PAGADO	f	2026-01-02 15:20:05.665
+52	19	10.50	USD	\N	2023-09-15 03:00:00	9	2023	VACACIONES - septiembre 2023	\N	\N	PAGADO	f	2026-01-02 15:20:05.675
+53	19	10.50	USD	\N	2023-10-15 03:00:00	10	2023	VACACIONES - octubre 2023	\N	\N	PAGADO	f	2026-01-02 15:20:05.679
+54	19	10.50	USD	\N	2023-11-15 03:00:00	11	2023	VACACIONES - noviembre 2023	\N	\N	PAGADO	f	2026-01-02 15:20:05.689
+55	19	10.50	USD	\N	2023-12-15 03:00:00	12	2023	VACACIONES - diciembre 2023	\N	\N	PAGADO	f	2026-01-02 15:20:05.694
+56	19	10.50	USD	\N	2024-01-15 03:00:00	1	2024	VACACIONES - enero 2024	\N	\N	PAGADO	f	2026-01-02 15:20:05.7
+57	19	10.50	USD	\N	2024-02-15 03:00:00	2	2024	VACACIONES - febrero 2024	\N	\N	PAGADO	f	2026-01-02 15:20:05.702
+58	19	10.50	USD	\N	2024-03-15 03:00:00	3	2024	VACACIONES - marzo 2024	\N	\N	PAGADO	f	2026-01-02 15:20:05.708
+59	19	10.50	USD	\N	2024-04-15 04:00:00	4	2024	VACACIONES - abril 2024	\N	\N	PAGADO	f	2026-01-02 15:20:05.713
+60	19	10.50	USD	\N	2024-05-15 04:00:00	5	2024	VACACIONES - mayo 2024	\N	\N	PAGADO	f	2026-01-02 15:20:05.72
+61	19	10.50	USD	\N	2024-06-15 04:00:00	6	2024	VACACIONES - junio 2024	\N	\N	PAGADO	f	2026-01-02 15:20:05.735
+62	19	10.50	USD	\N	2024-07-15 04:00:00	7	2024	VACACIONES - julio 2024	\N	\N	PAGADO	f	2026-01-02 15:20:05.742
+63	19	10.50	USD	\N	2024-08-15 04:00:00	8	2024	VACACIONES - agosto 2024	\N	\N	PAGADO	f	2026-01-02 15:20:05.747
+64	19	10.50	USD	\N	2024-09-15 03:00:00	9	2024	VACACIONES - septiembre 2024	\N	\N	PAGADO	f	2026-01-02 15:20:05.752
+65	19	10.50	USD	\N	2024-10-15 03:00:00	10	2024	VACACIONES - octubre 2024	\N	\N	PAGADO	f	2026-01-02 15:20:05.757
+66	19	10.50	USD	\N	2024-11-15 03:00:00	11	2024	VACACIONES - noviembre 2024	\N	\N	PAGADO	f	2026-01-02 15:20:05.767
+67	19	10.50	USD	\N	2024-12-15 03:00:00	12	2024	VACACIONES - diciembre 2024	\N	\N	PAGADO	f	2026-01-02 15:20:05.785
+68	19	10.50	USD	\N	2025-01-15 03:00:00	1	2025	VACACIONES - enero 2025	\N	\N	PAGADO	f	2026-01-02 15:20:05.805
+69	19	10.50	USD	\N	2025-02-15 03:00:00	2	2025	VACACIONES - febrero 2025	\N	\N	PAGADO	f	2026-01-02 15:20:05.818
+70	19	10.50	USD	\N	2025-03-15 03:00:00	3	2025	VACACIONES - marzo 2025	\N	\N	PAGADO	f	2026-01-02 15:20:05.854
+71	19	10.50	USD	\N	2025-04-15 04:00:00	4	2025	VACACIONES - abril 2025	\N	\N	PAGADO	f	2026-01-02 15:20:05.868
+72	19	10.50	USD	\N	2025-05-15 04:00:00	5	2025	VACACIONES - mayo 2025	\N	\N	PAGADO	f	2026-01-02 15:20:05.876
+73	19	10.50	USD	\N	2025-06-15 04:00:00	6	2025	VACACIONES - junio 2025	\N	\N	PAGADO	f	2026-01-02 15:20:05.882
+74	19	10.50	USD	\N	2025-07-15 04:00:00	7	2025	VACACIONES - julio 2025	\N	\N	PAGADO	f	2026-01-02 15:20:05.901
+75	19	10.50	USD	\N	2025-08-15 04:00:00	8	2025	VACACIONES - agosto 2025	\N	\N	PAGADO	f	2026-01-02 15:20:05.927
+76	19	10.50	USD	\N	2025-09-15 03:00:00	9	2025	VACACIONES - septiembre 2025	\N	\N	PAGADO	f	2026-01-02 15:20:05.939
+77	19	10.50	USD	\N	2025-10-15 03:00:00	10	2025	VACACIONES - octubre 2025	\N	\N	PAGADO	f	2026-01-02 15:20:05.945
+78	19	10.50	USD	\N	2025-11-15 03:00:00	11	2025	VACACIONES - noviembre 2025	\N	\N	PAGADO	f	2026-01-02 15:20:05.958
+79	19	10.50	USD	\N	2025-12-15 03:00:00	12	2025	VACACIONES - diciembre 2025	\N	\N	PAGADO	f	2026-01-02 15:20:05.971
+80	20	40.00	USD	\N	2023-01-15 03:00:00	1	2023	UTILIDAD - enero 2023	\N	\N	PAGADO	f	2026-01-02 15:20:05.983
+81	20	40.00	USD	\N	2023-02-15 03:00:00	2	2023	UTILIDAD - febrero 2023	\N	\N	PAGADO	f	2026-01-02 15:20:05.99
+82	20	21.00	USD	\N	2023-03-15 03:00:00	3	2023	UTILIDAD - marzo 2023	\N	\N	PAGADO	f	2026-01-02 15:20:05.999
+83	20	21.00	USD	\N	2023-04-15 04:00:00	4	2023	UTILIDAD - abril 2023	\N	\N	PAGADO	f	2026-01-02 15:20:06.012
+84	20	21.00	USD	\N	2023-05-15 04:00:00	5	2023	UTILIDAD - mayo 2023	\N	\N	PAGADO	f	2026-01-02 15:20:06.023
+85	20	21.00	USD	\N	2023-06-15 04:00:00	6	2023	UTILIDAD - junio 2023	\N	\N	PAGADO	f	2026-01-02 15:20:06.037
+86	20	21.00	USD	\N	2023-07-15 04:00:00	7	2023	UTILIDAD - julio 2023	\N	\N	PAGADO	f	2026-01-02 15:20:06.048
+87	20	21.00	USD	\N	2023-08-15 04:00:00	8	2023	UTILIDAD - agosto 2023	\N	\N	PAGADO	f	2026-01-02 15:20:06.071
+88	20	21.00	USD	\N	2023-09-15 03:00:00	9	2023	UTILIDAD - septiembre 2023	\N	\N	PAGADO	f	2026-01-02 15:20:06.075
+89	20	21.00	USD	\N	2023-10-15 03:00:00	10	2023	UTILIDAD - octubre 2023	\N	\N	PAGADO	f	2026-01-02 15:20:06.079
+90	20	21.00	USD	\N	2023-11-15 03:00:00	11	2023	UTILIDAD - noviembre 2023	\N	\N	PAGADO	f	2026-01-02 15:20:06.082
+91	20	21.00	USD	\N	2023-12-15 03:00:00	12	2023	UTILIDAD - diciembre 2023	\N	\N	PAGADO	f	2026-01-02 15:20:06.087
+92	20	21.00	USD	\N	2024-01-15 03:00:00	1	2024	UTILIDAD - enero 2024	\N	\N	PAGADO	f	2026-01-02 15:20:06.099
+93	20	21.00	USD	\N	2024-02-15 03:00:00	2	2024	UTILIDAD - febrero 2024	\N	\N	PAGADO	f	2026-01-02 15:20:06.108
+94	20	21.00	USD	\N	2024-03-15 03:00:00	3	2024	UTILIDAD - marzo 2024	\N	\N	PAGADO	f	2026-01-02 15:20:06.176
+95	20	21.00	USD	\N	2024-04-15 04:00:00	4	2024	UTILIDAD - abril 2024	\N	\N	PAGADO	f	2026-01-02 15:20:06.179
+96	20	21.00	USD	\N	2024-05-15 04:00:00	5	2024	UTILIDAD - mayo 2024	\N	\N	PAGADO	f	2026-01-02 15:20:06.188
+97	20	21.00	USD	\N	2024-06-15 04:00:00	6	2024	UTILIDAD - junio 2024	\N	\N	PAGADO	f	2026-01-02 15:20:06.193
+98	20	21.00	USD	\N	2024-07-15 04:00:00	7	2024	UTILIDAD - julio 2024	\N	\N	PAGADO	f	2026-01-02 15:20:06.205
+99	20	21.00	USD	\N	2024-08-15 04:00:00	8	2024	UTILIDAD - agosto 2024	\N	\N	PAGADO	f	2026-01-02 15:20:06.212
+100	20	21.00	USD	\N	2024-09-15 03:00:00	9	2024	UTILIDAD - septiembre 2024	\N	\N	PAGADO	f	2026-01-02 15:20:06.221
+101	20	21.00	USD	\N	2024-10-15 03:00:00	10	2024	UTILIDAD - octubre 2024	\N	\N	PAGADO	f	2026-01-02 15:20:06.224
+102	20	21.00	USD	\N	2024-11-15 03:00:00	11	2024	UTILIDAD - noviembre 2024	\N	\N	PAGADO	f	2026-01-02 15:20:06.227
+103	20	21.00	USD	\N	2024-12-15 03:00:00	12	2024	UTILIDAD - diciembre 2024	\N	\N	PAGADO	f	2026-01-02 15:20:06.23
+104	20	21.00	USD	\N	2025-01-15 03:00:00	1	2025	UTILIDAD - enero 2025	\N	\N	PAGADO	f	2026-01-02 15:20:06.232
+105	20	21.00	USD	\N	2025-02-15 03:00:00	2	2025	UTILIDAD - febrero 2025	\N	\N	PAGADO	f	2026-01-02 15:20:06.235
+106	20	21.00	USD	\N	2025-03-15 03:00:00	3	2025	UTILIDAD - marzo 2025	\N	\N	PAGADO	f	2026-01-02 15:20:06.24
+107	20	21.00	USD	\N	2025-04-15 04:00:00	4	2025	UTILIDAD - abril 2025	\N	\N	PAGADO	f	2026-01-02 15:20:06.243
+108	20	21.00	USD	\N	2025-05-15 04:00:00	5	2025	UTILIDAD - mayo 2025	\N	\N	PAGADO	f	2026-01-02 15:20:06.249
+109	20	21.00	USD	\N	2025-06-15 04:00:00	6	2025	UTILIDAD - junio 2025	\N	\N	PAGADO	f	2026-01-02 15:20:06.252
+110	20	21.00	USD	\N	2025-07-15 04:00:00	7	2025	UTILIDAD - julio 2025	\N	\N	PAGADO	f	2026-01-02 15:20:06.255
+111	20	21.00	USD	\N	2025-08-15 04:00:00	8	2025	UTILIDAD - agosto 2025	\N	\N	PAGADO	f	2026-01-02 15:20:06.258
+112	20	21.00	USD	\N	2025-09-15 03:00:00	9	2025	UTILIDAD - septiembre 2025	\N	\N	PAGADO	f	2026-01-02 15:20:06.262
+113	20	21.00	USD	\N	2025-10-15 03:00:00	10	2025	UTILIDAD - octubre 2025	\N	\N	PAGADO	f	2026-01-02 15:20:06.265
+114	20	21.00	USD	\N	2025-11-15 03:00:00	11	2025	UTILIDAD - noviembre 2025	\N	\N	PAGADO	f	2026-01-02 15:20:06.267
+115	20	21.00	USD	\N	2025-12-15 03:00:00	12	2025	UTILIDAD - diciembre 2025	\N	\N	PAGADO	f	2026-01-02 15:20:06.269
+116	21	427.10	USD	\N	2023-03-15 03:00:00	3	2023	COMISION POR VENTAS - marzo 2023	\N	\N	PAGADO	f	2026-01-02 15:20:06.271
+117	21	66.64	USD	\N	2023-03-15 03:00:00	3	2023	COMISION ML VENTA - marzo 2023	\N	\N	PAGADO	f	2026-01-02 15:20:06.273
+118	22	41.00	USD	\N	2023-03-15 03:00:00	3	2023	PUBLICIDAD - marzo 2023	\N	\N	PAGADO	f	2026-01-02 15:20:06.276
+119	22	160.00	USD	\N	2023-10-15 03:00:00	10	2023	PUBLICIDAD - octubre 2023	\N	\N	PAGADO	f	2026-01-02 15:20:06.278
+120	23	23.37	USD	\N	2023-01-15 03:00:00	1	2023	CONDOMINIO - enero 2023	\N	\N	PAGADO	f	2026-01-02 15:20:06.279
+121	23	25.82	USD	\N	2023-02-15 03:00:00	2	2023	CONDOMINIO - febrero 2023	\N	\N	PAGADO	f	2026-01-02 15:20:06.282
+122	23	29.03	USD	\N	2023-03-15 03:00:00	3	2023	CONDOMINIO - marzo 2023	\N	\N	PAGADO	f	2026-01-02 15:20:06.285
+123	23	31.00	USD	\N	2023-04-15 04:00:00	4	2023	CONDOMINIO - abril 2023	\N	\N	PAGADO	f	2026-01-02 15:20:06.287
+124	23	53.40	USD	\N	2023-05-15 04:00:00	5	2023	CONDOMINIO - mayo 2023	\N	\N	PAGADO	f	2026-01-02 15:20:06.289
+125	23	52.16	USD	\N	2023-06-15 04:00:00	6	2023	CONDOMINIO - junio 2023	\N	\N	PAGADO	f	2026-01-02 15:20:06.292
+126	23	29.62	USD	\N	2023-07-15 04:00:00	7	2023	CONDOMINIO - julio 2023	\N	\N	PAGADO	f	2026-01-02 15:20:06.295
+127	23	31.88	USD	\N	2023-08-15 04:00:00	8	2023	CONDOMINIO - agosto 2023	\N	\N	PAGADO	f	2026-01-02 15:20:06.298
+128	23	29.77	USD	\N	2023-09-15 03:00:00	9	2023	CONDOMINIO - septiembre 2023	\N	\N	PAGADO	f	2026-01-02 15:20:06.302
+129	23	74.94	USD	\N	2023-10-15 03:00:00	10	2023	CONDOMINIO - octubre 2023	\N	\N	PAGADO	f	2026-01-02 15:20:06.305
+130	23	45.59	USD	\N	2023-11-15 03:00:00	11	2023	CONDOMINIO - noviembre 2023	\N	\N	PAGADO	f	2026-01-02 15:20:06.307
+131	23	37.49	USD	\N	2023-12-15 03:00:00	12	2023	CONDOMINIO - diciembre 2023	\N	\N	PAGADO	f	2026-01-02 15:20:06.309
+132	23	35.39	USD	\N	2024-01-15 03:00:00	1	2024	CONDOMINIO - enero 2024	\N	\N	PAGADO	f	2026-01-02 15:20:06.312
+133	23	34.38	USD	\N	2024-02-15 03:00:00	2	2024	CONDOMINIO - febrero 2024	\N	\N	PAGADO	f	2026-01-02 15:20:06.313
+134	23	39.14	USD	\N	2024-03-15 03:00:00	3	2024	CONDOMINIO - marzo 2024	\N	\N	PAGADO	f	2026-01-02 15:20:06.318
+135	23	34.60	USD	\N	2024-04-15 04:00:00	4	2024	CONDOMINIO - abril 2024	\N	\N	PAGADO	f	2026-01-02 15:20:06.321
+136	23	35.29	USD	\N	2024-05-15 04:00:00	5	2024	CONDOMINIO - mayo 2024	\N	\N	PAGADO	f	2026-01-02 15:20:06.325
+137	23	41.14	USD	\N	2024-06-15 04:00:00	6	2024	CONDOMINIO - junio 2024	\N	\N	PAGADO	f	2026-01-02 15:20:06.327
+138	23	36.71	USD	\N	2024-07-15 04:00:00	7	2024	CONDOMINIO - julio 2024	\N	\N	PAGADO	f	2026-01-02 15:20:06.33
+139	23	40.86	USD	\N	2024-08-15 04:00:00	8	2024	CONDOMINIO - agosto 2024	\N	\N	PAGADO	f	2026-01-02 15:20:06.332
+140	23	48.16	USD	\N	2024-09-15 03:00:00	9	2024	CONDOMINIO - septiembre 2024	\N	\N	PAGADO	f	2026-01-02 15:20:06.335
+141	23	77.19	USD	\N	2024-10-15 03:00:00	10	2024	CONDOMINIO - octubre 2024	\N	\N	PAGADO	f	2026-01-02 15:20:06.337
+142	23	43.39	USD	\N	2024-11-15 03:00:00	11	2024	CONDOMINIO - noviembre 2024	\N	\N	PAGADO	f	2026-01-02 15:20:06.34
+143	23	34.64	USD	\N	2024-12-15 03:00:00	12	2024	CONDOMINIO - diciembre 2024	\N	\N	PAGADO	f	2026-01-02 15:20:06.342
+144	23	39.89	USD	\N	2025-01-15 03:00:00	1	2025	CONDOMINIO - enero 2025	\N	\N	PAGADO	f	2026-01-02 15:20:06.345
+145	23	36.24	USD	\N	2025-02-15 03:00:00	2	2025	CONDOMINIO - febrero 2025	\N	\N	PAGADO	f	2026-01-02 15:20:06.347
+146	23	46.64	USD	\N	2025-03-15 03:00:00	3	2025	CONDOMINIO - marzo 2025	\N	\N	PAGADO	f	2026-01-02 15:20:06.352
+147	23	53.49	USD	\N	2025-04-15 04:00:00	4	2025	CONDOMINIO - abril 2025	\N	\N	PAGADO	f	2026-01-02 15:20:06.355
+148	23	64.52	USD	\N	2025-05-15 04:00:00	5	2025	CONDOMINIO - mayo 2025	\N	\N	PAGADO	f	2026-01-02 15:20:06.358
+149	23	38.70	USD	\N	2025-06-15 04:00:00	6	2025	CONDOMINIO - junio 2025	\N	\N	PAGADO	f	2026-01-02 15:20:06.36
+150	23	55.87	USD	\N	2025-07-15 04:00:00	7	2025	CONDOMINIO - julio 2025	\N	\N	PAGADO	f	2026-01-02 15:20:06.363
+151	23	40.31	USD	\N	2025-08-15 04:00:00	8	2025	CONDOMINIO - agosto 2025	\N	\N	PAGADO	f	2026-01-02 15:20:06.365
+152	23	55.11	USD	\N	2025-09-15 03:00:00	9	2025	CONDOMINIO - septiembre 2025	\N	\N	PAGADO	f	2026-01-02 15:20:06.367
+153	23	47.20	USD	\N	2025-10-15 03:00:00	10	2025	CONDOMINIO - octubre 2025	\N	\N	PAGADO	f	2026-01-02 15:20:06.369
+154	24	7.58	USD	\N	2023-01-15 03:00:00	1	2023	CANTV - enero 2023	\N	\N	PAGADO	f	2026-01-02 15:20:06.371
+155	24	9.56	USD	\N	2023-02-15 03:00:00	2	2023	CANTV - febrero 2023	\N	\N	PAGADO	f	2026-01-02 15:20:06.372
+156	24	12.23	USD	\N	2023-03-15 03:00:00	3	2023	CANTV - marzo 2023	\N	\N	PAGADO	f	2026-01-02 15:20:06.373
+157	24	13.58	USD	\N	2023-04-15 04:00:00	4	2023	CANTV - abril 2023	\N	\N	PAGADO	f	2026-01-02 15:20:06.375
+158	24	14.50	USD	\N	2023-05-15 04:00:00	5	2023	CANTV - mayo 2023	\N	\N	PAGADO	f	2026-01-02 15:20:06.377
+159	24	15.22	USD	\N	2023-06-15 04:00:00	6	2023	CANTV - junio 2023	\N	\N	PAGADO	f	2026-01-02 15:20:06.379
+160	24	15.31	USD	\N	2023-07-15 04:00:00	7	2023	CANTV - julio 2023	\N	\N	PAGADO	f	2026-01-02 15:20:06.38
+161	24	14.51	USD	\N	2023-08-15 04:00:00	8	2023	CANTV - agosto 2023	\N	\N	PAGADO	f	2026-01-02 15:20:06.382
+162	24	15.04	USD	\N	2023-09-15 03:00:00	9	2023	CANTV - septiembre 2023	\N	\N	PAGADO	f	2026-01-02 15:20:06.383
+163	24	15.81	USD	\N	2023-10-15 03:00:00	10	2023	CANTV - octubre 2023	\N	\N	PAGADO	f	2026-01-02 15:20:06.386
+164	24	24.06	USD	\N	2023-11-15 03:00:00	11	2023	CANTV - noviembre 2023	\N	\N	PAGADO	f	2026-01-02 15:20:06.388
+165	24	24.00	USD	\N	2023-12-15 03:00:00	12	2023	CANTV - diciembre 2023	\N	\N	PAGADO	f	2026-01-02 15:20:06.391
+166	24	17.67	USD	\N	2024-01-15 03:00:00	1	2024	CANTV - enero 2024	\N	\N	PAGADO	f	2026-01-02 15:20:06.394
+167	24	17.55	USD	\N	2024-05-15 04:00:00	5	2024	CANTV - mayo 2024	\N	\N	PAGADO	f	2026-01-02 15:20:06.397
+168	24	17.50	USD	\N	2024-07-15 04:00:00	7	2024	CANTV - julio 2024	\N	\N	PAGADO	f	2026-01-02 15:20:06.398
+169	24	17.23	USD	\N	2024-08-15 04:00:00	8	2024	CANTV - agosto 2024	\N	\N	PAGADO	f	2026-01-02 15:20:06.4
+170	24	17.51	USD	\N	2024-09-15 03:00:00	9	2024	CANTV - septiembre 2024	\N	\N	PAGADO	f	2026-01-02 15:20:06.402
+171	24	17.22	USD	\N	2024-11-15 03:00:00	11	2024	CANTV - noviembre 2024	\N	\N	PAGADO	f	2026-01-02 15:20:06.406
+172	24	16.91	USD	\N	2024-12-15 03:00:00	12	2024	CANTV - diciembre 2024	\N	\N	PAGADO	f	2026-01-02 15:20:06.408
+173	24	19.16	USD	\N	2025-01-15 03:00:00	1	2025	CANTV - enero 2025	\N	\N	PAGADO	f	2026-01-02 15:20:06.41
+174	24	18.73	USD	\N	2025-02-15 03:00:00	2	2025	CANTV - febrero 2025	\N	\N	PAGADO	f	2026-01-02 15:20:06.412
+175	24	17.19	USD	\N	2025-03-15 03:00:00	3	2025	CANTV - marzo 2025	\N	\N	PAGADO	f	2026-01-02 15:20:06.414
+176	24	13.79	USD	\N	2025-04-15 04:00:00	4	2025	CANTV - abril 2025	\N	\N	PAGADO	f	2026-01-02 15:20:06.416
+177	24	12.18	USD	\N	2025-05-15 04:00:00	5	2025	CANTV - mayo 2025	\N	\N	PAGADO	f	2026-01-02 15:20:06.42
+178	24	16.88	USD	\N	2025-06-15 04:00:00	6	2025	CANTV - junio 2025	\N	\N	PAGADO	f	2026-01-02 15:20:06.424
+179	24	16.82	USD	\N	2025-07-15 04:00:00	7	2025	CANTV - julio 2025	\N	\N	PAGADO	f	2026-01-02 15:20:06.426
+180	24	16.23	USD	\N	2025-08-15 04:00:00	8	2025	CANTV - agosto 2025	\N	\N	PAGADO	f	2026-01-02 15:20:06.428
+181	24	16.42	USD	\N	2025-09-15 03:00:00	9	2025	CANTV - septiembre 2025	\N	\N	PAGADO	f	2026-01-02 15:20:06.43
+182	24	16.50	USD	\N	2025-10-15 03:00:00	10	2025	CANTV - octubre 2025	\N	\N	PAGADO	f	2026-01-02 15:20:06.432
+183	25	5.50	USD	\N	2023-05-15 04:00:00	5	2023	CELULAR 1 - mayo 2023	\N	\N	PAGADO	f	2026-01-02 15:20:06.436
+184	25	4.60	USD	\N	2023-06-15 04:00:00	6	2023	CELULAR 1 - junio 2023	\N	\N	PAGADO	f	2026-01-02 15:20:06.438
+185	25	4.50	USD	\N	2023-07-15 04:00:00	7	2023	CELULAR 1 - julio 2023	\N	\N	PAGADO	f	2026-01-02 15:20:06.441
+186	25	8.50	USD	\N	2023-08-15 04:00:00	8	2023	CELULAR 1 - agosto 2023	\N	\N	PAGADO	f	2026-01-02 15:20:06.447
+187	25	29.00	USD	\N	2024-01-15 03:00:00	1	2024	CELULAR 1 - enero 2024	\N	\N	PAGADO	f	2026-01-02 15:20:06.45
+188	25	28.27	USD	\N	2024-02-15 03:00:00	2	2024	CELULAR 1 - febrero 2024	\N	\N	PAGADO	f	2026-01-02 15:20:06.454
+189	25	28.98	USD	\N	2024-03-15 03:00:00	3	2024	CELULAR 1 - marzo 2024	\N	\N	PAGADO	f	2026-01-02 15:20:06.458
+190	25	43.00	USD	\N	2024-04-15 04:00:00	4	2024	CELULAR 1 - abril 2024	\N	\N	PAGADO	f	2026-01-02 15:20:06.463
+191	25	27.62	USD	\N	2024-05-15 04:00:00	5	2024	CELULAR 1 - mayo 2024	\N	\N	PAGADO	f	2026-01-02 15:20:06.465
+192	25	27.65	USD	\N	2024-06-15 04:00:00	6	2024	CELULAR 1 - junio 2024	\N	\N	PAGADO	f	2026-01-02 15:20:06.467
+193	25	33.90	USD	\N	2024-07-15 04:00:00	7	2024	CELULAR 1 - julio 2024	\N	\N	PAGADO	f	2026-01-02 15:20:06.47
+194	25	33.53	USD	\N	2024-08-15 04:00:00	8	2024	CELULAR 1 - agosto 2024	\N	\N	PAGADO	f	2026-01-02 15:20:06.473
+195	25	36.20	USD	\N	2024-09-15 03:00:00	9	2024	CELULAR 1 - septiembre 2024	\N	\N	PAGADO	f	2026-01-02 15:20:06.474
+196	25	37.55	USD	\N	2024-10-15 03:00:00	10	2024	CELULAR 1 - octubre 2024	\N	\N	PAGADO	f	2026-01-02 15:20:06.477
+197	25	47.59	USD	\N	2024-11-15 03:00:00	11	2024	CELULAR 1 - noviembre 2024	\N	\N	PAGADO	f	2026-01-02 15:20:06.483
+198	25	22.88	USD	\N	2025-02-15 03:00:00	2	2025	CELULAR 1 - febrero 2025	\N	\N	PAGADO	f	2026-01-02 15:20:06.486
+199	25	27.28	USD	\N	2025-03-15 03:00:00	3	2025	CELULAR 1 - marzo 2025	\N	\N	PAGADO	f	2026-01-02 15:20:06.488
+200	25	23.61	USD	\N	2025-04-15 04:00:00	4	2025	CELULAR 1 - abril 2025	\N	\N	PAGADO	f	2026-01-02 15:20:06.49
+201	25	27.02	USD	\N	2025-05-15 04:00:00	5	2025	CELULAR 1 - mayo 2025	\N	\N	PAGADO	f	2026-01-02 15:20:06.492
+202	25	35.09	USD	\N	2025-06-15 04:00:00	6	2025	CELULAR 1 - junio 2025	\N	\N	PAGADO	f	2026-01-02 15:20:06.493
+203	25	25.43	USD	\N	2025-07-15 04:00:00	7	2025	CELULAR 1 - julio 2025	\N	\N	PAGADO	f	2026-01-02 15:20:06.495
+204	25	24.45	USD	\N	2025-08-15 04:00:00	8	2025	CELULAR 1 - agosto 2025	\N	\N	PAGADO	f	2026-01-02 15:20:06.496
+205	25	28.96	USD	\N	2025-09-15 03:00:00	9	2025	CELULAR 1 - septiembre 2025	\N	\N	PAGADO	f	2026-01-02 15:20:06.499
+206	25	34.53	USD	\N	2025-10-15 03:00:00	10	2025	CELULAR 1 - octubre 2025	\N	\N	PAGADO	f	2026-01-02 15:20:06.502
+207	25	14.20	USD	\N	2023-04-15 04:00:00	4	2023	CELULAR ELEVASHOP - abril 2023	\N	\N	PAGADO	f	2026-01-02 15:20:06.504
+208	25	3.20	USD	\N	2023-05-15 04:00:00	5	2023	CELULAR ELEVASHOP - mayo 2023	\N	\N	PAGADO	f	2026-01-02 15:20:06.506
+209	25	3.21	USD	\N	2023-06-15 04:00:00	6	2023	CELULAR ELEVASHOP - junio 2023	\N	\N	PAGADO	f	2026-01-02 15:20:06.509
+210	25	3.13	USD	\N	2023-07-15 04:00:00	7	2023	CELULAR ELEVASHOP - julio 2023	\N	\N	PAGADO	f	2026-01-02 15:20:06.511
+211	25	3.15	USD	\N	2023-08-15 04:00:00	8	2023	CELULAR ELEVASHOP - agosto 2023	\N	\N	PAGADO	f	2026-01-02 15:20:06.514
+212	25	4.17	USD	\N	2023-12-15 03:00:00	12	2023	CELULAR ELEVASHOP - diciembre 2023	\N	\N	PAGADO	f	2026-01-02 15:20:06.515
+213	25	4.17	USD	\N	2024-01-15 03:00:00	1	2024	CELULAR ELEVASHOP - enero 2024	\N	\N	PAGADO	f	2026-01-02 15:20:06.518
+214	25	2.77	USD	\N	2024-02-15 03:00:00	2	2024	CELULAR ELEVASHOP - febrero 2024	\N	\N	PAGADO	f	2026-01-02 15:20:06.521
+215	25	4.15	USD	\N	2024-03-15 03:00:00	3	2024	CELULAR ELEVASHOP - marzo 2024	\N	\N	PAGADO	f	2026-01-02 15:20:06.522
+216	25	4.11	USD	\N	2024-04-15 04:00:00	4	2024	CELULAR ELEVASHOP - abril 2024	\N	\N	PAGADO	f	2026-01-02 15:20:06.525
+217	25	4.12	USD	\N	2024-05-15 04:00:00	5	2024	CELULAR ELEVASHOP - mayo 2024	\N	\N	PAGADO	f	2026-01-02 15:20:06.527
+218	25	4.12	USD	\N	2024-06-15 04:00:00	6	2024	CELULAR ELEVASHOP - junio 2024	\N	\N	PAGADO	f	2026-01-02 15:20:06.529
+219	25	9.57	USD	\N	2024-07-15 04:00:00	7	2024	CELULAR ELEVASHOP - julio 2024	\N	\N	PAGADO	f	2026-01-02 15:20:06.531
+220	25	4.11	USD	\N	2024-08-15 04:00:00	8	2024	CELULAR ELEVASHOP - agosto 2024	\N	\N	PAGADO	f	2026-01-02 15:20:06.532
+221	25	5.55	USD	\N	2024-09-15 03:00:00	9	2024	CELULAR ELEVASHOP - septiembre 2024	\N	\N	PAGADO	f	2026-01-02 15:20:06.534
+222	25	3.44	USD	\N	2024-10-15 03:00:00	10	2024	CELULAR ELEVASHOP - octubre 2024	\N	\N	PAGADO	f	2026-01-02 15:20:06.538
+223	25	6.74	USD	\N	2025-02-15 03:00:00	2	2025	CELULAR ELEVASHOP - febrero 2025	\N	\N	PAGADO	f	2026-01-02 15:20:06.54
+224	25	6.14	USD	\N	2025-03-15 03:00:00	3	2025	CELULAR ELEVASHOP - marzo 2025	\N	\N	PAGADO	f	2026-01-02 15:20:06.541
+225	25	6.08	USD	\N	2025-04-15 04:00:00	4	2025	CELULAR ELEVASHOP - abril 2025	\N	\N	PAGADO	f	2026-01-02 15:20:06.543
+226	25	5.98	USD	\N	2025-05-15 04:00:00	5	2025	CELULAR ELEVASHOP - mayo 2025	\N	\N	PAGADO	f	2026-01-02 15:20:06.546
+227	25	6.49	USD	\N	2025-06-15 04:00:00	6	2025	CELULAR ELEVASHOP - junio 2025	\N	\N	PAGADO	f	2026-01-02 15:20:06.549
+228	25	5.61	USD	\N	2025-07-15 04:00:00	7	2025	CELULAR ELEVASHOP - julio 2025	\N	\N	PAGADO	f	2026-01-02 15:20:06.551
+229	25	4.94	USD	\N	2025-08-15 04:00:00	8	2025	CELULAR ELEVASHOP - agosto 2025	\N	\N	PAGADO	f	2026-01-02 15:20:06.553
+230	25	3.30	USD	\N	2025-09-15 03:00:00	9	2025	CELULAR ELEVASHOP - septiembre 2025	\N	\N	PAGADO	f	2026-01-02 15:20:06.554
+231	25	5.92	USD	\N	2025-10-15 03:00:00	10	2025	CELULAR ELEVASHOP - octubre 2025	\N	\N	PAGADO	f	2026-01-02 15:20:06.556
+232	26	23.12	USD	\N	2023-01-15 03:00:00	1	2023	LUZ - enero 2023	\N	\N	PAGADO	f	2026-01-02 15:20:06.558
+233	26	30.24	USD	\N	2023-02-15 03:00:00	2	2023	LUZ - febrero 2023	\N	\N	PAGADO	f	2026-01-02 15:20:06.56
+234	26	34.85	USD	\N	2023-03-15 03:00:00	3	2023	LUZ - marzo 2023	\N	\N	PAGADO	f	2026-01-02 15:20:06.562
+235	26	36.10	USD	\N	2023-04-15 04:00:00	4	2023	LUZ - abril 2023	\N	\N	PAGADO	f	2026-01-02 15:20:06.565
+236	26	36.11	USD	\N	2023-05-15 04:00:00	5	2023	LUZ - mayo 2023	\N	\N	PAGADO	f	2026-01-02 15:20:06.569
+237	26	36.64	USD	\N	2023-06-15 04:00:00	6	2023	LUZ - junio 2023	\N	\N	PAGADO	f	2026-01-02 15:20:06.572
+238	26	34.67	USD	\N	2023-07-15 04:00:00	7	2023	LUZ - julio 2023	\N	\N	PAGADO	f	2026-01-02 15:20:06.575
+239	26	31.69	USD	\N	2023-08-15 04:00:00	8	2023	LUZ - agosto 2023	\N	\N	PAGADO	f	2026-01-02 15:20:06.577
+240	26	31.49	USD	\N	2023-09-15 03:00:00	9	2023	LUZ - septiembre 2023	\N	\N	PAGADO	f	2026-01-02 15:20:06.578
+241	26	30.42	USD	\N	2023-10-15 03:00:00	10	2023	LUZ - octubre 2023	\N	\N	PAGADO	f	2026-01-02 15:20:06.58
+242	26	35.88	USD	\N	2023-11-15 03:00:00	11	2023	LUZ - noviembre 2023	\N	\N	PAGADO	f	2026-01-02 15:20:06.582
+243	26	36.64	USD	\N	2023-12-15 03:00:00	12	2023	LUZ - diciembre 2023	\N	\N	PAGADO	f	2026-01-02 15:20:06.584
+244	26	36.59	USD	\N	2024-01-15 03:00:00	1	2024	LUZ - enero 2024	\N	\N	PAGADO	f	2026-01-02 15:20:06.586
+245	26	36.10	USD	\N	2024-02-15 03:00:00	2	2024	LUZ - febrero 2024	\N	\N	PAGADO	f	2026-01-02 15:20:06.587
+246	26	33.14	USD	\N	2024-03-15 03:00:00	3	2024	LUZ - marzo 2024	\N	\N	PAGADO	f	2026-01-02 15:20:06.589
+247	26	35.30	USD	\N	2024-04-15 04:00:00	4	2024	LUZ - abril 2024	\N	\N	PAGADO	f	2026-01-02 15:20:06.591
+248	26	41.81	USD	\N	2024-05-15 04:00:00	5	2024	LUZ - mayo 2024	\N	\N	PAGADO	f	2026-01-02 15:20:06.593
+249	26	41.38	USD	\N	2024-06-15 04:00:00	6	2024	LUZ - junio 2024	\N	\N	PAGADO	f	2026-01-02 15:20:06.595
+250	26	36.81	USD	\N	2024-08-15 04:00:00	8	2024	LUZ - agosto 2024	\N	\N	PAGADO	f	2026-01-02 15:20:06.598
+251	26	24.65	USD	\N	2024-10-15 03:00:00	10	2024	LUZ - octubre 2024	\N	\N	PAGADO	f	2026-01-02 15:20:06.6
+252	26	44.46	USD	\N	2024-11-15 03:00:00	11	2024	LUZ - noviembre 2024	\N	\N	PAGADO	f	2026-01-02 15:20:06.601
+253	26	31.82	USD	\N	2024-12-15 03:00:00	12	2024	LUZ - diciembre 2024	\N	\N	PAGADO	f	2026-01-02 15:20:06.603
+254	26	28.32	USD	\N	2025-01-15 03:00:00	1	2025	LUZ - enero 2025	\N	\N	PAGADO	f	2026-01-02 15:20:06.605
+255	26	27.28	USD	\N	2025-02-15 03:00:00	2	2025	LUZ - febrero 2025	\N	\N	PAGADO	f	2026-01-02 15:20:06.606
+256	26	27.08	USD	\N	2025-03-15 03:00:00	3	2025	LUZ - marzo 2025	\N	\N	PAGADO	f	2026-01-02 15:20:06.609
+257	26	27.38	USD	\N	2025-04-15 04:00:00	4	2025	LUZ - abril 2025	\N	\N	PAGADO	f	2026-01-02 15:20:06.612
+258	26	25.09	USD	\N	2025-05-15 04:00:00	5	2025	LUZ - mayo 2025	\N	\N	PAGADO	f	2026-01-02 15:20:06.614
+259	26	29.03	USD	\N	2025-06-15 04:00:00	6	2025	LUZ - junio 2025	\N	\N	PAGADO	f	2026-01-02 15:20:06.616
+260	26	24.35	USD	\N	2025-07-15 04:00:00	7	2025	LUZ - julio 2025	\N	\N	PAGADO	f	2026-01-02 15:20:06.618
+261	26	21.20	USD	\N	2025-08-15 04:00:00	8	2025	LUZ - agosto 2025	\N	\N	PAGADO	f	2026-01-02 15:20:06.62
+262	26	26.68	USD	\N	2025-09-15 03:00:00	9	2025	LUZ - septiembre 2025	\N	\N	PAGADO	f	2026-01-02 15:20:06.621
+263	26	29.89	USD	\N	2025-10-15 03:00:00	10	2025	LUZ - octubre 2025	\N	\N	PAGADO	f	2026-01-02 15:20:06.622
+264	27	56.36	USD	\N	2023-01-15 03:00:00	1	2023	ALCALDIA - enero 2023	\N	\N	PAGADO	f	2026-01-02 15:20:06.624
+265	27	145.00	USD	\N	2023-02-15 03:00:00	2	2023	ALCALDIA - febrero 2023	\N	\N	PAGADO	f	2026-01-02 15:20:06.625
+266	27	146.00	USD	\N	2023-03-15 03:00:00	3	2023	ALCALDIA - marzo 2023	\N	\N	PAGADO	f	2026-01-02 15:20:06.627
+267	27	141.00	USD	\N	2023-04-15 04:00:00	4	2023	ALCALDIA - abril 2023	\N	\N	PAGADO	f	2026-01-02 15:20:06.628
+268	27	144.00	USD	\N	2023-05-15 04:00:00	5	2023	ALCALDIA - mayo 2023	\N	\N	PAGADO	f	2026-01-02 15:20:06.63
+269	27	145.00	USD	\N	2023-06-15 04:00:00	6	2023	ALCALDIA - junio 2023	\N	\N	PAGADO	f	2026-01-02 15:20:06.631
+270	27	146.00	USD	\N	2023-07-15 04:00:00	7	2023	ALCALDIA - julio 2023	\N	\N	PAGADO	f	2026-01-02 15:20:06.633
+271	27	144.60	USD	\N	2023-08-15 04:00:00	8	2023	ALCALDIA - agosto 2023	\N	\N	PAGADO	f	2026-01-02 15:20:06.635
+272	27	145.15	USD	\N	2023-09-15 03:00:00	9	2023	ALCALDIA - septiembre 2023	\N	\N	PAGADO	f	2026-01-02 15:20:06.636
+273	27	146.00	USD	\N	2023-10-15 03:00:00	10	2023	ALCALDIA - octubre 2023	\N	\N	PAGADO	f	2026-01-02 15:20:06.638
+274	27	146.10	USD	\N	2023-11-15 03:00:00	11	2023	ALCALDIA - noviembre 2023	\N	\N	PAGADO	f	2026-01-02 15:20:06.644
+275	27	148.12	USD	\N	2023-12-15 03:00:00	12	2023	ALCALDIA - diciembre 2023	\N	\N	PAGADO	f	2026-01-02 15:20:06.647
+276	27	170.94	USD	\N	2024-01-15 03:00:00	1	2024	ALCALDIA - enero 2024	\N	\N	PAGADO	f	2026-01-02 15:20:06.649
+277	27	143.30	USD	\N	2024-02-15 03:00:00	2	2024	ALCALDIA - febrero 2024	\N	\N	PAGADO	f	2026-01-02 15:20:06.65
+278	27	152.30	USD	\N	2024-03-15 03:00:00	3	2024	ALCALDIA - marzo 2024	\N	\N	PAGADO	f	2026-01-02 15:20:06.652
+279	27	142.00	USD	\N	2024-04-15 04:00:00	4	2024	ALCALDIA - abril 2024	\N	\N	PAGADO	f	2026-01-02 15:20:06.654
+280	27	139.74	USD	\N	2024-05-15 04:00:00	5	2024	ALCALDIA - mayo 2024	\N	\N	PAGADO	f	2026-01-02 15:20:06.655
+281	27	142.03	USD	\N	2024-06-15 04:00:00	6	2024	ALCALDIA - junio 2024	\N	\N	PAGADO	f	2026-01-02 15:20:06.657
+282	27	139.88	USD	\N	2024-07-15 04:00:00	7	2024	ALCALDIA - julio 2024	\N	\N	PAGADO	f	2026-01-02 15:20:06.658
+283	27	141.70	USD	\N	2024-08-15 04:00:00	8	2024	ALCALDIA - agosto 2024	\N	\N	PAGADO	f	2026-01-02 15:20:06.661
+284	27	145.68	USD	\N	2024-09-15 03:00:00	9	2024	ALCALDIA - septiembre 2024	\N	\N	PAGADO	f	2026-01-02 15:20:06.662
+285	27	137.80	USD	\N	2024-10-15 03:00:00	10	2024	ALCALDIA - octubre 2024	\N	\N	PAGADO	f	2026-01-02 15:20:06.665
+286	27	138.79	USD	\N	2024-11-15 03:00:00	11	2024	ALCALDIA - noviembre 2024	\N	\N	PAGADO	f	2026-01-02 15:20:06.667
+287	27	136.26	USD	\N	2024-12-15 03:00:00	12	2024	ALCALDIA - diciembre 2024	\N	\N	PAGADO	f	2026-01-02 15:20:06.67
+288	27	131.12	USD	\N	2025-01-15 03:00:00	1	2025	ALCALDIA - enero 2025	\N	\N	PAGADO	f	2026-01-02 15:20:06.673
+289	27	148.61	USD	\N	2025-02-15 03:00:00	2	2025	ALCALDIA - febrero 2025	\N	\N	PAGADO	f	2026-01-02 15:20:06.675
+290	27	149.44	USD	\N	2025-03-15 03:00:00	3	2025	ALCALDIA - marzo 2025	\N	\N	PAGADO	f	2026-01-02 15:20:06.677
+291	27	148.00	USD	\N	2025-04-15 04:00:00	4	2025	ALCALDIA - abril 2025	\N	\N	PAGADO	f	2026-01-02 15:20:06.678
+292	27	148.00	USD	\N	2025-05-15 04:00:00	5	2025	ALCALDIA - mayo 2025	\N	\N	PAGADO	f	2026-01-02 15:20:06.681
+293	27	149.05	USD	\N	2025-06-15 04:00:00	6	2025	ALCALDIA - junio 2025	\N	\N	PAGADO	f	2026-01-02 15:20:06.684
+294	27	134.52	USD	\N	2025-07-15 04:00:00	7	2025	ALCALDIA - julio 2025	\N	\N	PAGADO	f	2026-01-02 15:20:06.686
+295	27	131.00	USD	\N	2025-08-15 04:00:00	8	2025	ALCALDIA - agosto 2025	\N	\N	PAGADO	f	2026-01-02 15:20:06.688
+296	27	132.21	USD	\N	2025-09-15 03:00:00	9	2025	ALCALDIA - septiembre 2025	\N	\N	PAGADO	f	2026-01-02 15:20:06.69
+297	27	133.07	USD	\N	2025-10-15 03:00:00	10	2025	ALCALDIA - octubre 2025	\N	\N	PAGADO	f	2026-01-02 15:20:06.692
+298	27	130.09	USD	\N	2025-11-15 03:00:00	11	2025	ALCALDIA - noviembre 2025	\N	\N	PAGADO	f	2026-01-02 15:20:06.694
+299	28	140.00	USD	\N	2024-01-15 03:00:00	1	2024	GASTOS VARIOS - enero 2024	\N	\N	PAGADO	f	2026-01-02 15:20:06.696
+300	28	20.00	USD	\N	2024-02-15 03:00:00	2	2024	GASTOS VARIOS - febrero 2024	\N	\N	PAGADO	f	2026-01-02 15:20:06.698
+301	28	20.00	USD	\N	2024-03-15 03:00:00	3	2024	GASTOS VARIOS - marzo 2024	\N	\N	PAGADO	f	2026-01-02 15:20:06.701
+302	28	40.00	USD	\N	2024-04-15 04:00:00	4	2024	GASTOS VARIOS - abril 2024	\N	\N	PAGADO	f	2026-01-02 15:20:06.703
+303	28	40.00	USD	\N	2024-05-15 04:00:00	5	2024	GASTOS VARIOS - mayo 2024	\N	\N	PAGADO	f	2026-01-02 15:20:06.705
+304	28	51.00	USD	\N	2024-06-15 04:00:00	6	2024	GASTOS VARIOS - junio 2024	\N	\N	PAGADO	f	2026-01-02 15:20:06.708
+305	28	64.70	USD	\N	2024-07-15 04:00:00	7	2024	GASTOS VARIOS - julio 2024	\N	\N	PAGADO	f	2026-01-02 15:20:06.712
+306	28	51.71	USD	\N	2024-08-15 04:00:00	8	2024	GASTOS VARIOS - agosto 2024	\N	\N	PAGADO	f	2026-01-02 15:20:06.717
+307	28	51.05	USD	\N	2024-09-15 03:00:00	9	2024	GASTOS VARIOS - septiembre 2024	\N	\N	PAGADO	f	2026-01-02 15:20:06.72
+308	28	50.26	USD	\N	2024-10-15 03:00:00	10	2024	GASTOS VARIOS - octubre 2024	\N	\N	PAGADO	f	2026-01-02 15:20:06.722
+309	28	51.48	USD	\N	2024-11-15 03:00:00	11	2024	GASTOS VARIOS - noviembre 2024	\N	\N	PAGADO	f	2026-01-02 15:20:06.725
+310	28	90.92	USD	\N	2024-12-15 03:00:00	12	2024	GASTOS VARIOS - diciembre 2024	\N	\N	PAGADO	f	2026-01-02 15:20:06.728
+311	28	88.90	USD	\N	2025-01-15 03:00:00	1	2025	GASTOS VARIOS - enero 2025	\N	\N	PAGADO	f	2026-01-02 15:20:06.731
+312	28	48.48	USD	\N	2025-02-15 03:00:00	2	2025	GASTOS VARIOS - febrero 2025	\N	\N	PAGADO	f	2026-01-02 15:20:06.735
+313	28	49.57	USD	\N	2025-03-15 03:00:00	3	2025	GASTOS VARIOS - marzo 2025	\N	\N	PAGADO	f	2026-01-02 15:20:06.739
+314	28	49.05	USD	\N	2025-04-15 04:00:00	4	2025	GASTOS VARIOS - abril 2025	\N	\N	PAGADO	f	2026-01-02 15:20:06.743
+315	28	70.38	USD	\N	2025-05-15 04:00:00	5	2025	GASTOS VARIOS - mayo 2025	\N	\N	PAGADO	f	2026-01-02 15:20:06.747
+316	28	71.13	USD	\N	2025-06-15 04:00:00	6	2025	GASTOS VARIOS - junio 2025	\N	\N	PAGADO	f	2026-01-02 15:20:06.75
+317	28	72.81	USD	\N	2025-07-15 04:00:00	7	2025	GASTOS VARIOS - julio 2025	\N	\N	PAGADO	f	2026-01-02 15:20:06.755
+318	28	74.00	USD	\N	2025-08-15 04:00:00	8	2025	GASTOS VARIOS - agosto 2025	\N	\N	PAGADO	f	2026-01-02 15:20:06.758
+319	28	68.76	USD	\N	2025-09-15 03:00:00	9	2025	GASTOS VARIOS - septiembre 2025	\N	\N	PAGADO	f	2026-01-02 15:20:06.76
+320	28	70.13	USD	\N	2025-10-15 03:00:00	10	2025	GASTOS VARIOS - octubre 2025	\N	\N	PAGADO	f	2026-01-02 15:20:06.764
+321	30	4904.61	USD	\N	2023-06-15 04:00:00	6	2023	GASTO IMPORTACION - junio 2023	\N	\N	PAGADO	f	2026-01-02 15:20:06.767
+322	30	731.09	USD	\N	2023-07-15 04:00:00	7	2023	GASTO IMPORTACION - julio 2023	\N	\N	PAGADO	f	2026-01-02 15:20:06.769
+323	30	1880.83	USD	\N	2023-11-15 03:00:00	11	2023	GASTO IMPORTACION - noviembre 2023	\N	\N	PAGADO	f	2026-01-02 15:20:06.771
+324	30	3134.60	USD	\N	2024-02-15 03:00:00	2	2024	GASTO IMPORTACION - febrero 2024	\N	\N	PAGADO	f	2026-01-02 15:20:06.773
+325	18	125.00	USD	\N	2023-03-15 03:00:00	3	2023	WILMEN VALERA - marzo 2023	\N	\N	PAGADO	f	2026-01-02 15:21:18.677
+326	18	125.00	USD	\N	2023-04-15 04:00:00	4	2023	WILMEN VALERA - abril 2023	\N	\N	PAGADO	f	2026-01-02 15:21:18.681
+327	18	125.00	USD	\N	2023-05-15 04:00:00	5	2023	WILMEN VALERA - mayo 2023	\N	\N	PAGADO	f	2026-01-02 15:21:18.682
+328	18	125.00	USD	\N	2023-06-15 04:00:00	6	2023	WILMEN VALERA - junio 2023	\N	\N	PAGADO	f	2026-01-02 15:21:18.683
+329	18	125.00	USD	\N	2023-07-15 04:00:00	7	2023	WILMEN VALERA - julio 2023	\N	\N	PAGADO	f	2026-01-02 15:21:18.684
+330	18	125.00	USD	\N	2023-08-15 04:00:00	8	2023	WILMEN VALERA - agosto 2023	\N	\N	PAGADO	f	2026-01-02 15:21:18.685
+331	18	125.00	USD	\N	2023-09-15 03:00:00	9	2023	WILMEN VALERA - septiembre 2023	\N	\N	PAGADO	f	2026-01-02 15:21:18.689
+332	18	125.00	USD	\N	2023-10-15 03:00:00	10	2023	WILMEN VALERA - octubre 2023	\N	\N	PAGADO	f	2026-01-02 15:21:18.691
+333	18	125.00	USD	\N	2023-11-15 03:00:00	11	2023	WILMEN VALERA - noviembre 2023	\N	\N	PAGADO	f	2026-01-02 15:21:18.693
+334	18	125.00	USD	\N	2023-12-15 03:00:00	12	2023	WILMEN VALERA - diciembre 2023	\N	\N	PAGADO	f	2026-01-02 15:21:18.694
+335	18	125.00	USD	\N	2024-01-15 03:00:00	1	2024	WILMEN VALERA - enero 2024	\N	\N	PAGADO	f	2026-01-02 15:21:18.696
+336	18	125.00	USD	\N	2024-02-15 03:00:00	2	2024	WILMEN VALERA - febrero 2024	\N	\N	PAGADO	f	2026-01-02 15:21:18.697
+337	18	125.00	USD	\N	2024-03-15 03:00:00	3	2024	WILMEN VALERA - marzo 2024	\N	\N	PAGADO	f	2026-01-02 15:21:18.698
+338	18	125.00	USD	\N	2024-04-15 04:00:00	4	2024	WILMEN VALERA - abril 2024	\N	\N	PAGADO	f	2026-01-02 15:21:18.7
+339	18	125.00	USD	\N	2024-05-15 04:00:00	5	2024	WILMEN VALERA - mayo 2024	\N	\N	PAGADO	f	2026-01-02 15:21:18.703
+340	18	125.00	USD	\N	2024-06-15 04:00:00	6	2024	WILMEN VALERA - junio 2024	\N	\N	PAGADO	f	2026-01-02 15:21:18.705
+341	18	125.00	USD	\N	2024-07-15 04:00:00	7	2024	WILMEN VALERA - julio 2024	\N	\N	PAGADO	f	2026-01-02 15:21:18.706
+342	18	125.00	USD	\N	2024-08-15 04:00:00	8	2024	WILMEN VALERA - agosto 2024	\N	\N	PAGADO	f	2026-01-02 15:21:18.707
+343	18	125.00	USD	\N	2024-09-15 03:00:00	9	2024	WILMEN VALERA - septiembre 2024	\N	\N	PAGADO	f	2026-01-02 15:21:18.708
+344	18	125.00	USD	\N	2024-10-15 03:00:00	10	2024	WILMEN VALERA - octubre 2024	\N	\N	PAGADO	f	2026-01-02 15:21:18.709
+345	18	125.00	USD	\N	2024-11-15 03:00:00	11	2024	WILMEN VALERA - noviembre 2024	\N	\N	PAGADO	f	2026-01-02 15:21:18.71
+346	18	125.00	USD	\N	2024-12-15 03:00:00	12	2024	WILMEN VALERA - diciembre 2024	\N	\N	PAGADO	f	2026-01-02 15:21:18.711
+347	18	125.00	USD	\N	2025-01-15 03:00:00	1	2025	WILMEN VALERA - enero 2025	\N	\N	PAGADO	f	2026-01-02 15:21:18.712
+348	18	125.00	USD	\N	2025-02-15 03:00:00	2	2025	WILMEN VALERA - febrero 2025	\N	\N	PAGADO	f	2026-01-02 15:21:18.713
+349	18	125.00	USD	\N	2025-03-15 03:00:00	3	2025	WILMEN VALERA - marzo 2025	\N	\N	PAGADO	f	2026-01-02 15:21:18.715
+350	18	125.00	USD	\N	2025-04-15 04:00:00	4	2025	WILMEN VALERA - abril 2025	\N	\N	PAGADO	f	2026-01-02 15:21:18.716
+351	18	125.00	USD	\N	2025-05-15 04:00:00	5	2025	WILMEN VALERA - mayo 2025	\N	\N	PAGADO	f	2026-01-02 15:21:18.717
+352	18	125.00	USD	\N	2025-06-15 04:00:00	6	2025	WILMEN VALERA - junio 2025	\N	\N	PAGADO	f	2026-01-02 15:21:18.718
+353	18	125.00	USD	\N	2025-07-15 04:00:00	7	2025	WILMEN VALERA - julio 2025	\N	\N	PAGADO	f	2026-01-02 15:21:18.719
+354	18	125.00	USD	\N	2025-08-15 04:00:00	8	2025	WILMEN VALERA - agosto 2025	\N	\N	PAGADO	f	2026-01-02 15:21:18.72
+355	18	125.00	USD	\N	2025-09-15 03:00:00	9	2025	WILMEN VALERA - septiembre 2025	\N	\N	PAGADO	f	2026-01-02 15:21:18.721
+356	18	125.00	USD	\N	2025-10-15 03:00:00	10	2025	WILMEN VALERA - octubre 2025	\N	\N	PAGADO	f	2026-01-02 15:21:18.722
+357	18	125.00	USD	\N	2025-11-15 03:00:00	11	2025	WILMEN VALERA - noviembre 2025	\N	\N	PAGADO	f	2026-01-02 15:21:18.723
+358	18	125.00	USD	\N	2025-12-15 03:00:00	12	2025	WILMEN VALERA - diciembre 2025	\N	\N	PAGADO	f	2026-01-02 15:21:18.726
+359	19	21.00	USD	\N	2023-01-15 03:00:00	1	2023	VACACIONES - enero 2023	\N	\N	PAGADO	f	2026-01-02 15:21:18.727
+360	19	21.00	USD	\N	2023-02-15 03:00:00	2	2023	VACACIONES - febrero 2023	\N	\N	PAGADO	f	2026-01-02 15:21:18.728
+361	19	10.50	USD	\N	2023-03-15 03:00:00	3	2023	VACACIONES - marzo 2023	\N	\N	PAGADO	f	2026-01-02 15:21:18.729
+362	19	10.50	USD	\N	2023-04-15 04:00:00	4	2023	VACACIONES - abril 2023	\N	\N	PAGADO	f	2026-01-02 15:21:18.731
+363	19	10.50	USD	\N	2023-05-15 04:00:00	5	2023	VACACIONES - mayo 2023	\N	\N	PAGADO	f	2026-01-02 15:21:18.732
+364	19	10.50	USD	\N	2023-06-15 04:00:00	6	2023	VACACIONES - junio 2023	\N	\N	PAGADO	f	2026-01-02 15:21:18.733
+365	19	10.50	USD	\N	2023-07-15 04:00:00	7	2023	VACACIONES - julio 2023	\N	\N	PAGADO	f	2026-01-02 15:21:18.734
+366	19	10.50	USD	\N	2023-08-15 04:00:00	8	2023	VACACIONES - agosto 2023	\N	\N	PAGADO	f	2026-01-02 15:21:18.735
+367	19	10.50	USD	\N	2023-09-15 03:00:00	9	2023	VACACIONES - septiembre 2023	\N	\N	PAGADO	f	2026-01-02 15:21:18.739
+368	19	10.50	USD	\N	2023-10-15 03:00:00	10	2023	VACACIONES - octubre 2023	\N	\N	PAGADO	f	2026-01-02 15:21:18.741
+369	19	10.50	USD	\N	2023-11-15 03:00:00	11	2023	VACACIONES - noviembre 2023	\N	\N	PAGADO	f	2026-01-02 15:21:18.742
+370	19	10.50	USD	\N	2023-12-15 03:00:00	12	2023	VACACIONES - diciembre 2023	\N	\N	PAGADO	f	2026-01-02 15:21:18.743
+371	19	10.50	USD	\N	2024-01-15 03:00:00	1	2024	VACACIONES - enero 2024	\N	\N	PAGADO	f	2026-01-02 15:21:18.744
+372	19	10.50	USD	\N	2024-02-15 03:00:00	2	2024	VACACIONES - febrero 2024	\N	\N	PAGADO	f	2026-01-02 15:21:18.745
+373	19	10.50	USD	\N	2024-03-15 03:00:00	3	2024	VACACIONES - marzo 2024	\N	\N	PAGADO	f	2026-01-02 15:21:18.747
+374	19	10.50	USD	\N	2024-04-15 04:00:00	4	2024	VACACIONES - abril 2024	\N	\N	PAGADO	f	2026-01-02 15:21:18.748
+375	19	10.50	USD	\N	2024-05-15 04:00:00	5	2024	VACACIONES - mayo 2024	\N	\N	PAGADO	f	2026-01-02 15:21:18.749
+376	19	10.50	USD	\N	2024-06-15 04:00:00	6	2024	VACACIONES - junio 2024	\N	\N	PAGADO	f	2026-01-02 15:21:18.75
+377	19	10.50	USD	\N	2024-07-15 04:00:00	7	2024	VACACIONES - julio 2024	\N	\N	PAGADO	f	2026-01-02 15:21:18.751
+378	19	10.50	USD	\N	2024-08-15 04:00:00	8	2024	VACACIONES - agosto 2024	\N	\N	PAGADO	f	2026-01-02 15:21:18.752
+379	19	10.50	USD	\N	2024-09-15 03:00:00	9	2024	VACACIONES - septiembre 2024	\N	\N	PAGADO	f	2026-01-02 15:21:18.753
+380	19	10.50	USD	\N	2024-10-15 03:00:00	10	2024	VACACIONES - octubre 2024	\N	\N	PAGADO	f	2026-01-02 15:21:18.754
+381	19	10.50	USD	\N	2024-11-15 03:00:00	11	2024	VACACIONES - noviembre 2024	\N	\N	PAGADO	f	2026-01-02 15:21:18.755
+382	19	10.50	USD	\N	2024-12-15 03:00:00	12	2024	VACACIONES - diciembre 2024	\N	\N	PAGADO	f	2026-01-02 15:21:18.756
+383	19	10.50	USD	\N	2025-01-15 03:00:00	1	2025	VACACIONES - enero 2025	\N	\N	PAGADO	f	2026-01-02 15:21:18.757
+384	19	10.50	USD	\N	2025-02-15 03:00:00	2	2025	VACACIONES - febrero 2025	\N	\N	PAGADO	f	2026-01-02 15:21:18.759
+385	19	10.50	USD	\N	2025-03-15 03:00:00	3	2025	VACACIONES - marzo 2025	\N	\N	PAGADO	f	2026-01-02 15:21:18.76
+386	19	10.50	USD	\N	2025-04-15 04:00:00	4	2025	VACACIONES - abril 2025	\N	\N	PAGADO	f	2026-01-02 15:21:18.761
+387	19	10.50	USD	\N	2025-05-15 04:00:00	5	2025	VACACIONES - mayo 2025	\N	\N	PAGADO	f	2026-01-02 15:21:18.762
+388	19	10.50	USD	\N	2025-06-15 04:00:00	6	2025	VACACIONES - junio 2025	\N	\N	PAGADO	f	2026-01-02 15:21:18.763
+389	19	10.50	USD	\N	2025-07-15 04:00:00	7	2025	VACACIONES - julio 2025	\N	\N	PAGADO	f	2026-01-02 15:21:18.764
+390	19	10.50	USD	\N	2025-08-15 04:00:00	8	2025	VACACIONES - agosto 2025	\N	\N	PAGADO	f	2026-01-02 15:21:18.765
+391	19	10.50	USD	\N	2025-09-15 03:00:00	9	2025	VACACIONES - septiembre 2025	\N	\N	PAGADO	f	2026-01-02 15:21:18.766
+392	19	10.50	USD	\N	2025-10-15 03:00:00	10	2025	VACACIONES - octubre 2025	\N	\N	PAGADO	f	2026-01-02 15:21:18.768
+393	19	10.50	USD	\N	2025-11-15 03:00:00	11	2025	VACACIONES - noviembre 2025	\N	\N	PAGADO	f	2026-01-02 15:21:18.769
+394	19	10.50	USD	\N	2025-12-15 03:00:00	12	2025	VACACIONES - diciembre 2025	\N	\N	PAGADO	f	2026-01-02 15:21:18.771
+395	20	40.00	USD	\N	2023-01-15 03:00:00	1	2023	UTILIDAD - enero 2023	\N	\N	PAGADO	f	2026-01-02 15:21:18.772
+396	20	40.00	USD	\N	2023-02-15 03:00:00	2	2023	UTILIDAD - febrero 2023	\N	\N	PAGADO	f	2026-01-02 15:21:18.773
+397	20	21.00	USD	\N	2023-03-15 03:00:00	3	2023	UTILIDAD - marzo 2023	\N	\N	PAGADO	f	2026-01-02 15:21:18.774
+398	20	21.00	USD	\N	2023-04-15 04:00:00	4	2023	UTILIDAD - abril 2023	\N	\N	PAGADO	f	2026-01-02 15:21:18.775
+399	20	21.00	USD	\N	2023-05-15 04:00:00	5	2023	UTILIDAD - mayo 2023	\N	\N	PAGADO	f	2026-01-02 15:21:18.778
+400	20	21.00	USD	\N	2023-06-15 04:00:00	6	2023	UTILIDAD - junio 2023	\N	\N	PAGADO	f	2026-01-02 15:21:18.78
+401	20	21.00	USD	\N	2023-07-15 04:00:00	7	2023	UTILIDAD - julio 2023	\N	\N	PAGADO	f	2026-01-02 15:21:18.781
+402	20	21.00	USD	\N	2023-08-15 04:00:00	8	2023	UTILIDAD - agosto 2023	\N	\N	PAGADO	f	2026-01-02 15:21:18.782
+403	20	21.00	USD	\N	2023-09-15 03:00:00	9	2023	UTILIDAD - septiembre 2023	\N	\N	PAGADO	f	2026-01-02 15:21:18.789
+404	20	21.00	USD	\N	2023-10-15 03:00:00	10	2023	UTILIDAD - octubre 2023	\N	\N	PAGADO	f	2026-01-02 15:21:18.792
+405	20	21.00	USD	\N	2023-11-15 03:00:00	11	2023	UTILIDAD - noviembre 2023	\N	\N	PAGADO	f	2026-01-02 15:21:18.794
+406	20	21.00	USD	\N	2023-12-15 03:00:00	12	2023	UTILIDAD - diciembre 2023	\N	\N	PAGADO	f	2026-01-02 15:21:18.796
+407	20	21.00	USD	\N	2024-01-15 03:00:00	1	2024	UTILIDAD - enero 2024	\N	\N	PAGADO	f	2026-01-02 15:21:18.797
+408	20	21.00	USD	\N	2024-02-15 03:00:00	2	2024	UTILIDAD - febrero 2024	\N	\N	PAGADO	f	2026-01-02 15:21:18.798
+409	20	21.00	USD	\N	2024-03-15 03:00:00	3	2024	UTILIDAD - marzo 2024	\N	\N	PAGADO	f	2026-01-02 15:21:18.8
+410	20	21.00	USD	\N	2024-04-15 04:00:00	4	2024	UTILIDAD - abril 2024	\N	\N	PAGADO	f	2026-01-02 15:21:18.801
+411	20	21.00	USD	\N	2024-05-15 04:00:00	5	2024	UTILIDAD - mayo 2024	\N	\N	PAGADO	f	2026-01-02 15:21:18.802
+412	20	21.00	USD	\N	2024-06-15 04:00:00	6	2024	UTILIDAD - junio 2024	\N	\N	PAGADO	f	2026-01-02 15:21:18.803
+413	20	21.00	USD	\N	2024-07-15 04:00:00	7	2024	UTILIDAD - julio 2024	\N	\N	PAGADO	f	2026-01-02 15:21:18.804
+414	20	21.00	USD	\N	2024-08-15 04:00:00	8	2024	UTILIDAD - agosto 2024	\N	\N	PAGADO	f	2026-01-02 15:21:18.806
+415	20	21.00	USD	\N	2024-09-15 03:00:00	9	2024	UTILIDAD - septiembre 2024	\N	\N	PAGADO	f	2026-01-02 15:21:18.807
+416	20	21.00	USD	\N	2024-10-15 03:00:00	10	2024	UTILIDAD - octubre 2024	\N	\N	PAGADO	f	2026-01-02 15:21:18.808
+417	20	21.00	USD	\N	2024-11-15 03:00:00	11	2024	UTILIDAD - noviembre 2024	\N	\N	PAGADO	f	2026-01-02 15:21:18.81
+418	20	21.00	USD	\N	2024-12-15 03:00:00	12	2024	UTILIDAD - diciembre 2024	\N	\N	PAGADO	f	2026-01-02 15:21:18.814
+419	20	21.00	USD	\N	2025-01-15 03:00:00	1	2025	UTILIDAD - enero 2025	\N	\N	PAGADO	f	2026-01-02 15:21:18.817
+420	20	21.00	USD	\N	2025-02-15 03:00:00	2	2025	UTILIDAD - febrero 2025	\N	\N	PAGADO	f	2026-01-02 15:21:18.819
+421	20	21.00	USD	\N	2025-03-15 03:00:00	3	2025	UTILIDAD - marzo 2025	\N	\N	PAGADO	f	2026-01-02 15:21:18.821
+422	20	21.00	USD	\N	2025-04-15 04:00:00	4	2025	UTILIDAD - abril 2025	\N	\N	PAGADO	f	2026-01-02 15:21:18.822
+423	20	21.00	USD	\N	2025-05-15 04:00:00	5	2025	UTILIDAD - mayo 2025	\N	\N	PAGADO	f	2026-01-02 15:21:18.824
+424	20	21.00	USD	\N	2025-06-15 04:00:00	6	2025	UTILIDAD - junio 2025	\N	\N	PAGADO	f	2026-01-02 15:21:18.825
+425	20	21.00	USD	\N	2025-07-15 04:00:00	7	2025	UTILIDAD - julio 2025	\N	\N	PAGADO	f	2026-01-02 15:21:18.826
+426	20	21.00	USD	\N	2025-08-15 04:00:00	8	2025	UTILIDAD - agosto 2025	\N	\N	PAGADO	f	2026-01-02 15:21:18.828
+427	20	21.00	USD	\N	2025-09-15 03:00:00	9	2025	UTILIDAD - septiembre 2025	\N	\N	PAGADO	f	2026-01-02 15:21:18.83
+428	20	21.00	USD	\N	2025-10-15 03:00:00	10	2025	UTILIDAD - octubre 2025	\N	\N	PAGADO	f	2026-01-02 15:21:18.831
+429	20	21.00	USD	\N	2025-11-15 03:00:00	11	2025	UTILIDAD - noviembre 2025	\N	\N	PAGADO	f	2026-01-02 15:21:18.832
+430	20	21.00	USD	\N	2025-12-15 03:00:00	12	2025	UTILIDAD - diciembre 2025	\N	\N	PAGADO	f	2026-01-02 15:21:18.833
+431	21	427.10	USD	\N	2023-03-15 03:00:00	3	2023	COMISION POR VENTAS - marzo 2023	\N	\N	PAGADO	f	2026-01-02 15:21:18.834
+432	21	66.64	USD	\N	2023-03-15 03:00:00	3	2023	COMISION ML VENTA - marzo 2023	\N	\N	PAGADO	f	2026-01-02 15:21:18.835
+433	22	41.00	USD	\N	2023-03-15 03:00:00	3	2023	PUBLICIDAD - marzo 2023	\N	\N	PAGADO	f	2026-01-02 15:21:18.837
+434	22	160.00	USD	\N	2023-10-15 03:00:00	10	2023	PUBLICIDAD - octubre 2023	\N	\N	PAGADO	f	2026-01-02 15:21:18.838
+435	23	23.37	USD	\N	2023-01-15 03:00:00	1	2023	CONDOMINIO - enero 2023	\N	\N	PAGADO	f	2026-01-02 15:21:18.84
+436	23	25.82	USD	\N	2023-02-15 03:00:00	2	2023	CONDOMINIO - febrero 2023	\N	\N	PAGADO	f	2026-01-02 15:21:18.842
+437	23	29.03	USD	\N	2023-03-15 03:00:00	3	2023	CONDOMINIO - marzo 2023	\N	\N	PAGADO	f	2026-01-02 15:21:18.843
+438	23	31.00	USD	\N	2023-04-15 04:00:00	4	2023	CONDOMINIO - abril 2023	\N	\N	PAGADO	f	2026-01-02 15:21:18.844
+439	23	53.40	USD	\N	2023-05-15 04:00:00	5	2023	CONDOMINIO - mayo 2023	\N	\N	PAGADO	f	2026-01-02 15:21:18.845
+440	23	52.16	USD	\N	2023-06-15 04:00:00	6	2023	CONDOMINIO - junio 2023	\N	\N	PAGADO	f	2026-01-02 15:21:18.847
+441	23	29.62	USD	\N	2023-07-15 04:00:00	7	2023	CONDOMINIO - julio 2023	\N	\N	PAGADO	f	2026-01-02 15:21:18.848
+442	23	31.88	USD	\N	2023-08-15 04:00:00	8	2023	CONDOMINIO - agosto 2023	\N	\N	PAGADO	f	2026-01-02 15:21:18.849
+443	23	29.77	USD	\N	2023-09-15 03:00:00	9	2023	CONDOMINIO - septiembre 2023	\N	\N	PAGADO	f	2026-01-02 15:21:18.85
+444	23	74.94	USD	\N	2023-10-15 03:00:00	10	2023	CONDOMINIO - octubre 2023	\N	\N	PAGADO	f	2026-01-02 15:21:18.851
+445	23	45.59	USD	\N	2023-11-15 03:00:00	11	2023	CONDOMINIO - noviembre 2023	\N	\N	PAGADO	f	2026-01-02 15:21:18.852
+446	23	37.49	USD	\N	2023-12-15 03:00:00	12	2023	CONDOMINIO - diciembre 2023	\N	\N	PAGADO	f	2026-01-02 15:21:18.854
+447	23	35.39	USD	\N	2024-01-15 03:00:00	1	2024	CONDOMINIO - enero 2024	\N	\N	PAGADO	f	2026-01-02 15:21:18.855
+448	23	34.38	USD	\N	2024-02-15 03:00:00	2	2024	CONDOMINIO - febrero 2024	\N	\N	PAGADO	f	2026-01-02 15:21:18.856
+449	23	39.14	USD	\N	2024-03-15 03:00:00	3	2024	CONDOMINIO - marzo 2024	\N	\N	PAGADO	f	2026-01-02 15:21:18.858
+450	23	34.60	USD	\N	2024-04-15 04:00:00	4	2024	CONDOMINIO - abril 2024	\N	\N	PAGADO	f	2026-01-02 15:21:18.859
+451	23	35.29	USD	\N	2024-05-15 04:00:00	5	2024	CONDOMINIO - mayo 2024	\N	\N	PAGADO	f	2026-01-02 15:21:18.86
+452	23	41.14	USD	\N	2024-06-15 04:00:00	6	2024	CONDOMINIO - junio 2024	\N	\N	PAGADO	f	2026-01-02 15:21:18.861
+453	23	36.71	USD	\N	2024-07-15 04:00:00	7	2024	CONDOMINIO - julio 2024	\N	\N	PAGADO	f	2026-01-02 15:21:18.862
+454	23	40.86	USD	\N	2024-08-15 04:00:00	8	2024	CONDOMINIO - agosto 2024	\N	\N	PAGADO	f	2026-01-02 15:21:18.863
+455	23	48.16	USD	\N	2024-09-15 03:00:00	9	2024	CONDOMINIO - septiembre 2024	\N	\N	PAGADO	f	2026-01-02 15:21:18.864
+456	23	77.19	USD	\N	2024-10-15 03:00:00	10	2024	CONDOMINIO - octubre 2024	\N	\N	PAGADO	f	2026-01-02 15:21:18.866
+457	23	43.39	USD	\N	2024-11-15 03:00:00	11	2024	CONDOMINIO - noviembre 2024	\N	\N	PAGADO	f	2026-01-02 15:21:18.867
+458	23	34.64	USD	\N	2024-12-15 03:00:00	12	2024	CONDOMINIO - diciembre 2024	\N	\N	PAGADO	f	2026-01-02 15:21:18.868
+459	23	39.89	USD	\N	2025-01-15 03:00:00	1	2025	CONDOMINIO - enero 2025	\N	\N	PAGADO	f	2026-01-02 15:21:18.869
+460	23	36.24	USD	\N	2025-02-15 03:00:00	2	2025	CONDOMINIO - febrero 2025	\N	\N	PAGADO	f	2026-01-02 15:21:18.871
+461	23	46.64	USD	\N	2025-03-15 03:00:00	3	2025	CONDOMINIO - marzo 2025	\N	\N	PAGADO	f	2026-01-02 15:21:18.872
+462	23	53.49	USD	\N	2025-04-15 04:00:00	4	2025	CONDOMINIO - abril 2025	\N	\N	PAGADO	f	2026-01-02 15:21:18.874
+463	23	64.52	USD	\N	2025-05-15 04:00:00	5	2025	CONDOMINIO - mayo 2025	\N	\N	PAGADO	f	2026-01-02 15:21:18.875
+464	23	38.70	USD	\N	2025-06-15 04:00:00	6	2025	CONDOMINIO - junio 2025	\N	\N	PAGADO	f	2026-01-02 15:21:18.876
+465	23	55.87	USD	\N	2025-07-15 04:00:00	7	2025	CONDOMINIO - julio 2025	\N	\N	PAGADO	f	2026-01-02 15:21:18.877
+466	23	40.31	USD	\N	2025-08-15 04:00:00	8	2025	CONDOMINIO - agosto 2025	\N	\N	PAGADO	f	2026-01-02 15:21:18.878
+467	23	55.11	USD	\N	2025-09-15 03:00:00	9	2025	CONDOMINIO - septiembre 2025	\N	\N	PAGADO	f	2026-01-02 15:21:18.879
+468	23	47.20	USD	\N	2025-10-15 03:00:00	10	2025	CONDOMINIO - octubre 2025	\N	\N	PAGADO	f	2026-01-02 15:21:18.88
+469	24	7.58	USD	\N	2023-01-15 03:00:00	1	2023	CANTV - enero 2023	\N	\N	PAGADO	f	2026-01-02 15:21:18.882
+470	24	9.56	USD	\N	2023-02-15 03:00:00	2	2023	CANTV - febrero 2023	\N	\N	PAGADO	f	2026-01-02 15:21:18.883
+471	24	12.23	USD	\N	2023-03-15 03:00:00	3	2023	CANTV - marzo 2023	\N	\N	PAGADO	f	2026-01-02 15:21:18.886
+472	24	13.58	USD	\N	2023-04-15 04:00:00	4	2023	CANTV - abril 2023	\N	\N	PAGADO	f	2026-01-02 15:21:18.887
+473	24	14.50	USD	\N	2023-05-15 04:00:00	5	2023	CANTV - mayo 2023	\N	\N	PAGADO	f	2026-01-02 15:21:18.888
+474	24	15.22	USD	\N	2023-06-15 04:00:00	6	2023	CANTV - junio 2023	\N	\N	PAGADO	f	2026-01-02 15:21:18.889
+475	24	15.31	USD	\N	2023-07-15 04:00:00	7	2023	CANTV - julio 2023	\N	\N	PAGADO	f	2026-01-02 15:21:18.89
+476	24	14.51	USD	\N	2023-08-15 04:00:00	8	2023	CANTV - agosto 2023	\N	\N	PAGADO	f	2026-01-02 15:21:18.891
+477	24	15.04	USD	\N	2023-09-15 03:00:00	9	2023	CANTV - septiembre 2023	\N	\N	PAGADO	f	2026-01-02 15:21:18.892
+478	24	15.81	USD	\N	2023-10-15 03:00:00	10	2023	CANTV - octubre 2023	\N	\N	PAGADO	f	2026-01-02 15:21:18.893
+479	24	24.06	USD	\N	2023-11-15 03:00:00	11	2023	CANTV - noviembre 2023	\N	\N	PAGADO	f	2026-01-02 15:21:18.894
+480	24	24.00	USD	\N	2023-12-15 03:00:00	12	2023	CANTV - diciembre 2023	\N	\N	PAGADO	f	2026-01-02 15:21:18.895
+481	24	17.67	USD	\N	2024-01-15 03:00:00	1	2024	CANTV - enero 2024	\N	\N	PAGADO	f	2026-01-02 15:21:18.897
+482	24	17.55	USD	\N	2024-05-15 04:00:00	5	2024	CANTV - mayo 2024	\N	\N	PAGADO	f	2026-01-02 15:21:18.898
+483	24	17.50	USD	\N	2024-07-15 04:00:00	7	2024	CANTV - julio 2024	\N	\N	PAGADO	f	2026-01-02 15:21:18.899
+484	24	17.23	USD	\N	2024-08-15 04:00:00	8	2024	CANTV - agosto 2024	\N	\N	PAGADO	f	2026-01-02 15:21:18.9
+485	24	17.51	USD	\N	2024-09-15 03:00:00	9	2024	CANTV - septiembre 2024	\N	\N	PAGADO	f	2026-01-02 15:21:18.904
+486	24	17.22	USD	\N	2024-11-15 03:00:00	11	2024	CANTV - noviembre 2024	\N	\N	PAGADO	f	2026-01-02 15:21:18.905
+487	24	16.91	USD	\N	2024-12-15 03:00:00	12	2024	CANTV - diciembre 2024	\N	\N	PAGADO	f	2026-01-02 15:21:18.906
+488	24	19.16	USD	\N	2025-01-15 03:00:00	1	2025	CANTV - enero 2025	\N	\N	PAGADO	f	2026-01-02 15:21:18.907
+489	24	18.73	USD	\N	2025-02-15 03:00:00	2	2025	CANTV - febrero 2025	\N	\N	PAGADO	f	2026-01-02 15:21:18.909
+490	24	17.19	USD	\N	2025-03-15 03:00:00	3	2025	CANTV - marzo 2025	\N	\N	PAGADO	f	2026-01-02 15:21:18.91
+491	24	13.79	USD	\N	2025-04-15 04:00:00	4	2025	CANTV - abril 2025	\N	\N	PAGADO	f	2026-01-02 15:21:18.911
+492	24	12.18	USD	\N	2025-05-15 04:00:00	5	2025	CANTV - mayo 2025	\N	\N	PAGADO	f	2026-01-02 15:21:18.912
+493	24	16.88	USD	\N	2025-06-15 04:00:00	6	2025	CANTV - junio 2025	\N	\N	PAGADO	f	2026-01-02 15:21:18.913
+494	24	16.82	USD	\N	2025-07-15 04:00:00	7	2025	CANTV - julio 2025	\N	\N	PAGADO	f	2026-01-02 15:21:18.915
+495	24	16.23	USD	\N	2025-08-15 04:00:00	8	2025	CANTV - agosto 2025	\N	\N	PAGADO	f	2026-01-02 15:21:18.916
+496	24	16.42	USD	\N	2025-09-15 03:00:00	9	2025	CANTV - septiembre 2025	\N	\N	PAGADO	f	2026-01-02 15:21:18.918
+497	24	16.50	USD	\N	2025-10-15 03:00:00	10	2025	CANTV - octubre 2025	\N	\N	PAGADO	f	2026-01-02 15:21:18.92
+498	25	5.50	USD	\N	2023-05-15 04:00:00	5	2023	CELULAR 1 - mayo 2023	\N	\N	PAGADO	f	2026-01-02 15:21:18.922
+499	25	4.60	USD	\N	2023-06-15 04:00:00	6	2023	CELULAR 1 - junio 2023	\N	\N	PAGADO	f	2026-01-02 15:21:18.923
+500	25	4.50	USD	\N	2023-07-15 04:00:00	7	2023	CELULAR 1 - julio 2023	\N	\N	PAGADO	f	2026-01-02 15:21:18.924
+501	25	8.50	USD	\N	2023-08-15 04:00:00	8	2023	CELULAR 1 - agosto 2023	\N	\N	PAGADO	f	2026-01-02 15:21:18.925
+502	25	29.00	USD	\N	2024-01-15 03:00:00	1	2024	CELULAR 1 - enero 2024	\N	\N	PAGADO	f	2026-01-02 15:21:18.926
+503	25	28.27	USD	\N	2024-02-15 03:00:00	2	2024	CELULAR 1 - febrero 2024	\N	\N	PAGADO	f	2026-01-02 15:21:18.927
+504	25	28.98	USD	\N	2024-03-15 03:00:00	3	2024	CELULAR 1 - marzo 2024	\N	\N	PAGADO	f	2026-01-02 15:21:18.928
+505	25	43.00	USD	\N	2024-04-15 04:00:00	4	2024	CELULAR 1 - abril 2024	\N	\N	PAGADO	f	2026-01-02 15:21:18.929
+506	25	27.62	USD	\N	2024-05-15 04:00:00	5	2024	CELULAR 1 - mayo 2024	\N	\N	PAGADO	f	2026-01-02 15:21:18.93
+507	25	27.65	USD	\N	2024-06-15 04:00:00	6	2024	CELULAR 1 - junio 2024	\N	\N	PAGADO	f	2026-01-02 15:21:18.932
+508	25	33.90	USD	\N	2024-07-15 04:00:00	7	2024	CELULAR 1 - julio 2024	\N	\N	PAGADO	f	2026-01-02 15:21:18.933
+509	25	33.53	USD	\N	2024-08-15 04:00:00	8	2024	CELULAR 1 - agosto 2024	\N	\N	PAGADO	f	2026-01-02 15:21:18.935
+510	25	36.20	USD	\N	2024-09-15 03:00:00	9	2024	CELULAR 1 - septiembre 2024	\N	\N	PAGADO	f	2026-01-02 15:21:18.936
+511	25	37.55	USD	\N	2024-10-15 03:00:00	10	2024	CELULAR 1 - octubre 2024	\N	\N	PAGADO	f	2026-01-02 15:21:18.943
+512	25	47.59	USD	\N	2024-11-15 03:00:00	11	2024	CELULAR 1 - noviembre 2024	\N	\N	PAGADO	f	2026-01-02 15:21:18.946
+513	25	22.88	USD	\N	2025-02-15 03:00:00	2	2025	CELULAR 1 - febrero 2025	\N	\N	PAGADO	f	2026-01-02 15:21:18.947
+514	25	27.28	USD	\N	2025-03-15 03:00:00	3	2025	CELULAR 1 - marzo 2025	\N	\N	PAGADO	f	2026-01-02 15:21:18.949
+515	25	23.61	USD	\N	2025-04-15 04:00:00	4	2025	CELULAR 1 - abril 2025	\N	\N	PAGADO	f	2026-01-02 15:21:18.95
+516	25	27.02	USD	\N	2025-05-15 04:00:00	5	2025	CELULAR 1 - mayo 2025	\N	\N	PAGADO	f	2026-01-02 15:21:18.952
+517	25	35.09	USD	\N	2025-06-15 04:00:00	6	2025	CELULAR 1 - junio 2025	\N	\N	PAGADO	f	2026-01-02 15:21:18.954
+518	25	25.43	USD	\N	2025-07-15 04:00:00	7	2025	CELULAR 1 - julio 2025	\N	\N	PAGADO	f	2026-01-02 15:21:18.955
+519	25	24.45	USD	\N	2025-08-15 04:00:00	8	2025	CELULAR 1 - agosto 2025	\N	\N	PAGADO	f	2026-01-02 15:21:18.957
+520	25	28.96	USD	\N	2025-09-15 03:00:00	9	2025	CELULAR 1 - septiembre 2025	\N	\N	PAGADO	f	2026-01-02 15:21:18.959
+521	25	34.53	USD	\N	2025-10-15 03:00:00	10	2025	CELULAR 1 - octubre 2025	\N	\N	PAGADO	f	2026-01-02 15:21:18.96
+522	25	14.20	USD	\N	2023-04-15 04:00:00	4	2023	CELULAR ELEVASHOP - abril 2023	\N	\N	PAGADO	f	2026-01-02 15:21:18.962
+523	25	3.20	USD	\N	2023-05-15 04:00:00	5	2023	CELULAR ELEVASHOP - mayo 2023	\N	\N	PAGADO	f	2026-01-02 15:21:18.963
+524	25	3.21	USD	\N	2023-06-15 04:00:00	6	2023	CELULAR ELEVASHOP - junio 2023	\N	\N	PAGADO	f	2026-01-02 15:21:18.964
+525	25	3.13	USD	\N	2023-07-15 04:00:00	7	2023	CELULAR ELEVASHOP - julio 2023	\N	\N	PAGADO	f	2026-01-02 15:21:18.965
+526	25	3.15	USD	\N	2023-08-15 04:00:00	8	2023	CELULAR ELEVASHOP - agosto 2023	\N	\N	PAGADO	f	2026-01-02 15:21:18.966
+527	25	4.17	USD	\N	2023-12-15 03:00:00	12	2023	CELULAR ELEVASHOP - diciembre 2023	\N	\N	PAGADO	f	2026-01-02 15:21:18.967
+528	25	4.17	USD	\N	2024-01-15 03:00:00	1	2024	CELULAR ELEVASHOP - enero 2024	\N	\N	PAGADO	f	2026-01-02 15:21:18.968
+529	25	2.77	USD	\N	2024-02-15 03:00:00	2	2024	CELULAR ELEVASHOP - febrero 2024	\N	\N	PAGADO	f	2026-01-02 15:21:18.97
+530	25	4.15	USD	\N	2024-03-15 03:00:00	3	2024	CELULAR ELEVASHOP - marzo 2024	\N	\N	PAGADO	f	2026-01-02 15:21:18.971
+531	25	4.11	USD	\N	2024-04-15 04:00:00	4	2024	CELULAR ELEVASHOP - abril 2024	\N	\N	PAGADO	f	2026-01-02 15:21:18.973
+532	25	4.12	USD	\N	2024-05-15 04:00:00	5	2024	CELULAR ELEVASHOP - mayo 2024	\N	\N	PAGADO	f	2026-01-02 15:21:18.974
+533	25	4.12	USD	\N	2024-06-15 04:00:00	6	2024	CELULAR ELEVASHOP - junio 2024	\N	\N	PAGADO	f	2026-01-02 15:21:18.975
+534	25	9.57	USD	\N	2024-07-15 04:00:00	7	2024	CELULAR ELEVASHOP - julio 2024	\N	\N	PAGADO	f	2026-01-02 15:21:18.976
+535	25	4.11	USD	\N	2024-08-15 04:00:00	8	2024	CELULAR ELEVASHOP - agosto 2024	\N	\N	PAGADO	f	2026-01-02 15:21:18.977
+536	25	5.55	USD	\N	2024-09-15 03:00:00	9	2024	CELULAR ELEVASHOP - septiembre 2024	\N	\N	PAGADO	f	2026-01-02 15:21:18.978
+537	25	3.44	USD	\N	2024-10-15 03:00:00	10	2024	CELULAR ELEVASHOP - octubre 2024	\N	\N	PAGADO	f	2026-01-02 15:21:18.98
+538	25	6.74	USD	\N	2025-02-15 03:00:00	2	2025	CELULAR ELEVASHOP - febrero 2025	\N	\N	PAGADO	f	2026-01-02 15:21:18.981
+539	25	6.14	USD	\N	2025-03-15 03:00:00	3	2025	CELULAR ELEVASHOP - marzo 2025	\N	\N	PAGADO	f	2026-01-02 15:21:18.983
+540	25	6.08	USD	\N	2025-04-15 04:00:00	4	2025	CELULAR ELEVASHOP - abril 2025	\N	\N	PAGADO	f	2026-01-02 15:21:18.984
+541	25	5.98	USD	\N	2025-05-15 04:00:00	5	2025	CELULAR ELEVASHOP - mayo 2025	\N	\N	PAGADO	f	2026-01-02 15:21:18.987
+542	25	6.49	USD	\N	2025-06-15 04:00:00	6	2025	CELULAR ELEVASHOP - junio 2025	\N	\N	PAGADO	f	2026-01-02 15:21:18.991
+543	25	5.61	USD	\N	2025-07-15 04:00:00	7	2025	CELULAR ELEVASHOP - julio 2025	\N	\N	PAGADO	f	2026-01-02 15:21:18.993
+544	25	4.94	USD	\N	2025-08-15 04:00:00	8	2025	CELULAR ELEVASHOP - agosto 2025	\N	\N	PAGADO	f	2026-01-02 15:21:18.995
+545	25	3.30	USD	\N	2025-09-15 03:00:00	9	2025	CELULAR ELEVASHOP - septiembre 2025	\N	\N	PAGADO	f	2026-01-02 15:21:18.999
+546	25	5.92	USD	\N	2025-10-15 03:00:00	10	2025	CELULAR ELEVASHOP - octubre 2025	\N	\N	PAGADO	f	2026-01-02 15:21:19
+547	26	23.12	USD	\N	2023-01-15 03:00:00	1	2023	LUZ - enero 2023	\N	\N	PAGADO	f	2026-01-02 15:21:19.002
+548	26	30.24	USD	\N	2023-02-15 03:00:00	2	2023	LUZ - febrero 2023	\N	\N	PAGADO	f	2026-01-02 15:21:19.004
+549	26	34.85	USD	\N	2023-03-15 03:00:00	3	2023	LUZ - marzo 2023	\N	\N	PAGADO	f	2026-01-02 15:21:19.005
+550	26	36.10	USD	\N	2023-04-15 04:00:00	4	2023	LUZ - abril 2023	\N	\N	PAGADO	f	2026-01-02 15:21:19.007
+551	26	36.11	USD	\N	2023-05-15 04:00:00	5	2023	LUZ - mayo 2023	\N	\N	PAGADO	f	2026-01-02 15:21:19.016
+552	26	36.64	USD	\N	2023-06-15 04:00:00	6	2023	LUZ - junio 2023	\N	\N	PAGADO	f	2026-01-02 15:21:19.019
+553	26	34.67	USD	\N	2023-07-15 04:00:00	7	2023	LUZ - julio 2023	\N	\N	PAGADO	f	2026-01-02 15:21:19.023
+554	26	31.69	USD	\N	2023-08-15 04:00:00	8	2023	LUZ - agosto 2023	\N	\N	PAGADO	f	2026-01-02 15:21:19.025
+555	26	31.49	USD	\N	2023-09-15 03:00:00	9	2023	LUZ - septiembre 2023	\N	\N	PAGADO	f	2026-01-02 15:21:19.027
+556	26	30.42	USD	\N	2023-10-15 03:00:00	10	2023	LUZ - octubre 2023	\N	\N	PAGADO	f	2026-01-02 15:21:19.029
+557	26	35.88	USD	\N	2023-11-15 03:00:00	11	2023	LUZ - noviembre 2023	\N	\N	PAGADO	f	2026-01-02 15:21:19.031
+558	26	36.64	USD	\N	2023-12-15 03:00:00	12	2023	LUZ - diciembre 2023	\N	\N	PAGADO	f	2026-01-02 15:21:19.032
+559	26	36.59	USD	\N	2024-01-15 03:00:00	1	2024	LUZ - enero 2024	\N	\N	PAGADO	f	2026-01-02 15:21:19.034
+560	26	36.10	USD	\N	2024-02-15 03:00:00	2	2024	LUZ - febrero 2024	\N	\N	PAGADO	f	2026-01-02 15:21:19.035
+561	26	33.14	USD	\N	2024-03-15 03:00:00	3	2024	LUZ - marzo 2024	\N	\N	PAGADO	f	2026-01-02 15:21:19.036
+562	26	35.30	USD	\N	2024-04-15 04:00:00	4	2024	LUZ - abril 2024	\N	\N	PAGADO	f	2026-01-02 15:21:19.038
+563	26	41.81	USD	\N	2024-05-15 04:00:00	5	2024	LUZ - mayo 2024	\N	\N	PAGADO	f	2026-01-02 15:21:19.04
+564	26	41.38	USD	\N	2024-06-15 04:00:00	6	2024	LUZ - junio 2024	\N	\N	PAGADO	f	2026-01-02 15:21:19.042
+565	26	36.81	USD	\N	2024-08-15 04:00:00	8	2024	LUZ - agosto 2024	\N	\N	PAGADO	f	2026-01-02 15:21:19.044
+566	26	24.65	USD	\N	2024-10-15 03:00:00	10	2024	LUZ - octubre 2024	\N	\N	PAGADO	f	2026-01-02 15:21:19.047
+567	26	44.46	USD	\N	2024-11-15 03:00:00	11	2024	LUZ - noviembre 2024	\N	\N	PAGADO	f	2026-01-02 15:21:19.048
+568	26	31.82	USD	\N	2024-12-15 03:00:00	12	2024	LUZ - diciembre 2024	\N	\N	PAGADO	f	2026-01-02 15:21:19.054
+569	26	28.32	USD	\N	2025-01-15 03:00:00	1	2025	LUZ - enero 2025	\N	\N	PAGADO	f	2026-01-02 15:21:19.058
+570	26	27.28	USD	\N	2025-02-15 03:00:00	2	2025	LUZ - febrero 2025	\N	\N	PAGADO	f	2026-01-02 15:21:19.059
+571	26	27.08	USD	\N	2025-03-15 03:00:00	3	2025	LUZ - marzo 2025	\N	\N	PAGADO	f	2026-01-02 15:21:19.06
+572	26	27.38	USD	\N	2025-04-15 04:00:00	4	2025	LUZ - abril 2025	\N	\N	PAGADO	f	2026-01-02 15:21:19.061
+573	26	25.09	USD	\N	2025-05-15 04:00:00	5	2025	LUZ - mayo 2025	\N	\N	PAGADO	f	2026-01-02 15:21:19.063
+574	26	29.03	USD	\N	2025-06-15 04:00:00	6	2025	LUZ - junio 2025	\N	\N	PAGADO	f	2026-01-02 15:21:19.065
+575	26	24.35	USD	\N	2025-07-15 04:00:00	7	2025	LUZ - julio 2025	\N	\N	PAGADO	f	2026-01-02 15:21:19.067
+576	26	21.20	USD	\N	2025-08-15 04:00:00	8	2025	LUZ - agosto 2025	\N	\N	PAGADO	f	2026-01-02 15:21:19.068
+577	26	26.68	USD	\N	2025-09-15 03:00:00	9	2025	LUZ - septiembre 2025	\N	\N	PAGADO	f	2026-01-02 15:21:19.069
+578	26	29.89	USD	\N	2025-10-15 03:00:00	10	2025	LUZ - octubre 2025	\N	\N	PAGADO	f	2026-01-02 15:21:19.071
+579	27	56.36	USD	\N	2023-01-15 03:00:00	1	2023	ALCALDIA - enero 2023	\N	\N	PAGADO	f	2026-01-02 15:21:19.072
+580	27	145.00	USD	\N	2023-02-15 03:00:00	2	2023	ALCALDIA - febrero 2023	\N	\N	PAGADO	f	2026-01-02 15:21:19.073
+581	27	146.00	USD	\N	2023-03-15 03:00:00	3	2023	ALCALDIA - marzo 2023	\N	\N	PAGADO	f	2026-01-02 15:21:19.074
+582	27	141.00	USD	\N	2023-04-15 04:00:00	4	2023	ALCALDIA - abril 2023	\N	\N	PAGADO	f	2026-01-02 15:21:19.076
+583	27	144.00	USD	\N	2023-05-15 04:00:00	5	2023	ALCALDIA - mayo 2023	\N	\N	PAGADO	f	2026-01-02 15:21:19.077
+584	27	145.00	USD	\N	2023-06-15 04:00:00	6	2023	ALCALDIA - junio 2023	\N	\N	PAGADO	f	2026-01-02 15:21:19.078
+585	27	146.00	USD	\N	2023-07-15 04:00:00	7	2023	ALCALDIA - julio 2023	\N	\N	PAGADO	f	2026-01-02 15:21:19.08
+586	27	144.60	USD	\N	2023-08-15 04:00:00	8	2023	ALCALDIA - agosto 2023	\N	\N	PAGADO	f	2026-01-02 15:21:19.085
+587	27	145.15	USD	\N	2023-09-15 03:00:00	9	2023	ALCALDIA - septiembre 2023	\N	\N	PAGADO	f	2026-01-02 15:21:19.087
+588	27	146.00	USD	\N	2023-10-15 03:00:00	10	2023	ALCALDIA - octubre 2023	\N	\N	PAGADO	f	2026-01-02 15:21:19.089
+589	27	146.10	USD	\N	2023-11-15 03:00:00	11	2023	ALCALDIA - noviembre 2023	\N	\N	PAGADO	f	2026-01-02 15:21:19.09
+590	27	148.12	USD	\N	2023-12-15 03:00:00	12	2023	ALCALDIA - diciembre 2023	\N	\N	PAGADO	f	2026-01-02 15:21:19.091
+591	27	170.94	USD	\N	2024-01-15 03:00:00	1	2024	ALCALDIA - enero 2024	\N	\N	PAGADO	f	2026-01-02 15:21:19.093
+592	27	143.30	USD	\N	2024-02-15 03:00:00	2	2024	ALCALDIA - febrero 2024	\N	\N	PAGADO	f	2026-01-02 15:21:19.094
+593	27	152.30	USD	\N	2024-03-15 03:00:00	3	2024	ALCALDIA - marzo 2024	\N	\N	PAGADO	f	2026-01-02 15:21:19.099
+594	27	142.00	USD	\N	2024-04-15 04:00:00	4	2024	ALCALDIA - abril 2024	\N	\N	PAGADO	f	2026-01-02 15:21:19.1
+595	27	139.74	USD	\N	2024-05-15 04:00:00	5	2024	ALCALDIA - mayo 2024	\N	\N	PAGADO	f	2026-01-02 15:21:19.102
+596	27	142.03	USD	\N	2024-06-15 04:00:00	6	2024	ALCALDIA - junio 2024	\N	\N	PAGADO	f	2026-01-02 15:21:19.103
+597	27	139.88	USD	\N	2024-07-15 04:00:00	7	2024	ALCALDIA - julio 2024	\N	\N	PAGADO	f	2026-01-02 15:21:19.105
+598	27	141.70	USD	\N	2024-08-15 04:00:00	8	2024	ALCALDIA - agosto 2024	\N	\N	PAGADO	f	2026-01-02 15:21:19.108
+599	27	145.68	USD	\N	2024-09-15 03:00:00	9	2024	ALCALDIA - septiembre 2024	\N	\N	PAGADO	f	2026-01-02 15:21:19.11
+600	27	137.80	USD	\N	2024-10-15 03:00:00	10	2024	ALCALDIA - octubre 2024	\N	\N	PAGADO	f	2026-01-02 15:21:19.112
+601	27	138.79	USD	\N	2024-11-15 03:00:00	11	2024	ALCALDIA - noviembre 2024	\N	\N	PAGADO	f	2026-01-02 15:21:19.114
+602	27	136.26	USD	\N	2024-12-15 03:00:00	12	2024	ALCALDIA - diciembre 2024	\N	\N	PAGADO	f	2026-01-02 15:21:19.117
+603	27	131.12	USD	\N	2025-01-15 03:00:00	1	2025	ALCALDIA - enero 2025	\N	\N	PAGADO	f	2026-01-02 15:21:19.119
+604	27	148.61	USD	\N	2025-02-15 03:00:00	2	2025	ALCALDIA - febrero 2025	\N	\N	PAGADO	f	2026-01-02 15:21:19.121
+605	27	149.44	USD	\N	2025-03-15 03:00:00	3	2025	ALCALDIA - marzo 2025	\N	\N	PAGADO	f	2026-01-02 15:21:19.123
+606	27	148.00	USD	\N	2025-04-15 04:00:00	4	2025	ALCALDIA - abril 2025	\N	\N	PAGADO	f	2026-01-02 15:21:19.124
+607	27	148.00	USD	\N	2025-05-15 04:00:00	5	2025	ALCALDIA - mayo 2025	\N	\N	PAGADO	f	2026-01-02 15:21:19.127
+608	27	149.05	USD	\N	2025-06-15 04:00:00	6	2025	ALCALDIA - junio 2025	\N	\N	PAGADO	f	2026-01-02 15:21:19.13
+609	27	134.52	USD	\N	2025-07-15 04:00:00	7	2025	ALCALDIA - julio 2025	\N	\N	PAGADO	f	2026-01-02 15:21:19.131
+610	27	131.00	USD	\N	2025-08-15 04:00:00	8	2025	ALCALDIA - agosto 2025	\N	\N	PAGADO	f	2026-01-02 15:21:19.135
+611	27	132.21	USD	\N	2025-09-15 03:00:00	9	2025	ALCALDIA - septiembre 2025	\N	\N	PAGADO	f	2026-01-02 15:21:19.136
+612	27	133.07	USD	\N	2025-10-15 03:00:00	10	2025	ALCALDIA - octubre 2025	\N	\N	PAGADO	f	2026-01-02 15:21:19.137
+613	27	130.09	USD	\N	2025-11-15 03:00:00	11	2025	ALCALDIA - noviembre 2025	\N	\N	PAGADO	f	2026-01-02 15:21:19.139
+614	28	140.00	USD	\N	2024-01-15 03:00:00	1	2024	GASTOS VARIOS - enero 2024	\N	\N	PAGADO	f	2026-01-02 15:21:19.141
+615	28	20.00	USD	\N	2024-02-15 03:00:00	2	2024	GASTOS VARIOS - febrero 2024	\N	\N	PAGADO	f	2026-01-02 15:21:19.144
+616	28	20.00	USD	\N	2024-03-15 03:00:00	3	2024	GASTOS VARIOS - marzo 2024	\N	\N	PAGADO	f	2026-01-02 15:21:19.147
+617	28	40.00	USD	\N	2024-04-15 04:00:00	4	2024	GASTOS VARIOS - abril 2024	\N	\N	PAGADO	f	2026-01-02 15:21:19.149
+618	28	40.00	USD	\N	2024-05-15 04:00:00	5	2024	GASTOS VARIOS - mayo 2024	\N	\N	PAGADO	f	2026-01-02 15:21:19.155
+619	28	51.00	USD	\N	2024-06-15 04:00:00	6	2024	GASTOS VARIOS - junio 2024	\N	\N	PAGADO	f	2026-01-02 15:21:19.157
+620	28	64.70	USD	\N	2024-07-15 04:00:00	7	2024	GASTOS VARIOS - julio 2024	\N	\N	PAGADO	f	2026-01-02 15:21:19.158
+621	28	51.71	USD	\N	2024-08-15 04:00:00	8	2024	GASTOS VARIOS - agosto 2024	\N	\N	PAGADO	f	2026-01-02 15:21:19.16
+622	28	51.05	USD	\N	2024-09-15 03:00:00	9	2024	GASTOS VARIOS - septiembre 2024	\N	\N	PAGADO	f	2026-01-02 15:21:19.163
+623	28	50.26	USD	\N	2024-10-15 03:00:00	10	2024	GASTOS VARIOS - octubre 2024	\N	\N	PAGADO	f	2026-01-02 15:21:19.165
+624	28	51.48	USD	\N	2024-11-15 03:00:00	11	2024	GASTOS VARIOS - noviembre 2024	\N	\N	PAGADO	f	2026-01-02 15:21:19.166
+625	28	90.92	USD	\N	2024-12-15 03:00:00	12	2024	GASTOS VARIOS - diciembre 2024	\N	\N	PAGADO	f	2026-01-02 15:21:19.168
+626	28	88.90	USD	\N	2025-01-15 03:00:00	1	2025	GASTOS VARIOS - enero 2025	\N	\N	PAGADO	f	2026-01-02 15:21:19.17
+627	28	48.48	USD	\N	2025-02-15 03:00:00	2	2025	GASTOS VARIOS - febrero 2025	\N	\N	PAGADO	f	2026-01-02 15:21:19.172
+628	28	49.57	USD	\N	2025-03-15 03:00:00	3	2025	GASTOS VARIOS - marzo 2025	\N	\N	PAGADO	f	2026-01-02 15:21:19.173
+629	28	49.05	USD	\N	2025-04-15 04:00:00	4	2025	GASTOS VARIOS - abril 2025	\N	\N	PAGADO	f	2026-01-02 15:21:19.175
+630	28	70.38	USD	\N	2025-05-15 04:00:00	5	2025	GASTOS VARIOS - mayo 2025	\N	\N	PAGADO	f	2026-01-02 15:21:19.176
+631	28	71.13	USD	\N	2025-06-15 04:00:00	6	2025	GASTOS VARIOS - junio 2025	\N	\N	PAGADO	f	2026-01-02 15:21:19.178
+632	28	72.81	USD	\N	2025-07-15 04:00:00	7	2025	GASTOS VARIOS - julio 2025	\N	\N	PAGADO	f	2026-01-02 15:21:19.179
+633	28	74.00	USD	\N	2025-08-15 04:00:00	8	2025	GASTOS VARIOS - agosto 2025	\N	\N	PAGADO	f	2026-01-02 15:21:19.181
+634	28	68.76	USD	\N	2025-09-15 03:00:00	9	2025	GASTOS VARIOS - septiembre 2025	\N	\N	PAGADO	f	2026-01-02 15:21:19.184
+635	28	70.13	USD	\N	2025-10-15 03:00:00	10	2025	GASTOS VARIOS - octubre 2025	\N	\N	PAGADO	f	2026-01-02 15:21:19.185
+636	30	4904.61	USD	\N	2023-06-15 04:00:00	6	2023	GASTO IMPORTACION - junio 2023	\N	\N	PAGADO	f	2026-01-02 15:21:19.186
+637	30	731.09	USD	\N	2023-07-15 04:00:00	7	2023	GASTO IMPORTACION - julio 2023	\N	\N	PAGADO	f	2026-01-02 15:21:19.187
+638	30	1880.83	USD	\N	2023-11-15 03:00:00	11	2023	GASTO IMPORTACION - noviembre 2023	\N	\N	PAGADO	f	2026-01-02 15:21:19.189
+639	30	3134.60	USD	\N	2024-02-15 03:00:00	2	2024	GASTO IMPORTACION - febrero 2024	\N	\N	PAGADO	f	2026-01-02 15:21:19.191
+640	18	125.00	USD	\N	2023-03-15 03:00:00	3	2023	WILMEN VALERA - marzo 2023	\N	\N	PAGADO	f	2026-01-02 15:23:03.935
+641	18	125.00	USD	\N	2023-04-15 04:00:00	4	2023	WILMEN VALERA - abril 2023	\N	\N	PAGADO	f	2026-01-02 15:23:03.939
+642	18	125.00	USD	\N	2023-05-15 04:00:00	5	2023	WILMEN VALERA - mayo 2023	\N	\N	PAGADO	f	2026-01-02 15:23:03.943
+643	18	125.00	USD	\N	2023-06-15 04:00:00	6	2023	WILMEN VALERA - junio 2023	\N	\N	PAGADO	f	2026-01-02 15:23:03.945
+644	18	125.00	USD	\N	2023-07-15 04:00:00	7	2023	WILMEN VALERA - julio 2023	\N	\N	PAGADO	f	2026-01-02 15:23:03.947
+645	18	125.00	USD	\N	2023-08-15 04:00:00	8	2023	WILMEN VALERA - agosto 2023	\N	\N	PAGADO	f	2026-01-02 15:23:03.949
+646	18	125.00	USD	\N	2023-09-15 03:00:00	9	2023	WILMEN VALERA - septiembre 2023	\N	\N	PAGADO	f	2026-01-02 15:23:03.951
+647	18	125.00	USD	\N	2023-10-15 03:00:00	10	2023	WILMEN VALERA - octubre 2023	\N	\N	PAGADO	f	2026-01-02 15:23:03.953
+648	18	125.00	USD	\N	2023-11-15 03:00:00	11	2023	WILMEN VALERA - noviembre 2023	\N	\N	PAGADO	f	2026-01-02 15:23:03.955
+649	18	125.00	USD	\N	2023-12-15 03:00:00	12	2023	WILMEN VALERA - diciembre 2023	\N	\N	PAGADO	f	2026-01-02 15:23:03.957
+650	18	125.00	USD	\N	2024-01-15 03:00:00	1	2024	WILMEN VALERA - enero 2024	\N	\N	PAGADO	f	2026-01-02 15:23:03.959
+651	18	125.00	USD	\N	2024-02-15 03:00:00	2	2024	WILMEN VALERA - febrero 2024	\N	\N	PAGADO	f	2026-01-02 15:23:03.961
+652	18	125.00	USD	\N	2024-03-15 03:00:00	3	2024	WILMEN VALERA - marzo 2024	\N	\N	PAGADO	f	2026-01-02 15:23:03.962
+653	18	125.00	USD	\N	2024-04-15 04:00:00	4	2024	WILMEN VALERA - abril 2024	\N	\N	PAGADO	f	2026-01-02 15:23:03.965
+654	18	125.00	USD	\N	2024-05-15 04:00:00	5	2024	WILMEN VALERA - mayo 2024	\N	\N	PAGADO	f	2026-01-02 15:23:03.968
+655	18	125.00	USD	\N	2024-06-15 04:00:00	6	2024	WILMEN VALERA - junio 2024	\N	\N	PAGADO	f	2026-01-02 15:23:03.969
+656	18	125.00	USD	\N	2024-07-15 04:00:00	7	2024	WILMEN VALERA - julio 2024	\N	\N	PAGADO	f	2026-01-02 15:23:03.971
+657	18	125.00	USD	\N	2024-08-15 04:00:00	8	2024	WILMEN VALERA - agosto 2024	\N	\N	PAGADO	f	2026-01-02 15:23:03.974
+658	18	125.00	USD	\N	2024-09-15 03:00:00	9	2024	WILMEN VALERA - septiembre 2024	\N	\N	PAGADO	f	2026-01-02 15:23:03.976
+659	18	125.00	USD	\N	2024-10-15 03:00:00	10	2024	WILMEN VALERA - octubre 2024	\N	\N	PAGADO	f	2026-01-02 15:23:03.977
+660	18	125.00	USD	\N	2024-11-15 03:00:00	11	2024	WILMEN VALERA - noviembre 2024	\N	\N	PAGADO	f	2026-01-02 15:23:03.979
+661	18	125.00	USD	\N	2024-12-15 03:00:00	12	2024	WILMEN VALERA - diciembre 2024	\N	\N	PAGADO	f	2026-01-02 15:23:03.98
+662	18	125.00	USD	\N	2025-01-15 03:00:00	1	2025	WILMEN VALERA - enero 2025	\N	\N	PAGADO	f	2026-01-02 15:23:03.982
+663	18	125.00	USD	\N	2025-02-15 03:00:00	2	2025	WILMEN VALERA - febrero 2025	\N	\N	PAGADO	f	2026-01-02 15:23:03.983
+664	18	125.00	USD	\N	2025-03-15 03:00:00	3	2025	WILMEN VALERA - marzo 2025	\N	\N	PAGADO	f	2026-01-02 15:23:03.985
+665	18	125.00	USD	\N	2025-04-15 04:00:00	4	2025	WILMEN VALERA - abril 2025	\N	\N	PAGADO	f	2026-01-02 15:23:03.986
+666	18	125.00	USD	\N	2025-05-15 04:00:00	5	2025	WILMEN VALERA - mayo 2025	\N	\N	PAGADO	f	2026-01-02 15:23:03.987
+667	18	125.00	USD	\N	2025-06-15 04:00:00	6	2025	WILMEN VALERA - junio 2025	\N	\N	PAGADO	f	2026-01-02 15:23:03.989
+668	18	125.00	USD	\N	2025-07-15 04:00:00	7	2025	WILMEN VALERA - julio 2025	\N	\N	PAGADO	f	2026-01-02 15:23:03.99
+669	18	125.00	USD	\N	2025-08-15 04:00:00	8	2025	WILMEN VALERA - agosto 2025	\N	\N	PAGADO	f	2026-01-02 15:23:03.995
+670	18	125.00	USD	\N	2025-09-15 03:00:00	9	2025	WILMEN VALERA - septiembre 2025	\N	\N	PAGADO	f	2026-01-02 15:23:03.997
+671	18	125.00	USD	\N	2025-10-15 03:00:00	10	2025	WILMEN VALERA - octubre 2025	\N	\N	PAGADO	f	2026-01-02 15:23:03.998
+672	18	125.00	USD	\N	2025-11-15 03:00:00	11	2025	WILMEN VALERA - noviembre 2025	\N	\N	PAGADO	f	2026-01-02 15:23:04
+673	18	125.00	USD	\N	2025-12-15 03:00:00	12	2025	WILMEN VALERA - diciembre 2025	\N	\N	PAGADO	f	2026-01-02 15:23:04.002
+674	19	21.00	USD	\N	2023-01-15 03:00:00	1	2023	VACACIONES - enero 2023	\N	\N	PAGADO	f	2026-01-02 15:23:04.003
+675	19	21.00	USD	\N	2023-02-15 03:00:00	2	2023	VACACIONES - febrero 2023	\N	\N	PAGADO	f	2026-01-02 15:23:04.005
+676	19	10.50	USD	\N	2023-03-15 03:00:00	3	2023	VACACIONES - marzo 2023	\N	\N	PAGADO	f	2026-01-02 15:23:04.01
+677	19	10.50	USD	\N	2023-04-15 04:00:00	4	2023	VACACIONES - abril 2023	\N	\N	PAGADO	f	2026-01-02 15:23:04.012
+678	19	10.50	USD	\N	2023-05-15 04:00:00	5	2023	VACACIONES - mayo 2023	\N	\N	PAGADO	f	2026-01-02 15:23:04.017
+679	19	10.50	USD	\N	2023-06-15 04:00:00	6	2023	VACACIONES - junio 2023	\N	\N	PAGADO	f	2026-01-02 15:23:04.022
+680	19	10.50	USD	\N	2023-07-15 04:00:00	7	2023	VACACIONES - julio 2023	\N	\N	PAGADO	f	2026-01-02 15:23:04.025
+681	19	10.50	USD	\N	2023-08-15 04:00:00	8	2023	VACACIONES - agosto 2023	\N	\N	PAGADO	f	2026-01-02 15:23:04.028
+682	19	10.50	USD	\N	2023-09-15 03:00:00	9	2023	VACACIONES - septiembre 2023	\N	\N	PAGADO	f	2026-01-02 15:23:04.032
+683	19	10.50	USD	\N	2023-10-15 03:00:00	10	2023	VACACIONES - octubre 2023	\N	\N	PAGADO	f	2026-01-02 15:23:04.036
+684	19	10.50	USD	\N	2023-11-15 03:00:00	11	2023	VACACIONES - noviembre 2023	\N	\N	PAGADO	f	2026-01-02 15:23:04.038
+685	19	10.50	USD	\N	2023-12-15 03:00:00	12	2023	VACACIONES - diciembre 2023	\N	\N	PAGADO	f	2026-01-02 15:23:04.041
+686	19	10.50	USD	\N	2024-01-15 03:00:00	1	2024	VACACIONES - enero 2024	\N	\N	PAGADO	f	2026-01-02 15:23:04.043
+687	19	10.50	USD	\N	2024-02-15 03:00:00	2	2024	VACACIONES - febrero 2024	\N	\N	PAGADO	f	2026-01-02 15:23:04.046
+688	19	10.50	USD	\N	2024-03-15 03:00:00	3	2024	VACACIONES - marzo 2024	\N	\N	PAGADO	f	2026-01-02 15:23:04.048
+689	19	10.50	USD	\N	2024-04-15 04:00:00	4	2024	VACACIONES - abril 2024	\N	\N	PAGADO	f	2026-01-02 15:23:04.049
+690	19	10.50	USD	\N	2024-05-15 04:00:00	5	2024	VACACIONES - mayo 2024	\N	\N	PAGADO	f	2026-01-02 15:23:04.052
+691	19	10.50	USD	\N	2024-06-15 04:00:00	6	2024	VACACIONES - junio 2024	\N	\N	PAGADO	f	2026-01-02 15:23:04.053
+692	19	10.50	USD	\N	2024-07-15 04:00:00	7	2024	VACACIONES - julio 2024	\N	\N	PAGADO	f	2026-01-02 15:23:04.057
+693	19	10.50	USD	\N	2024-08-15 04:00:00	8	2024	VACACIONES - agosto 2024	\N	\N	PAGADO	f	2026-01-02 15:23:04.06
+694	19	10.50	USD	\N	2024-09-15 03:00:00	9	2024	VACACIONES - septiembre 2024	\N	\N	PAGADO	f	2026-01-02 15:23:04.062
+695	19	10.50	USD	\N	2024-10-15 03:00:00	10	2024	VACACIONES - octubre 2024	\N	\N	PAGADO	f	2026-01-02 15:23:04.064
+696	19	10.50	USD	\N	2024-11-15 03:00:00	11	2024	VACACIONES - noviembre 2024	\N	\N	PAGADO	f	2026-01-02 15:23:04.066
+697	19	10.50	USD	\N	2024-12-15 03:00:00	12	2024	VACACIONES - diciembre 2024	\N	\N	PAGADO	f	2026-01-02 15:23:04.068
+698	19	10.50	USD	\N	2025-01-15 03:00:00	1	2025	VACACIONES - enero 2025	\N	\N	PAGADO	f	2026-01-02 15:23:04.069
+699	19	10.50	USD	\N	2025-02-15 03:00:00	2	2025	VACACIONES - febrero 2025	\N	\N	PAGADO	f	2026-01-02 15:23:04.072
+700	19	10.50	USD	\N	2025-03-15 03:00:00	3	2025	VACACIONES - marzo 2025	\N	\N	PAGADO	f	2026-01-02 15:23:04.077
+701	19	10.50	USD	\N	2025-04-15 04:00:00	4	2025	VACACIONES - abril 2025	\N	\N	PAGADO	f	2026-01-02 15:23:04.08
+702	19	10.50	USD	\N	2025-05-15 04:00:00	5	2025	VACACIONES - mayo 2025	\N	\N	PAGADO	f	2026-01-02 15:23:04.082
+703	19	10.50	USD	\N	2025-06-15 04:00:00	6	2025	VACACIONES - junio 2025	\N	\N	PAGADO	f	2026-01-02 15:23:04.086
+704	19	10.50	USD	\N	2025-07-15 04:00:00	7	2025	VACACIONES - julio 2025	\N	\N	PAGADO	f	2026-01-02 15:23:04.088
+705	19	10.50	USD	\N	2025-08-15 04:00:00	8	2025	VACACIONES - agosto 2025	\N	\N	PAGADO	f	2026-01-02 15:23:04.09
+706	19	10.50	USD	\N	2025-09-15 03:00:00	9	2025	VACACIONES - septiembre 2025	\N	\N	PAGADO	f	2026-01-02 15:23:04.091
+707	19	10.50	USD	\N	2025-10-15 03:00:00	10	2025	VACACIONES - octubre 2025	\N	\N	PAGADO	f	2026-01-02 15:23:04.095
+708	19	10.50	USD	\N	2025-11-15 03:00:00	11	2025	VACACIONES - noviembre 2025	\N	\N	PAGADO	f	2026-01-02 15:23:04.097
+709	19	10.50	USD	\N	2025-12-15 03:00:00	12	2025	VACACIONES - diciembre 2025	\N	\N	PAGADO	f	2026-01-02 15:23:04.098
+710	20	40.00	USD	\N	2023-01-15 03:00:00	1	2023	UTILIDAD - enero 2023	\N	\N	PAGADO	f	2026-01-02 15:23:04.1
+711	20	40.00	USD	\N	2023-02-15 03:00:00	2	2023	UTILIDAD - febrero 2023	\N	\N	PAGADO	f	2026-01-02 15:23:04.103
+712	20	21.00	USD	\N	2023-03-15 03:00:00	3	2023	UTILIDAD - marzo 2023	\N	\N	PAGADO	f	2026-01-02 15:23:04.105
+713	20	21.00	USD	\N	2023-04-15 04:00:00	4	2023	UTILIDAD - abril 2023	\N	\N	PAGADO	f	2026-01-02 15:23:04.107
+714	20	21.00	USD	\N	2023-05-15 04:00:00	5	2023	UTILIDAD - mayo 2023	\N	\N	PAGADO	f	2026-01-02 15:23:04.11
+715	20	21.00	USD	\N	2023-06-15 04:00:00	6	2023	UTILIDAD - junio 2023	\N	\N	PAGADO	f	2026-01-02 15:23:04.112
+716	20	21.00	USD	\N	2023-07-15 04:00:00	7	2023	UTILIDAD - julio 2023	\N	\N	PAGADO	f	2026-01-02 15:23:04.115
+717	20	21.00	USD	\N	2023-08-15 04:00:00	8	2023	UTILIDAD - agosto 2023	\N	\N	PAGADO	f	2026-01-02 15:23:04.117
+718	20	21.00	USD	\N	2023-09-15 03:00:00	9	2023	UTILIDAD - septiembre 2023	\N	\N	PAGADO	f	2026-01-02 15:23:04.119
+719	20	21.00	USD	\N	2023-10-15 03:00:00	10	2023	UTILIDAD - octubre 2023	\N	\N	PAGADO	f	2026-01-02 15:23:04.121
+720	20	21.00	USD	\N	2023-11-15 03:00:00	11	2023	UTILIDAD - noviembre 2023	\N	\N	PAGADO	f	2026-01-02 15:23:04.122
+721	20	21.00	USD	\N	2023-12-15 03:00:00	12	2023	UTILIDAD - diciembre 2023	\N	\N	PAGADO	f	2026-01-02 15:23:04.124
+722	20	21.00	USD	\N	2024-01-15 03:00:00	1	2024	UTILIDAD - enero 2024	\N	\N	PAGADO	f	2026-01-02 15:23:04.126
+723	20	21.00	USD	\N	2024-02-15 03:00:00	2	2024	UTILIDAD - febrero 2024	\N	\N	PAGADO	f	2026-01-02 15:23:04.128
+724	20	21.00	USD	\N	2024-03-15 03:00:00	3	2024	UTILIDAD - marzo 2024	\N	\N	PAGADO	f	2026-01-02 15:23:04.13
+725	20	21.00	USD	\N	2024-04-15 04:00:00	4	2024	UTILIDAD - abril 2024	\N	\N	PAGADO	f	2026-01-02 15:23:04.131
+726	20	21.00	USD	\N	2024-05-15 04:00:00	5	2024	UTILIDAD - mayo 2024	\N	\N	PAGADO	f	2026-01-02 15:23:04.134
+727	20	21.00	USD	\N	2024-06-15 04:00:00	6	2024	UTILIDAD - junio 2024	\N	\N	PAGADO	f	2026-01-02 15:23:04.136
+728	20	21.00	USD	\N	2024-07-15 04:00:00	7	2024	UTILIDAD - julio 2024	\N	\N	PAGADO	f	2026-01-02 15:23:04.139
+729	20	21.00	USD	\N	2024-08-15 04:00:00	8	2024	UTILIDAD - agosto 2024	\N	\N	PAGADO	f	2026-01-02 15:23:04.141
+730	20	21.00	USD	\N	2024-09-15 03:00:00	9	2024	UTILIDAD - septiembre 2024	\N	\N	PAGADO	f	2026-01-02 15:23:04.143
+731	20	21.00	USD	\N	2024-10-15 03:00:00	10	2024	UTILIDAD - octubre 2024	\N	\N	PAGADO	f	2026-01-02 15:23:04.144
+732	20	21.00	USD	\N	2024-11-15 03:00:00	11	2024	UTILIDAD - noviembre 2024	\N	\N	PAGADO	f	2026-01-02 15:23:04.146
+733	20	21.00	USD	\N	2024-12-15 03:00:00	12	2024	UTILIDAD - diciembre 2024	\N	\N	PAGADO	f	2026-01-02 15:23:04.148
+734	20	21.00	USD	\N	2025-01-15 03:00:00	1	2025	UTILIDAD - enero 2025	\N	\N	PAGADO	f	2026-01-02 15:23:04.149
+735	20	21.00	USD	\N	2025-02-15 03:00:00	2	2025	UTILIDAD - febrero 2025	\N	\N	PAGADO	f	2026-01-02 15:23:04.153
+736	20	21.00	USD	\N	2025-03-15 03:00:00	3	2025	UTILIDAD - marzo 2025	\N	\N	PAGADO	f	2026-01-02 15:23:04.156
+737	20	21.00	USD	\N	2025-04-15 04:00:00	4	2025	UTILIDAD - abril 2025	\N	\N	PAGADO	f	2026-01-02 15:23:04.159
+738	20	21.00	USD	\N	2025-05-15 04:00:00	5	2025	UTILIDAD - mayo 2025	\N	\N	PAGADO	f	2026-01-02 15:23:04.161
+739	20	21.00	USD	\N	2025-06-15 04:00:00	6	2025	UTILIDAD - junio 2025	\N	\N	PAGADO	f	2026-01-02 15:23:04.163
+740	20	21.00	USD	\N	2025-07-15 04:00:00	7	2025	UTILIDAD - julio 2025	\N	\N	PAGADO	f	2026-01-02 15:23:04.165
+741	20	21.00	USD	\N	2025-08-15 04:00:00	8	2025	UTILIDAD - agosto 2025	\N	\N	PAGADO	f	2026-01-02 15:23:04.17
+742	20	21.00	USD	\N	2025-09-15 03:00:00	9	2025	UTILIDAD - septiembre 2025	\N	\N	PAGADO	f	2026-01-02 15:23:04.172
+743	20	21.00	USD	\N	2025-10-15 03:00:00	10	2025	UTILIDAD - octubre 2025	\N	\N	PAGADO	f	2026-01-02 15:23:04.174
+744	20	21.00	USD	\N	2025-11-15 03:00:00	11	2025	UTILIDAD - noviembre 2025	\N	\N	PAGADO	f	2026-01-02 15:23:04.176
+745	20	21.00	USD	\N	2025-12-15 03:00:00	12	2025	UTILIDAD - diciembre 2025	\N	\N	PAGADO	f	2026-01-02 15:23:04.178
+746	21	427.10	USD	\N	2023-03-15 03:00:00	3	2023	COMISION POR VENTAS - marzo 2023	\N	\N	PAGADO	f	2026-01-02 15:23:04.181
+747	21	66.64	USD	\N	2023-03-15 03:00:00	3	2023	COMISION ML VENTA - marzo 2023	\N	\N	PAGADO	f	2026-01-02 15:23:04.184
+748	22	41.00	USD	\N	2023-03-15 03:00:00	3	2023	PUBLICIDAD - marzo 2023	\N	\N	PAGADO	f	2026-01-02 15:23:04.188
+749	22	160.00	USD	\N	2023-10-15 03:00:00	10	2023	PUBLICIDAD - octubre 2023	\N	\N	PAGADO	f	2026-01-02 15:23:04.19
+750	23	23.37	USD	\N	2023-01-15 03:00:00	1	2023	CONDOMINIO - enero 2023	\N	\N	PAGADO	f	2026-01-02 15:23:04.192
+751	23	25.82	USD	\N	2023-02-15 03:00:00	2	2023	CONDOMINIO - febrero 2023	\N	\N	PAGADO	f	2026-01-02 15:23:04.195
+752	23	29.03	USD	\N	2023-03-15 03:00:00	3	2023	CONDOMINIO - marzo 2023	\N	\N	PAGADO	f	2026-01-02 15:23:04.197
+753	23	31.00	USD	\N	2023-04-15 04:00:00	4	2023	CONDOMINIO - abril 2023	\N	\N	PAGADO	f	2026-01-02 15:23:04.199
+754	23	53.40	USD	\N	2023-05-15 04:00:00	5	2023	CONDOMINIO - mayo 2023	\N	\N	PAGADO	f	2026-01-02 15:23:04.202
+755	23	52.16	USD	\N	2023-06-15 04:00:00	6	2023	CONDOMINIO - junio 2023	\N	\N	PAGADO	f	2026-01-02 15:23:04.205
+756	23	29.62	USD	\N	2023-07-15 04:00:00	7	2023	CONDOMINIO - julio 2023	\N	\N	PAGADO	f	2026-01-02 15:23:04.208
+757	23	31.88	USD	\N	2023-08-15 04:00:00	8	2023	CONDOMINIO - agosto 2023	\N	\N	PAGADO	f	2026-01-02 15:23:04.21
+758	23	29.77	USD	\N	2023-09-15 03:00:00	9	2023	CONDOMINIO - septiembre 2023	\N	\N	PAGADO	f	2026-01-02 15:23:04.213
+759	23	74.94	USD	\N	2023-10-15 03:00:00	10	2023	CONDOMINIO - octubre 2023	\N	\N	PAGADO	f	2026-01-02 15:23:04.215
+760	23	45.59	USD	\N	2023-11-15 03:00:00	11	2023	CONDOMINIO - noviembre 2023	\N	\N	PAGADO	f	2026-01-02 15:23:04.216
+761	23	37.49	USD	\N	2023-12-15 03:00:00	12	2023	CONDOMINIO - diciembre 2023	\N	\N	PAGADO	f	2026-01-02 15:23:04.222
+762	23	35.39	USD	\N	2024-01-15 03:00:00	1	2024	CONDOMINIO - enero 2024	\N	\N	PAGADO	f	2026-01-02 15:23:04.226
+763	23	34.38	USD	\N	2024-02-15 03:00:00	2	2024	CONDOMINIO - febrero 2024	\N	\N	PAGADO	f	2026-01-02 15:23:04.228
+764	23	39.14	USD	\N	2024-03-15 03:00:00	3	2024	CONDOMINIO - marzo 2024	\N	\N	PAGADO	f	2026-01-02 15:23:04.23
+765	23	34.60	USD	\N	2024-04-15 04:00:00	4	2024	CONDOMINIO - abril 2024	\N	\N	PAGADO	f	2026-01-02 15:23:04.233
+766	23	35.29	USD	\N	2024-05-15 04:00:00	5	2024	CONDOMINIO - mayo 2024	\N	\N	PAGADO	f	2026-01-02 15:23:04.236
+767	23	41.14	USD	\N	2024-06-15 04:00:00	6	2024	CONDOMINIO - junio 2024	\N	\N	PAGADO	f	2026-01-02 15:23:04.237
+768	23	36.71	USD	\N	2024-07-15 04:00:00	7	2024	CONDOMINIO - julio 2024	\N	\N	PAGADO	f	2026-01-02 15:23:04.239
+769	23	40.86	USD	\N	2024-08-15 04:00:00	8	2024	CONDOMINIO - agosto 2024	\N	\N	PAGADO	f	2026-01-02 15:23:04.243
+770	23	48.16	USD	\N	2024-09-15 03:00:00	9	2024	CONDOMINIO - septiembre 2024	\N	\N	PAGADO	f	2026-01-02 15:23:04.245
+771	23	77.19	USD	\N	2024-10-15 03:00:00	10	2024	CONDOMINIO - octubre 2024	\N	\N	PAGADO	f	2026-01-02 15:23:04.248
+772	23	43.39	USD	\N	2024-11-15 03:00:00	11	2024	CONDOMINIO - noviembre 2024	\N	\N	PAGADO	f	2026-01-02 15:23:04.251
+773	23	34.64	USD	\N	2024-12-15 03:00:00	12	2024	CONDOMINIO - diciembre 2024	\N	\N	PAGADO	f	2026-01-02 15:23:04.252
+774	23	39.89	USD	\N	2025-01-15 03:00:00	1	2025	CONDOMINIO - enero 2025	\N	\N	PAGADO	f	2026-01-02 15:23:04.254
+775	23	36.24	USD	\N	2025-02-15 03:00:00	2	2025	CONDOMINIO - febrero 2025	\N	\N	PAGADO	f	2026-01-02 15:23:04.256
+776	23	46.64	USD	\N	2025-03-15 03:00:00	3	2025	CONDOMINIO - marzo 2025	\N	\N	PAGADO	f	2026-01-02 15:23:04.26
+777	23	53.49	USD	\N	2025-04-15 04:00:00	4	2025	CONDOMINIO - abril 2025	\N	\N	PAGADO	f	2026-01-02 15:23:04.264
+778	23	64.52	USD	\N	2025-05-15 04:00:00	5	2025	CONDOMINIO - mayo 2025	\N	\N	PAGADO	f	2026-01-02 15:23:04.266
+779	23	38.70	USD	\N	2025-06-15 04:00:00	6	2025	CONDOMINIO - junio 2025	\N	\N	PAGADO	f	2026-01-02 15:23:04.271
+780	23	55.87	USD	\N	2025-07-15 04:00:00	7	2025	CONDOMINIO - julio 2025	\N	\N	PAGADO	f	2026-01-02 15:23:04.275
+781	23	40.31	USD	\N	2025-08-15 04:00:00	8	2025	CONDOMINIO - agosto 2025	\N	\N	PAGADO	f	2026-01-02 15:23:04.281
+782	23	55.11	USD	\N	2025-09-15 03:00:00	9	2025	CONDOMINIO - septiembre 2025	\N	\N	PAGADO	f	2026-01-02 15:23:04.284
+783	23	47.20	USD	\N	2025-10-15 03:00:00	10	2025	CONDOMINIO - octubre 2025	\N	\N	PAGADO	f	2026-01-02 15:23:04.289
+784	24	7.58	USD	\N	2023-01-15 03:00:00	1	2023	CANTV - enero 2023	\N	\N	PAGADO	f	2026-01-02 15:23:04.294
+785	24	9.56	USD	\N	2023-02-15 03:00:00	2	2023	CANTV - febrero 2023	\N	\N	PAGADO	f	2026-01-02 15:23:04.298
+786	24	12.23	USD	\N	2023-03-15 03:00:00	3	2023	CANTV - marzo 2023	\N	\N	PAGADO	f	2026-01-02 15:23:04.301
+787	24	13.58	USD	\N	2023-04-15 04:00:00	4	2023	CANTV - abril 2023	\N	\N	PAGADO	f	2026-01-02 15:23:04.303
+788	24	14.50	USD	\N	2023-05-15 04:00:00	5	2023	CANTV - mayo 2023	\N	\N	PAGADO	f	2026-01-02 15:23:04.307
+789	24	15.22	USD	\N	2023-06-15 04:00:00	6	2023	CANTV - junio 2023	\N	\N	PAGADO	f	2026-01-02 15:23:04.311
+790	24	15.31	USD	\N	2023-07-15 04:00:00	7	2023	CANTV - julio 2023	\N	\N	PAGADO	f	2026-01-02 15:23:04.314
+791	24	14.51	USD	\N	2023-08-15 04:00:00	8	2023	CANTV - agosto 2023	\N	\N	PAGADO	f	2026-01-02 15:23:04.316
+792	24	15.04	USD	\N	2023-09-15 03:00:00	9	2023	CANTV - septiembre 2023	\N	\N	PAGADO	f	2026-01-02 15:23:04.318
+793	24	15.81	USD	\N	2023-10-15 03:00:00	10	2023	CANTV - octubre 2023	\N	\N	PAGADO	f	2026-01-02 15:23:04.32
+794	24	24.06	USD	\N	2023-11-15 03:00:00	11	2023	CANTV - noviembre 2023	\N	\N	PAGADO	f	2026-01-02 15:23:04.324
+795	24	24.00	USD	\N	2023-12-15 03:00:00	12	2023	CANTV - diciembre 2023	\N	\N	PAGADO	f	2026-01-02 15:23:04.326
+796	24	17.67	USD	\N	2024-01-15 03:00:00	1	2024	CANTV - enero 2024	\N	\N	PAGADO	f	2026-01-02 15:23:04.328
+797	24	17.55	USD	\N	2024-05-15 04:00:00	5	2024	CANTV - mayo 2024	\N	\N	PAGADO	f	2026-01-02 15:23:04.33
+798	24	17.50	USD	\N	2024-07-15 04:00:00	7	2024	CANTV - julio 2024	\N	\N	PAGADO	f	2026-01-02 15:23:04.332
+799	24	17.23	USD	\N	2024-08-15 04:00:00	8	2024	CANTV - agosto 2024	\N	\N	PAGADO	f	2026-01-02 15:23:04.333
+800	24	17.51	USD	\N	2024-09-15 03:00:00	9	2024	CANTV - septiembre 2024	\N	\N	PAGADO	f	2026-01-02 15:23:04.335
+801	24	17.22	USD	\N	2024-11-15 03:00:00	11	2024	CANTV - noviembre 2024	\N	\N	PAGADO	f	2026-01-02 15:23:04.337
+802	24	16.91	USD	\N	2024-12-15 03:00:00	12	2024	CANTV - diciembre 2024	\N	\N	PAGADO	f	2026-01-02 15:23:04.339
+803	24	19.16	USD	\N	2025-01-15 03:00:00	1	2025	CANTV - enero 2025	\N	\N	PAGADO	f	2026-01-02 15:23:04.341
+804	24	18.73	USD	\N	2025-02-15 03:00:00	2	2025	CANTV - febrero 2025	\N	\N	PAGADO	f	2026-01-02 15:23:04.343
+805	24	17.19	USD	\N	2025-03-15 03:00:00	3	2025	CANTV - marzo 2025	\N	\N	PAGADO	f	2026-01-02 15:23:04.346
+806	24	13.79	USD	\N	2025-04-15 04:00:00	4	2025	CANTV - abril 2025	\N	\N	PAGADO	f	2026-01-02 15:23:04.348
+807	24	12.18	USD	\N	2025-05-15 04:00:00	5	2025	CANTV - mayo 2025	\N	\N	PAGADO	f	2026-01-02 15:23:04.352
+808	24	16.88	USD	\N	2025-06-15 04:00:00	6	2025	CANTV - junio 2025	\N	\N	PAGADO	f	2026-01-02 15:23:04.353
+809	24	16.82	USD	\N	2025-07-15 04:00:00	7	2025	CANTV - julio 2025	\N	\N	PAGADO	f	2026-01-02 15:23:04.355
+810	24	16.23	USD	\N	2025-08-15 04:00:00	8	2025	CANTV - agosto 2025	\N	\N	PAGADO	f	2026-01-02 15:23:04.357
+811	24	16.42	USD	\N	2025-09-15 03:00:00	9	2025	CANTV - septiembre 2025	\N	\N	PAGADO	f	2026-01-02 15:23:04.358
+812	24	16.50	USD	\N	2025-10-15 03:00:00	10	2025	CANTV - octubre 2025	\N	\N	PAGADO	f	2026-01-02 15:23:04.36
+813	25	5.50	USD	\N	2023-05-15 04:00:00	5	2023	CELULAR 1 - mayo 2023	\N	\N	PAGADO	f	2026-01-02 15:23:04.362
+814	25	4.60	USD	\N	2023-06-15 04:00:00	6	2023	CELULAR 1 - junio 2023	\N	\N	PAGADO	f	2026-01-02 15:23:04.364
+815	25	4.50	USD	\N	2023-07-15 04:00:00	7	2023	CELULAR 1 - julio 2023	\N	\N	PAGADO	f	2026-01-02 15:23:04.365
+816	25	8.50	USD	\N	2023-08-15 04:00:00	8	2023	CELULAR 1 - agosto 2023	\N	\N	PAGADO	f	2026-01-02 15:23:04.367
+817	25	29.00	USD	\N	2024-01-15 03:00:00	1	2024	CELULAR 1 - enero 2024	\N	\N	PAGADO	f	2026-01-02 15:23:04.369
+818	25	28.27	USD	\N	2024-02-15 03:00:00	2	2024	CELULAR 1 - febrero 2024	\N	\N	PAGADO	f	2026-01-02 15:23:04.37
+819	25	28.98	USD	\N	2024-03-15 03:00:00	3	2024	CELULAR 1 - marzo 2024	\N	\N	PAGADO	f	2026-01-02 15:23:04.372
+820	25	43.00	USD	\N	2024-04-15 04:00:00	4	2024	CELULAR 1 - abril 2024	\N	\N	PAGADO	f	2026-01-02 15:23:04.373
+821	25	27.62	USD	\N	2024-05-15 04:00:00	5	2024	CELULAR 1 - mayo 2024	\N	\N	PAGADO	f	2026-01-02 15:23:04.375
+822	25	27.65	USD	\N	2024-06-15 04:00:00	6	2024	CELULAR 1 - junio 2024	\N	\N	PAGADO	f	2026-01-02 15:23:04.377
+823	25	33.90	USD	\N	2024-07-15 04:00:00	7	2024	CELULAR 1 - julio 2024	\N	\N	PAGADO	f	2026-01-02 15:23:04.379
+824	25	33.53	USD	\N	2024-08-15 04:00:00	8	2024	CELULAR 1 - agosto 2024	\N	\N	PAGADO	f	2026-01-02 15:23:04.381
+825	25	36.20	USD	\N	2024-09-15 03:00:00	9	2024	CELULAR 1 - septiembre 2024	\N	\N	PAGADO	f	2026-01-02 15:23:04.383
+826	25	37.55	USD	\N	2024-10-15 03:00:00	10	2024	CELULAR 1 - octubre 2024	\N	\N	PAGADO	f	2026-01-02 15:23:04.386
+827	25	47.59	USD	\N	2024-11-15 03:00:00	11	2024	CELULAR 1 - noviembre 2024	\N	\N	PAGADO	f	2026-01-02 15:23:04.388
+828	25	22.88	USD	\N	2025-02-15 03:00:00	2	2025	CELULAR 1 - febrero 2025	\N	\N	PAGADO	f	2026-01-02 15:23:04.39
+829	25	27.28	USD	\N	2025-03-15 03:00:00	3	2025	CELULAR 1 - marzo 2025	\N	\N	PAGADO	f	2026-01-02 15:23:04.391
+830	25	23.61	USD	\N	2025-04-15 04:00:00	4	2025	CELULAR 1 - abril 2025	\N	\N	PAGADO	f	2026-01-02 15:23:04.393
+831	25	27.02	USD	\N	2025-05-15 04:00:00	5	2025	CELULAR 1 - mayo 2025	\N	\N	PAGADO	f	2026-01-02 15:23:04.395
+832	25	35.09	USD	\N	2025-06-15 04:00:00	6	2025	CELULAR 1 - junio 2025	\N	\N	PAGADO	f	2026-01-02 15:23:04.397
+833	25	25.43	USD	\N	2025-07-15 04:00:00	7	2025	CELULAR 1 - julio 2025	\N	\N	PAGADO	f	2026-01-02 15:23:04.4
+834	25	24.45	USD	\N	2025-08-15 04:00:00	8	2025	CELULAR 1 - agosto 2025	\N	\N	PAGADO	f	2026-01-02 15:23:04.401
+835	25	28.96	USD	\N	2025-09-15 03:00:00	9	2025	CELULAR 1 - septiembre 2025	\N	\N	PAGADO	f	2026-01-02 15:23:04.404
+836	25	34.53	USD	\N	2025-10-15 03:00:00	10	2025	CELULAR 1 - octubre 2025	\N	\N	PAGADO	f	2026-01-02 15:23:04.405
+837	25	14.20	USD	\N	2023-04-15 04:00:00	4	2023	CELULAR ELEVASHOP - abril 2023	\N	\N	PAGADO	f	2026-01-02 15:23:04.409
+838	25	3.20	USD	\N	2023-05-15 04:00:00	5	2023	CELULAR ELEVASHOP - mayo 2023	\N	\N	PAGADO	f	2026-01-02 15:23:04.412
+839	25	3.21	USD	\N	2023-06-15 04:00:00	6	2023	CELULAR ELEVASHOP - junio 2023	\N	\N	PAGADO	f	2026-01-02 15:23:04.413
+840	25	3.13	USD	\N	2023-07-15 04:00:00	7	2023	CELULAR ELEVASHOP - julio 2023	\N	\N	PAGADO	f	2026-01-02 15:23:04.416
+841	25	3.15	USD	\N	2023-08-15 04:00:00	8	2023	CELULAR ELEVASHOP - agosto 2023	\N	\N	PAGADO	f	2026-01-02 15:23:04.422
+842	25	4.17	USD	\N	2023-12-15 03:00:00	12	2023	CELULAR ELEVASHOP - diciembre 2023	\N	\N	PAGADO	f	2026-01-02 15:23:04.424
+843	25	4.17	USD	\N	2024-01-15 03:00:00	1	2024	CELULAR ELEVASHOP - enero 2024	\N	\N	PAGADO	f	2026-01-02 15:23:04.428
+844	25	2.77	USD	\N	2024-02-15 03:00:00	2	2024	CELULAR ELEVASHOP - febrero 2024	\N	\N	PAGADO	f	2026-01-02 15:23:04.43
+845	25	4.15	USD	\N	2024-03-15 03:00:00	3	2024	CELULAR ELEVASHOP - marzo 2024	\N	\N	PAGADO	f	2026-01-02 15:23:04.432
+846	25	4.11	USD	\N	2024-04-15 04:00:00	4	2024	CELULAR ELEVASHOP - abril 2024	\N	\N	PAGADO	f	2026-01-02 15:23:04.433
+847	25	4.12	USD	\N	2024-05-15 04:00:00	5	2024	CELULAR ELEVASHOP - mayo 2024	\N	\N	PAGADO	f	2026-01-02 15:23:04.435
+848	25	4.12	USD	\N	2024-06-15 04:00:00	6	2024	CELULAR ELEVASHOP - junio 2024	\N	\N	PAGADO	f	2026-01-02 15:23:04.436
+849	25	9.57	USD	\N	2024-07-15 04:00:00	7	2024	CELULAR ELEVASHOP - julio 2024	\N	\N	PAGADO	f	2026-01-02 15:23:04.439
+850	25	4.11	USD	\N	2024-08-15 04:00:00	8	2024	CELULAR ELEVASHOP - agosto 2024	\N	\N	PAGADO	f	2026-01-02 15:23:04.441
+851	25	5.55	USD	\N	2024-09-15 03:00:00	9	2024	CELULAR ELEVASHOP - septiembre 2024	\N	\N	PAGADO	f	2026-01-02 15:23:04.445
+852	25	3.44	USD	\N	2024-10-15 03:00:00	10	2024	CELULAR ELEVASHOP - octubre 2024	\N	\N	PAGADO	f	2026-01-02 15:23:04.448
+853	25	6.74	USD	\N	2025-02-15 03:00:00	2	2025	CELULAR ELEVASHOP - febrero 2025	\N	\N	PAGADO	f	2026-01-02 15:23:04.451
+854	25	6.14	USD	\N	2025-03-15 03:00:00	3	2025	CELULAR ELEVASHOP - marzo 2025	\N	\N	PAGADO	f	2026-01-02 15:23:04.454
+855	25	6.08	USD	\N	2025-04-15 04:00:00	4	2025	CELULAR ELEVASHOP - abril 2025	\N	\N	PAGADO	f	2026-01-02 15:23:04.457
+856	25	5.98	USD	\N	2025-05-15 04:00:00	5	2025	CELULAR ELEVASHOP - mayo 2025	\N	\N	PAGADO	f	2026-01-02 15:23:04.459
+857	25	6.49	USD	\N	2025-06-15 04:00:00	6	2025	CELULAR ELEVASHOP - junio 2025	\N	\N	PAGADO	f	2026-01-02 15:23:04.461
+858	25	5.61	USD	\N	2025-07-15 04:00:00	7	2025	CELULAR ELEVASHOP - julio 2025	\N	\N	PAGADO	f	2026-01-02 15:23:04.464
+859	25	4.94	USD	\N	2025-08-15 04:00:00	8	2025	CELULAR ELEVASHOP - agosto 2025	\N	\N	PAGADO	f	2026-01-02 15:23:04.467
+860	25	3.30	USD	\N	2025-09-15 03:00:00	9	2025	CELULAR ELEVASHOP - septiembre 2025	\N	\N	PAGADO	f	2026-01-02 15:23:04.468
+861	25	5.92	USD	\N	2025-10-15 03:00:00	10	2025	CELULAR ELEVASHOP - octubre 2025	\N	\N	PAGADO	f	2026-01-02 15:23:04.469
+862	26	23.12	USD	\N	2023-01-15 03:00:00	1	2023	LUZ - enero 2023	\N	\N	PAGADO	f	2026-01-02 15:23:04.471
+863	26	30.24	USD	\N	2023-02-15 03:00:00	2	2023	LUZ - febrero 2023	\N	\N	PAGADO	f	2026-01-02 15:23:04.472
+864	26	34.85	USD	\N	2023-03-15 03:00:00	3	2023	LUZ - marzo 2023	\N	\N	PAGADO	f	2026-01-02 15:23:04.474
+865	26	36.10	USD	\N	2023-04-15 04:00:00	4	2023	LUZ - abril 2023	\N	\N	PAGADO	f	2026-01-02 15:23:04.481
+866	26	36.11	USD	\N	2023-05-15 04:00:00	5	2023	LUZ - mayo 2023	\N	\N	PAGADO	f	2026-01-02 15:23:04.486
+867	26	36.64	USD	\N	2023-06-15 04:00:00	6	2023	LUZ - junio 2023	\N	\N	PAGADO	f	2026-01-02 15:23:04.489
+868	26	34.67	USD	\N	2023-07-15 04:00:00	7	2023	LUZ - julio 2023	\N	\N	PAGADO	f	2026-01-02 15:23:04.491
+869	26	31.69	USD	\N	2023-08-15 04:00:00	8	2023	LUZ - agosto 2023	\N	\N	PAGADO	f	2026-01-02 15:23:04.494
+870	26	31.49	USD	\N	2023-09-15 03:00:00	9	2023	LUZ - septiembre 2023	\N	\N	PAGADO	f	2026-01-02 15:23:04.497
+871	26	30.42	USD	\N	2023-10-15 03:00:00	10	2023	LUZ - octubre 2023	\N	\N	PAGADO	f	2026-01-02 15:23:04.5
+872	26	35.88	USD	\N	2023-11-15 03:00:00	11	2023	LUZ - noviembre 2023	\N	\N	PAGADO	f	2026-01-02 15:23:04.502
+873	26	36.64	USD	\N	2023-12-15 03:00:00	12	2023	LUZ - diciembre 2023	\N	\N	PAGADO	f	2026-01-02 15:23:04.504
+874	26	36.59	USD	\N	2024-01-15 03:00:00	1	2024	LUZ - enero 2024	\N	\N	PAGADO	f	2026-01-02 15:23:04.506
+875	26	36.10	USD	\N	2024-02-15 03:00:00	2	2024	LUZ - febrero 2024	\N	\N	PAGADO	f	2026-01-02 15:23:04.508
+876	26	33.14	USD	\N	2024-03-15 03:00:00	3	2024	LUZ - marzo 2024	\N	\N	PAGADO	f	2026-01-02 15:23:04.514
+877	26	35.30	USD	\N	2024-04-15 04:00:00	4	2024	LUZ - abril 2024	\N	\N	PAGADO	f	2026-01-02 15:23:04.526
+878	26	41.81	USD	\N	2024-05-15 04:00:00	5	2024	LUZ - mayo 2024	\N	\N	PAGADO	f	2026-01-02 15:23:04.529
+879	26	41.38	USD	\N	2024-06-15 04:00:00	6	2024	LUZ - junio 2024	\N	\N	PAGADO	f	2026-01-02 15:23:04.532
+880	26	36.81	USD	\N	2024-08-15 04:00:00	8	2024	LUZ - agosto 2024	\N	\N	PAGADO	f	2026-01-02 15:23:04.534
+881	26	24.65	USD	\N	2024-10-15 03:00:00	10	2024	LUZ - octubre 2024	\N	\N	PAGADO	f	2026-01-02 15:23:04.537
+882	26	44.46	USD	\N	2024-11-15 03:00:00	11	2024	LUZ - noviembre 2024	\N	\N	PAGADO	f	2026-01-02 15:23:04.54
+883	26	31.82	USD	\N	2024-12-15 03:00:00	12	2024	LUZ - diciembre 2024	\N	\N	PAGADO	f	2026-01-02 15:23:04.542
+884	26	28.32	USD	\N	2025-01-15 03:00:00	1	2025	LUZ - enero 2025	\N	\N	PAGADO	f	2026-01-02 15:23:04.545
+885	26	27.28	USD	\N	2025-02-15 03:00:00	2	2025	LUZ - febrero 2025	\N	\N	PAGADO	f	2026-01-02 15:23:04.547
+886	26	27.08	USD	\N	2025-03-15 03:00:00	3	2025	LUZ - marzo 2025	\N	\N	PAGADO	f	2026-01-02 15:23:04.549
+887	26	27.38	USD	\N	2025-04-15 04:00:00	4	2025	LUZ - abril 2025	\N	\N	PAGADO	f	2026-01-02 15:23:04.551
+888	26	25.09	USD	\N	2025-05-15 04:00:00	5	2025	LUZ - mayo 2025	\N	\N	PAGADO	f	2026-01-02 15:23:04.553
+889	26	29.03	USD	\N	2025-06-15 04:00:00	6	2025	LUZ - junio 2025	\N	\N	PAGADO	f	2026-01-02 15:23:04.555
+890	26	24.35	USD	\N	2025-07-15 04:00:00	7	2025	LUZ - julio 2025	\N	\N	PAGADO	f	2026-01-02 15:23:04.556
+891	26	21.20	USD	\N	2025-08-15 04:00:00	8	2025	LUZ - agosto 2025	\N	\N	PAGADO	f	2026-01-02 15:23:04.558
+892	26	26.68	USD	\N	2025-09-15 03:00:00	9	2025	LUZ - septiembre 2025	\N	\N	PAGADO	f	2026-01-02 15:23:04.56
+893	26	29.89	USD	\N	2025-10-15 03:00:00	10	2025	LUZ - octubre 2025	\N	\N	PAGADO	f	2026-01-02 15:23:04.563
+894	27	56.36	USD	\N	2023-01-15 03:00:00	1	2023	ALCALDIA - enero 2023	\N	\N	PAGADO	f	2026-01-02 15:23:04.565
+895	27	145.00	USD	\N	2023-02-15 03:00:00	2	2023	ALCALDIA - febrero 2023	\N	\N	PAGADO	f	2026-01-02 15:23:04.567
+896	27	146.00	USD	\N	2023-03-15 03:00:00	3	2023	ALCALDIA - marzo 2023	\N	\N	PAGADO	f	2026-01-02 15:23:04.568
+897	27	141.00	USD	\N	2023-04-15 04:00:00	4	2023	ALCALDIA - abril 2023	\N	\N	PAGADO	f	2026-01-02 15:23:04.57
+898	27	144.00	USD	\N	2023-05-15 04:00:00	5	2023	ALCALDIA - mayo 2023	\N	\N	PAGADO	f	2026-01-02 15:23:04.572
+899	27	145.00	USD	\N	2023-06-15 04:00:00	6	2023	ALCALDIA - junio 2023	\N	\N	PAGADO	f	2026-01-02 15:23:04.573
+900	27	146.00	USD	\N	2023-07-15 04:00:00	7	2023	ALCALDIA - julio 2023	\N	\N	PAGADO	f	2026-01-02 15:23:04.575
+901	27	144.60	USD	\N	2023-08-15 04:00:00	8	2023	ALCALDIA - agosto 2023	\N	\N	PAGADO	f	2026-01-02 15:23:04.577
+902	27	145.15	USD	\N	2023-09-15 03:00:00	9	2023	ALCALDIA - septiembre 2023	\N	\N	PAGADO	f	2026-01-02 15:23:04.578
+903	27	146.00	USD	\N	2023-10-15 03:00:00	10	2023	ALCALDIA - octubre 2023	\N	\N	PAGADO	f	2026-01-02 15:23:04.58
+904	27	146.10	USD	\N	2023-11-15 03:00:00	11	2023	ALCALDIA - noviembre 2023	\N	\N	PAGADO	f	2026-01-02 15:23:04.582
+905	27	148.12	USD	\N	2023-12-15 03:00:00	12	2023	ALCALDIA - diciembre 2023	\N	\N	PAGADO	f	2026-01-02 15:23:04.583
+906	27	170.94	USD	\N	2024-01-15 03:00:00	1	2024	ALCALDIA - enero 2024	\N	\N	PAGADO	f	2026-01-02 15:23:04.586
+907	27	143.30	USD	\N	2024-02-15 03:00:00	2	2024	ALCALDIA - febrero 2024	\N	\N	PAGADO	f	2026-01-02 15:23:04.589
+908	27	152.30	USD	\N	2024-03-15 03:00:00	3	2024	ALCALDIA - marzo 2024	\N	\N	PAGADO	f	2026-01-02 15:23:04.591
+909	27	142.00	USD	\N	2024-04-15 04:00:00	4	2024	ALCALDIA - abril 2024	\N	\N	PAGADO	f	2026-01-02 15:23:04.596
+910	27	139.74	USD	\N	2024-05-15 04:00:00	5	2024	ALCALDIA - mayo 2024	\N	\N	PAGADO	f	2026-01-02 15:23:04.598
+911	27	142.03	USD	\N	2024-06-15 04:00:00	6	2024	ALCALDIA - junio 2024	\N	\N	PAGADO	f	2026-01-02 15:23:04.6
+912	27	139.88	USD	\N	2024-07-15 04:00:00	7	2024	ALCALDIA - julio 2024	\N	\N	PAGADO	f	2026-01-02 15:23:04.606
+913	27	141.70	USD	\N	2024-08-15 04:00:00	8	2024	ALCALDIA - agosto 2024	\N	\N	PAGADO	f	2026-01-02 15:23:04.61
+914	27	145.68	USD	\N	2024-09-15 03:00:00	9	2024	ALCALDIA - septiembre 2024	\N	\N	PAGADO	f	2026-01-02 15:23:04.613
+915	27	137.80	USD	\N	2024-10-15 03:00:00	10	2024	ALCALDIA - octubre 2024	\N	\N	PAGADO	f	2026-01-02 15:23:04.615
+916	27	138.79	USD	\N	2024-11-15 03:00:00	11	2024	ALCALDIA - noviembre 2024	\N	\N	PAGADO	f	2026-01-02 15:23:04.619
+917	27	136.26	USD	\N	2024-12-15 03:00:00	12	2024	ALCALDIA - diciembre 2024	\N	\N	PAGADO	f	2026-01-02 15:23:04.621
+918	27	131.12	USD	\N	2025-01-15 03:00:00	1	2025	ALCALDIA - enero 2025	\N	\N	PAGADO	f	2026-01-02 15:23:04.624
+919	27	148.61	USD	\N	2025-02-15 03:00:00	2	2025	ALCALDIA - febrero 2025	\N	\N	PAGADO	f	2026-01-02 15:23:04.628
+920	27	149.44	USD	\N	2025-03-15 03:00:00	3	2025	ALCALDIA - marzo 2025	\N	\N	PAGADO	f	2026-01-02 15:23:04.633
+921	27	148.00	USD	\N	2025-04-15 04:00:00	4	2025	ALCALDIA - abril 2025	\N	\N	PAGADO	f	2026-01-02 15:23:04.634
+922	27	148.00	USD	\N	2025-05-15 04:00:00	5	2025	ALCALDIA - mayo 2025	\N	\N	PAGADO	f	2026-01-02 15:23:04.636
+923	27	149.05	USD	\N	2025-06-15 04:00:00	6	2025	ALCALDIA - junio 2025	\N	\N	PAGADO	f	2026-01-02 15:23:04.639
+924	27	134.52	USD	\N	2025-07-15 04:00:00	7	2025	ALCALDIA - julio 2025	\N	\N	PAGADO	f	2026-01-02 15:23:04.641
+925	27	131.00	USD	\N	2025-08-15 04:00:00	8	2025	ALCALDIA - agosto 2025	\N	\N	PAGADO	f	2026-01-02 15:23:04.643
+926	27	132.21	USD	\N	2025-09-15 03:00:00	9	2025	ALCALDIA - septiembre 2025	\N	\N	PAGADO	f	2026-01-02 15:23:04.645
+927	27	133.07	USD	\N	2025-10-15 03:00:00	10	2025	ALCALDIA - octubre 2025	\N	\N	PAGADO	f	2026-01-02 15:23:04.646
+928	27	130.09	USD	\N	2025-11-15 03:00:00	11	2025	ALCALDIA - noviembre 2025	\N	\N	PAGADO	f	2026-01-02 15:23:04.648
+929	28	140.00	USD	\N	2024-01-15 03:00:00	1	2024	GASTOS VARIOS - enero 2024	\N	\N	PAGADO	f	2026-01-02 15:23:04.651
+930	28	20.00	USD	\N	2024-02-15 03:00:00	2	2024	GASTOS VARIOS - febrero 2024	\N	\N	PAGADO	f	2026-01-02 15:23:04.653
+931	28	20.00	USD	\N	2024-03-15 03:00:00	3	2024	GASTOS VARIOS - marzo 2024	\N	\N	PAGADO	f	2026-01-02 15:23:04.656
+932	28	40.00	USD	\N	2024-04-15 04:00:00	4	2024	GASTOS VARIOS - abril 2024	\N	\N	PAGADO	f	2026-01-02 15:23:04.659
+933	28	40.00	USD	\N	2024-05-15 04:00:00	5	2024	GASTOS VARIOS - mayo 2024	\N	\N	PAGADO	f	2026-01-02 15:23:04.662
+934	28	51.00	USD	\N	2024-06-15 04:00:00	6	2024	GASTOS VARIOS - junio 2024	\N	\N	PAGADO	f	2026-01-02 15:23:04.663
+935	28	64.70	USD	\N	2024-07-15 04:00:00	7	2024	GASTOS VARIOS - julio 2024	\N	\N	PAGADO	f	2026-01-02 15:23:04.665
+936	28	51.71	USD	\N	2024-08-15 04:00:00	8	2024	GASTOS VARIOS - agosto 2024	\N	\N	PAGADO	f	2026-01-02 15:23:04.667
+937	28	51.05	USD	\N	2024-09-15 03:00:00	9	2024	GASTOS VARIOS - septiembre 2024	\N	\N	PAGADO	f	2026-01-02 15:23:04.668
+938	28	50.26	USD	\N	2024-10-15 03:00:00	10	2024	GASTOS VARIOS - octubre 2024	\N	\N	PAGADO	f	2026-01-02 15:23:04.669
+939	28	51.48	USD	\N	2024-11-15 03:00:00	11	2024	GASTOS VARIOS - noviembre 2024	\N	\N	PAGADO	f	2026-01-02 15:23:04.671
+940	28	90.92	USD	\N	2024-12-15 03:00:00	12	2024	GASTOS VARIOS - diciembre 2024	\N	\N	PAGADO	f	2026-01-02 15:23:04.673
+941	28	88.90	USD	\N	2025-01-15 03:00:00	1	2025	GASTOS VARIOS - enero 2025	\N	\N	PAGADO	f	2026-01-02 15:23:04.677
+942	28	48.48	USD	\N	2025-02-15 03:00:00	2	2025	GASTOS VARIOS - febrero 2025	\N	\N	PAGADO	f	2026-01-02 15:23:04.681
+943	28	49.57	USD	\N	2025-03-15 03:00:00	3	2025	GASTOS VARIOS - marzo 2025	\N	\N	PAGADO	f	2026-01-02 15:23:04.682
+944	28	49.05	USD	\N	2025-04-15 04:00:00	4	2025	GASTOS VARIOS - abril 2025	\N	\N	PAGADO	f	2026-01-02 15:23:04.684
+945	28	70.38	USD	\N	2025-05-15 04:00:00	5	2025	GASTOS VARIOS - mayo 2025	\N	\N	PAGADO	f	2026-01-02 15:23:04.687
+946	28	71.13	USD	\N	2025-06-15 04:00:00	6	2025	GASTOS VARIOS - junio 2025	\N	\N	PAGADO	f	2026-01-02 15:23:04.689
+947	28	72.81	USD	\N	2025-07-15 04:00:00	7	2025	GASTOS VARIOS - julio 2025	\N	\N	PAGADO	f	2026-01-02 15:23:04.693
+948	28	74.00	USD	\N	2025-08-15 04:00:00	8	2025	GASTOS VARIOS - agosto 2025	\N	\N	PAGADO	f	2026-01-02 15:23:04.695
+949	28	68.76	USD	\N	2025-09-15 03:00:00	9	2025	GASTOS VARIOS - septiembre 2025	\N	\N	PAGADO	f	2026-01-02 15:23:04.697
+950	28	70.13	USD	\N	2025-10-15 03:00:00	10	2025	GASTOS VARIOS - octubre 2025	\N	\N	PAGADO	f	2026-01-02 15:23:04.699
+951	30	4904.61	USD	\N	2023-06-15 04:00:00	6	2023	GASTO IMPORTACION - junio 2023	\N	\N	PAGADO	f	2026-01-02 15:23:04.701
+952	30	731.09	USD	\N	2023-07-15 04:00:00	7	2023	GASTO IMPORTACION - julio 2023	\N	\N	PAGADO	f	2026-01-02 15:23:04.703
+953	30	1880.83	USD	\N	2023-11-15 03:00:00	11	2023	GASTO IMPORTACION - noviembre 2023	\N	\N	PAGADO	f	2026-01-02 15:23:04.705
+954	30	3134.60	USD	\N	2024-02-15 03:00:00	2	2024	GASTO IMPORTACION - febrero 2024	\N	\N	PAGADO	f	2026-01-02 15:23:04.707
+955	18	125.00	USD	\N	2023-03-15 03:00:00	3	2023	WILMEN VALERA - marzo 2023	\N	\N	PAGADO	f	2026-01-02 15:23:54.999
+956	18	125.00	USD	\N	2023-04-15 04:00:00	4	2023	WILMEN VALERA - abril 2023	\N	\N	PAGADO	f	2026-01-02 15:23:55.002
+957	18	125.00	USD	\N	2023-05-15 04:00:00	5	2023	WILMEN VALERA - mayo 2023	\N	\N	PAGADO	f	2026-01-02 15:23:55.003
+958	18	125.00	USD	\N	2023-06-15 04:00:00	6	2023	WILMEN VALERA - junio 2023	\N	\N	PAGADO	f	2026-01-02 15:23:55.004
+959	18	125.00	USD	\N	2023-07-15 04:00:00	7	2023	WILMEN VALERA - julio 2023	\N	\N	PAGADO	f	2026-01-02 15:23:55.005
+960	18	125.00	USD	\N	2023-08-15 04:00:00	8	2023	WILMEN VALERA - agosto 2023	\N	\N	PAGADO	f	2026-01-02 15:23:55.006
+961	18	125.00	USD	\N	2023-09-15 03:00:00	9	2023	WILMEN VALERA - septiembre 2023	\N	\N	PAGADO	f	2026-01-02 15:23:55.008
+962	18	125.00	USD	\N	2023-10-15 03:00:00	10	2023	WILMEN VALERA - octubre 2023	\N	\N	PAGADO	f	2026-01-02 15:23:55.009
+963	18	125.00	USD	\N	2023-11-15 03:00:00	11	2023	WILMEN VALERA - noviembre 2023	\N	\N	PAGADO	f	2026-01-02 15:23:55.01
+964	18	125.00	USD	\N	2023-12-15 03:00:00	12	2023	WILMEN VALERA - diciembre 2023	\N	\N	PAGADO	f	2026-01-02 15:23:55.011
+965	18	125.00	USD	\N	2024-01-15 03:00:00	1	2024	WILMEN VALERA - enero 2024	\N	\N	PAGADO	f	2026-01-02 15:23:55.012
+966	18	125.00	USD	\N	2024-02-15 03:00:00	2	2024	WILMEN VALERA - febrero 2024	\N	\N	PAGADO	f	2026-01-02 15:23:55.014
+967	18	125.00	USD	\N	2024-03-15 03:00:00	3	2024	WILMEN VALERA - marzo 2024	\N	\N	PAGADO	f	2026-01-02 15:23:55.015
+968	18	125.00	USD	\N	2024-04-15 04:00:00	4	2024	WILMEN VALERA - abril 2024	\N	\N	PAGADO	f	2026-01-02 15:23:55.016
+969	18	125.00	USD	\N	2024-05-15 04:00:00	5	2024	WILMEN VALERA - mayo 2024	\N	\N	PAGADO	f	2026-01-02 15:23:55.017
+970	18	125.00	USD	\N	2024-06-15 04:00:00	6	2024	WILMEN VALERA - junio 2024	\N	\N	PAGADO	f	2026-01-02 15:23:55.018
+971	18	125.00	USD	\N	2024-07-15 04:00:00	7	2024	WILMEN VALERA - julio 2024	\N	\N	PAGADO	f	2026-01-02 15:23:55.02
+972	18	125.00	USD	\N	2024-08-15 04:00:00	8	2024	WILMEN VALERA - agosto 2024	\N	\N	PAGADO	f	2026-01-02 15:23:55.022
+973	18	125.00	USD	\N	2024-09-15 03:00:00	9	2024	WILMEN VALERA - septiembre 2024	\N	\N	PAGADO	f	2026-01-02 15:23:55.023
+974	18	125.00	USD	\N	2024-10-15 03:00:00	10	2024	WILMEN VALERA - octubre 2024	\N	\N	PAGADO	f	2026-01-02 15:23:55.024
+975	18	125.00	USD	\N	2024-11-15 03:00:00	11	2024	WILMEN VALERA - noviembre 2024	\N	\N	PAGADO	f	2026-01-02 15:23:55.025
+976	18	125.00	USD	\N	2024-12-15 03:00:00	12	2024	WILMEN VALERA - diciembre 2024	\N	\N	PAGADO	f	2026-01-02 15:23:55.027
+977	18	125.00	USD	\N	2025-01-15 03:00:00	1	2025	WILMEN VALERA - enero 2025	\N	\N	PAGADO	f	2026-01-02 15:23:55.034
+978	18	125.00	USD	\N	2025-02-15 03:00:00	2	2025	WILMEN VALERA - febrero 2025	\N	\N	PAGADO	f	2026-01-02 15:23:55.036
+979	18	125.00	USD	\N	2025-03-15 03:00:00	3	2025	WILMEN VALERA - marzo 2025	\N	\N	PAGADO	f	2026-01-02 15:23:55.038
+980	18	125.00	USD	\N	2025-04-15 04:00:00	4	2025	WILMEN VALERA - abril 2025	\N	\N	PAGADO	f	2026-01-02 15:23:55.039
+981	18	125.00	USD	\N	2025-05-15 04:00:00	5	2025	WILMEN VALERA - mayo 2025	\N	\N	PAGADO	f	2026-01-02 15:23:55.04
+982	18	125.00	USD	\N	2025-06-15 04:00:00	6	2025	WILMEN VALERA - junio 2025	\N	\N	PAGADO	f	2026-01-02 15:23:55.042
+983	18	125.00	USD	\N	2025-07-15 04:00:00	7	2025	WILMEN VALERA - julio 2025	\N	\N	PAGADO	f	2026-01-02 15:23:55.043
+984	18	125.00	USD	\N	2025-08-15 04:00:00	8	2025	WILMEN VALERA - agosto 2025	\N	\N	PAGADO	f	2026-01-02 15:23:55.044
+985	18	125.00	USD	\N	2025-09-15 03:00:00	9	2025	WILMEN VALERA - septiembre 2025	\N	\N	PAGADO	f	2026-01-02 15:23:55.046
+986	18	125.00	USD	\N	2025-10-15 03:00:00	10	2025	WILMEN VALERA - octubre 2025	\N	\N	PAGADO	f	2026-01-02 15:23:55.048
+987	18	125.00	USD	\N	2025-11-15 03:00:00	11	2025	WILMEN VALERA - noviembre 2025	\N	\N	PAGADO	f	2026-01-02 15:23:55.05
+988	18	125.00	USD	\N	2025-12-15 03:00:00	12	2025	WILMEN VALERA - diciembre 2025	\N	\N	PAGADO	f	2026-01-02 15:23:55.051
+989	19	21.00	USD	\N	2023-01-15 03:00:00	1	2023	VACACIONES - enero 2023	\N	\N	PAGADO	f	2026-01-02 15:23:55.053
+990	19	21.00	USD	\N	2023-02-15 03:00:00	2	2023	VACACIONES - febrero 2023	\N	\N	PAGADO	f	2026-01-02 15:23:55.054
+991	19	10.50	USD	\N	2023-03-15 03:00:00	3	2023	VACACIONES - marzo 2023	\N	\N	PAGADO	f	2026-01-02 15:23:55.056
+992	19	10.50	USD	\N	2023-04-15 04:00:00	4	2023	VACACIONES - abril 2023	\N	\N	PAGADO	f	2026-01-02 15:23:55.058
+993	19	10.50	USD	\N	2023-05-15 04:00:00	5	2023	VACACIONES - mayo 2023	\N	\N	PAGADO	f	2026-01-02 15:23:55.059
+994	19	10.50	USD	\N	2023-06-15 04:00:00	6	2023	VACACIONES - junio 2023	\N	\N	PAGADO	f	2026-01-02 15:23:55.06
+995	19	10.50	USD	\N	2023-07-15 04:00:00	7	2023	VACACIONES - julio 2023	\N	\N	PAGADO	f	2026-01-02 15:23:55.062
+996	19	10.50	USD	\N	2023-08-15 04:00:00	8	2023	VACACIONES - agosto 2023	\N	\N	PAGADO	f	2026-01-02 15:23:55.063
+997	19	10.50	USD	\N	2023-09-15 03:00:00	9	2023	VACACIONES - septiembre 2023	\N	\N	PAGADO	f	2026-01-02 15:23:55.065
+998	19	10.50	USD	\N	2023-10-15 03:00:00	10	2023	VACACIONES - octubre 2023	\N	\N	PAGADO	f	2026-01-02 15:23:55.067
+999	19	10.50	USD	\N	2023-11-15 03:00:00	11	2023	VACACIONES - noviembre 2023	\N	\N	PAGADO	f	2026-01-02 15:23:55.069
+1000	19	10.50	USD	\N	2023-12-15 03:00:00	12	2023	VACACIONES - diciembre 2023	\N	\N	PAGADO	f	2026-01-02 15:23:55.07
+1001	19	10.50	USD	\N	2024-01-15 03:00:00	1	2024	VACACIONES - enero 2024	\N	\N	PAGADO	f	2026-01-02 15:23:55.071
+1002	19	10.50	USD	\N	2024-02-15 03:00:00	2	2024	VACACIONES - febrero 2024	\N	\N	PAGADO	f	2026-01-02 15:23:55.072
+1003	19	10.50	USD	\N	2024-03-15 03:00:00	3	2024	VACACIONES - marzo 2024	\N	\N	PAGADO	f	2026-01-02 15:23:55.074
+1004	19	10.50	USD	\N	2024-04-15 04:00:00	4	2024	VACACIONES - abril 2024	\N	\N	PAGADO	f	2026-01-02 15:23:55.075
+1005	19	10.50	USD	\N	2024-05-15 04:00:00	5	2024	VACACIONES - mayo 2024	\N	\N	PAGADO	f	2026-01-02 15:23:55.077
+1006	19	10.50	USD	\N	2024-06-15 04:00:00	6	2024	VACACIONES - junio 2024	\N	\N	PAGADO	f	2026-01-02 15:23:55.079
+1007	19	10.50	USD	\N	2024-07-15 04:00:00	7	2024	VACACIONES - julio 2024	\N	\N	PAGADO	f	2026-01-02 15:23:55.08
+1008	19	10.50	USD	\N	2024-08-15 04:00:00	8	2024	VACACIONES - agosto 2024	\N	\N	PAGADO	f	2026-01-02 15:23:55.081
+1009	19	10.50	USD	\N	2024-09-15 03:00:00	9	2024	VACACIONES - septiembre 2024	\N	\N	PAGADO	f	2026-01-02 15:23:55.083
+1010	19	10.50	USD	\N	2024-10-15 03:00:00	10	2024	VACACIONES - octubre 2024	\N	\N	PAGADO	f	2026-01-02 15:23:55.088
+1011	19	10.50	USD	\N	2024-11-15 03:00:00	11	2024	VACACIONES - noviembre 2024	\N	\N	PAGADO	f	2026-01-02 15:23:55.09
+1012	19	10.50	USD	\N	2024-12-15 03:00:00	12	2024	VACACIONES - diciembre 2024	\N	\N	PAGADO	f	2026-01-02 15:23:55.092
+1013	19	10.50	USD	\N	2025-01-15 03:00:00	1	2025	VACACIONES - enero 2025	\N	\N	PAGADO	f	2026-01-02 15:23:55.094
+1014	19	10.50	USD	\N	2025-02-15 03:00:00	2	2025	VACACIONES - febrero 2025	\N	\N	PAGADO	f	2026-01-02 15:23:55.096
+1015	19	10.50	USD	\N	2025-03-15 03:00:00	3	2025	VACACIONES - marzo 2025	\N	\N	PAGADO	f	2026-01-02 15:23:55.098
+1016	19	10.50	USD	\N	2025-04-15 04:00:00	4	2025	VACACIONES - abril 2025	\N	\N	PAGADO	f	2026-01-02 15:23:55.1
+1017	19	10.50	USD	\N	2025-05-15 04:00:00	5	2025	VACACIONES - mayo 2025	\N	\N	PAGADO	f	2026-01-02 15:23:55.102
+1018	19	10.50	USD	\N	2025-06-15 04:00:00	6	2025	VACACIONES - junio 2025	\N	\N	PAGADO	f	2026-01-02 15:23:55.103
+1019	19	10.50	USD	\N	2025-07-15 04:00:00	7	2025	VACACIONES - julio 2025	\N	\N	PAGADO	f	2026-01-02 15:23:55.104
+1020	19	10.50	USD	\N	2025-08-15 04:00:00	8	2025	VACACIONES - agosto 2025	\N	\N	PAGADO	f	2026-01-02 15:23:55.105
+1021	19	10.50	USD	\N	2025-09-15 03:00:00	9	2025	VACACIONES - septiembre 2025	\N	\N	PAGADO	f	2026-01-02 15:23:55.108
+1022	19	10.50	USD	\N	2025-10-15 03:00:00	10	2025	VACACIONES - octubre 2025	\N	\N	PAGADO	f	2026-01-02 15:23:55.109
+1023	19	10.50	USD	\N	2025-11-15 03:00:00	11	2025	VACACIONES - noviembre 2025	\N	\N	PAGADO	f	2026-01-02 15:23:55.112
+1024	19	10.50	USD	\N	2025-12-15 03:00:00	12	2025	VACACIONES - diciembre 2025	\N	\N	PAGADO	f	2026-01-02 15:23:55.114
+1025	20	40.00	USD	\N	2023-01-15 03:00:00	1	2023	UTILIDAD - enero 2023	\N	\N	PAGADO	f	2026-01-02 15:23:55.115
+1026	20	40.00	USD	\N	2023-02-15 03:00:00	2	2023	UTILIDAD - febrero 2023	\N	\N	PAGADO	f	2026-01-02 15:23:55.117
+1027	20	21.00	USD	\N	2023-03-15 03:00:00	3	2023	UTILIDAD - marzo 2023	\N	\N	PAGADO	f	2026-01-02 15:23:55.119
+1028	20	21.00	USD	\N	2023-04-15 04:00:00	4	2023	UTILIDAD - abril 2023	\N	\N	PAGADO	f	2026-01-02 15:23:55.12
+1029	20	21.00	USD	\N	2023-05-15 04:00:00	5	2023	UTILIDAD - mayo 2023	\N	\N	PAGADO	f	2026-01-02 15:23:55.122
+1030	20	21.00	USD	\N	2023-06-15 04:00:00	6	2023	UTILIDAD - junio 2023	\N	\N	PAGADO	f	2026-01-02 15:23:55.125
+1031	20	21.00	USD	\N	2023-07-15 04:00:00	7	2023	UTILIDAD - julio 2023	\N	\N	PAGADO	f	2026-01-02 15:23:55.127
+1032	20	21.00	USD	\N	2023-08-15 04:00:00	8	2023	UTILIDAD - agosto 2023	\N	\N	PAGADO	f	2026-01-02 15:23:55.129
+1033	20	21.00	USD	\N	2023-09-15 03:00:00	9	2023	UTILIDAD - septiembre 2023	\N	\N	PAGADO	f	2026-01-02 15:23:55.13
+1034	20	21.00	USD	\N	2023-10-15 03:00:00	10	2023	UTILIDAD - octubre 2023	\N	\N	PAGADO	f	2026-01-02 15:23:55.132
+1035	20	21.00	USD	\N	2023-11-15 03:00:00	11	2023	UTILIDAD - noviembre 2023	\N	\N	PAGADO	f	2026-01-02 15:23:55.134
+1036	20	21.00	USD	\N	2023-12-15 03:00:00	12	2023	UTILIDAD - diciembre 2023	\N	\N	PAGADO	f	2026-01-02 15:23:55.136
+1037	20	21.00	USD	\N	2024-01-15 03:00:00	1	2024	UTILIDAD - enero 2024	\N	\N	PAGADO	f	2026-01-02 15:23:55.137
+1038	20	21.00	USD	\N	2024-02-15 03:00:00	2	2024	UTILIDAD - febrero 2024	\N	\N	PAGADO	f	2026-01-02 15:23:55.138
+1039	20	21.00	USD	\N	2024-03-15 03:00:00	3	2024	UTILIDAD - marzo 2024	\N	\N	PAGADO	f	2026-01-02 15:23:55.14
+1040	20	21.00	USD	\N	2024-04-15 04:00:00	4	2024	UTILIDAD - abril 2024	\N	\N	PAGADO	f	2026-01-02 15:23:55.141
+1041	20	21.00	USD	\N	2024-05-15 04:00:00	5	2024	UTILIDAD - mayo 2024	\N	\N	PAGADO	f	2026-01-02 15:23:55.142
+1042	20	21.00	USD	\N	2024-06-15 04:00:00	6	2024	UTILIDAD - junio 2024	\N	\N	PAGADO	f	2026-01-02 15:23:55.144
+1043	20	21.00	USD	\N	2024-07-15 04:00:00	7	2024	UTILIDAD - julio 2024	\N	\N	PAGADO	f	2026-01-02 15:23:55.146
+1044	20	21.00	USD	\N	2024-08-15 04:00:00	8	2024	UTILIDAD - agosto 2024	\N	\N	PAGADO	f	2026-01-02 15:23:55.148
+1045	20	21.00	USD	\N	2024-09-15 03:00:00	9	2024	UTILIDAD - septiembre 2024	\N	\N	PAGADO	f	2026-01-02 15:23:55.15
+1046	20	21.00	USD	\N	2024-10-15 03:00:00	10	2024	UTILIDAD - octubre 2024	\N	\N	PAGADO	f	2026-01-02 15:23:55.152
+1047	20	21.00	USD	\N	2024-11-15 03:00:00	11	2024	UTILIDAD - noviembre 2024	\N	\N	PAGADO	f	2026-01-02 15:23:55.154
+1048	20	21.00	USD	\N	2024-12-15 03:00:00	12	2024	UTILIDAD - diciembre 2024	\N	\N	PAGADO	f	2026-01-02 15:23:55.157
+1049	20	21.00	USD	\N	2025-01-15 03:00:00	1	2025	UTILIDAD - enero 2025	\N	\N	PAGADO	f	2026-01-02 15:23:55.16
+1050	20	21.00	USD	\N	2025-02-15 03:00:00	2	2025	UTILIDAD - febrero 2025	\N	\N	PAGADO	f	2026-01-02 15:23:55.162
+1051	20	21.00	USD	\N	2025-03-15 03:00:00	3	2025	UTILIDAD - marzo 2025	\N	\N	PAGADO	f	2026-01-02 15:23:55.163
+1052	20	21.00	USD	\N	2025-04-15 04:00:00	4	2025	UTILIDAD - abril 2025	\N	\N	PAGADO	f	2026-01-02 15:23:55.164
+1053	20	21.00	USD	\N	2025-05-15 04:00:00	5	2025	UTILIDAD - mayo 2025	\N	\N	PAGADO	f	2026-01-02 15:23:55.166
+1054	20	21.00	USD	\N	2025-06-15 04:00:00	6	2025	UTILIDAD - junio 2025	\N	\N	PAGADO	f	2026-01-02 15:23:55.167
+1055	20	21.00	USD	\N	2025-07-15 04:00:00	7	2025	UTILIDAD - julio 2025	\N	\N	PAGADO	f	2026-01-02 15:23:55.168
+1056	20	21.00	USD	\N	2025-08-15 04:00:00	8	2025	UTILIDAD - agosto 2025	\N	\N	PAGADO	f	2026-01-02 15:23:55.17
+1057	20	21.00	USD	\N	2025-09-15 03:00:00	9	2025	UTILIDAD - septiembre 2025	\N	\N	PAGADO	f	2026-01-02 15:23:55.171
+1058	20	21.00	USD	\N	2025-10-15 03:00:00	10	2025	UTILIDAD - octubre 2025	\N	\N	PAGADO	f	2026-01-02 15:23:55.173
+1059	20	21.00	USD	\N	2025-11-15 03:00:00	11	2025	UTILIDAD - noviembre 2025	\N	\N	PAGADO	f	2026-01-02 15:23:55.177
+1060	20	21.00	USD	\N	2025-12-15 03:00:00	12	2025	UTILIDAD - diciembre 2025	\N	\N	PAGADO	f	2026-01-02 15:23:55.18
+1061	21	427.10	USD	\N	2023-03-15 03:00:00	3	2023	COMISION POR VENTAS - marzo 2023	\N	\N	PAGADO	f	2026-01-02 15:23:55.189
+1062	21	66.64	USD	\N	2023-03-15 03:00:00	3	2023	COMISION ML VENTA - marzo 2023	\N	\N	PAGADO	f	2026-01-02 15:23:55.193
+1063	22	41.00	USD	\N	2023-03-15 03:00:00	3	2023	PUBLICIDAD - marzo 2023	\N	\N	PAGADO	f	2026-01-02 15:23:55.196
+1064	22	160.00	USD	\N	2023-10-15 03:00:00	10	2023	PUBLICIDAD - octubre 2023	\N	\N	PAGADO	f	2026-01-02 15:23:55.198
+1065	23	23.37	USD	\N	2023-01-15 03:00:00	1	2023	CONDOMINIO - enero 2023	\N	\N	PAGADO	f	2026-01-02 15:23:55.2
+1066	23	25.82	USD	\N	2023-02-15 03:00:00	2	2023	CONDOMINIO - febrero 2023	\N	\N	PAGADO	f	2026-01-02 15:23:55.202
+1067	23	29.03	USD	\N	2023-03-15 03:00:00	3	2023	CONDOMINIO - marzo 2023	\N	\N	PAGADO	f	2026-01-02 15:23:55.204
+1068	23	31.00	USD	\N	2023-04-15 04:00:00	4	2023	CONDOMINIO - abril 2023	\N	\N	PAGADO	f	2026-01-02 15:23:55.206
+1069	23	53.40	USD	\N	2023-05-15 04:00:00	5	2023	CONDOMINIO - mayo 2023	\N	\N	PAGADO	f	2026-01-02 15:23:55.208
+1070	23	52.16	USD	\N	2023-06-15 04:00:00	6	2023	CONDOMINIO - junio 2023	\N	\N	PAGADO	f	2026-01-02 15:23:55.211
+1071	23	29.62	USD	\N	2023-07-15 04:00:00	7	2023	CONDOMINIO - julio 2023	\N	\N	PAGADO	f	2026-01-02 15:23:55.213
+1072	23	31.88	USD	\N	2023-08-15 04:00:00	8	2023	CONDOMINIO - agosto 2023	\N	\N	PAGADO	f	2026-01-02 15:23:55.215
+1073	23	29.77	USD	\N	2023-09-15 03:00:00	9	2023	CONDOMINIO - septiembre 2023	\N	\N	PAGADO	f	2026-01-02 15:23:55.218
+1074	23	74.94	USD	\N	2023-10-15 03:00:00	10	2023	CONDOMINIO - octubre 2023	\N	\N	PAGADO	f	2026-01-02 15:23:55.219
+1075	23	45.59	USD	\N	2023-11-15 03:00:00	11	2023	CONDOMINIO - noviembre 2023	\N	\N	PAGADO	f	2026-01-02 15:23:55.221
+1076	23	37.49	USD	\N	2023-12-15 03:00:00	12	2023	CONDOMINIO - diciembre 2023	\N	\N	PAGADO	f	2026-01-02 15:23:55.223
+1077	23	35.39	USD	\N	2024-01-15 03:00:00	1	2024	CONDOMINIO - enero 2024	\N	\N	PAGADO	f	2026-01-02 15:23:55.225
+1078	23	34.38	USD	\N	2024-02-15 03:00:00	2	2024	CONDOMINIO - febrero 2024	\N	\N	PAGADO	f	2026-01-02 15:23:55.228
+1079	23	39.14	USD	\N	2024-03-15 03:00:00	3	2024	CONDOMINIO - marzo 2024	\N	\N	PAGADO	f	2026-01-02 15:23:55.23
+1080	23	34.60	USD	\N	2024-04-15 04:00:00	4	2024	CONDOMINIO - abril 2024	\N	\N	PAGADO	f	2026-01-02 15:23:55.234
+1081	23	35.29	USD	\N	2024-05-15 04:00:00	5	2024	CONDOMINIO - mayo 2024	\N	\N	PAGADO	f	2026-01-02 15:23:55.236
+1082	23	41.14	USD	\N	2024-06-15 04:00:00	6	2024	CONDOMINIO - junio 2024	\N	\N	PAGADO	f	2026-01-02 15:23:55.238
+1083	23	36.71	USD	\N	2024-07-15 04:00:00	7	2024	CONDOMINIO - julio 2024	\N	\N	PAGADO	f	2026-01-02 15:23:55.24
+1084	23	40.86	USD	\N	2024-08-15 04:00:00	8	2024	CONDOMINIO - agosto 2024	\N	\N	PAGADO	f	2026-01-02 15:23:55.242
+1085	23	48.16	USD	\N	2024-09-15 03:00:00	9	2024	CONDOMINIO - septiembre 2024	\N	\N	PAGADO	f	2026-01-02 15:23:55.243
+1086	23	77.19	USD	\N	2024-10-15 03:00:00	10	2024	CONDOMINIO - octubre 2024	\N	\N	PAGADO	f	2026-01-02 15:23:55.244
+1087	23	43.39	USD	\N	2024-11-15 03:00:00	11	2024	CONDOMINIO - noviembre 2024	\N	\N	PAGADO	f	2026-01-02 15:23:55.245
+1088	23	34.64	USD	\N	2024-12-15 03:00:00	12	2024	CONDOMINIO - diciembre 2024	\N	\N	PAGADO	f	2026-01-02 15:23:55.247
+1089	23	39.89	USD	\N	2025-01-15 03:00:00	1	2025	CONDOMINIO - enero 2025	\N	\N	PAGADO	f	2026-01-02 15:23:55.248
+1090	23	36.24	USD	\N	2025-02-15 03:00:00	2	2025	CONDOMINIO - febrero 2025	\N	\N	PAGADO	f	2026-01-02 15:23:55.255
+1091	23	46.64	USD	\N	2025-03-15 03:00:00	3	2025	CONDOMINIO - marzo 2025	\N	\N	PAGADO	f	2026-01-02 15:23:55.257
+1092	23	53.49	USD	\N	2025-04-15 04:00:00	4	2025	CONDOMINIO - abril 2025	\N	\N	PAGADO	f	2026-01-02 15:23:55.258
+1093	23	64.52	USD	\N	2025-05-15 04:00:00	5	2025	CONDOMINIO - mayo 2025	\N	\N	PAGADO	f	2026-01-02 15:23:55.26
+1094	23	38.70	USD	\N	2025-06-15 04:00:00	6	2025	CONDOMINIO - junio 2025	\N	\N	PAGADO	f	2026-01-02 15:23:55.261
+1095	23	55.87	USD	\N	2025-07-15 04:00:00	7	2025	CONDOMINIO - julio 2025	\N	\N	PAGADO	f	2026-01-02 15:23:55.263
+1096	23	40.31	USD	\N	2025-08-15 04:00:00	8	2025	CONDOMINIO - agosto 2025	\N	\N	PAGADO	f	2026-01-02 15:23:55.264
+1097	23	55.11	USD	\N	2025-09-15 03:00:00	9	2025	CONDOMINIO - septiembre 2025	\N	\N	PAGADO	f	2026-01-02 15:23:55.266
+1098	23	47.20	USD	\N	2025-10-15 03:00:00	10	2025	CONDOMINIO - octubre 2025	\N	\N	PAGADO	f	2026-01-02 15:23:55.267
+1099	24	7.58	USD	\N	2023-01-15 03:00:00	1	2023	CANTV - enero 2023	\N	\N	PAGADO	f	2026-01-02 15:23:55.268
+1100	24	9.56	USD	\N	2023-02-15 03:00:00	2	2023	CANTV - febrero 2023	\N	\N	PAGADO	f	2026-01-02 15:23:55.269
+1101	24	12.23	USD	\N	2023-03-15 03:00:00	3	2023	CANTV - marzo 2023	\N	\N	PAGADO	f	2026-01-02 15:23:55.271
+1102	24	13.58	USD	\N	2023-04-15 04:00:00	4	2023	CANTV - abril 2023	\N	\N	PAGADO	f	2026-01-02 15:23:55.274
+1103	24	14.50	USD	\N	2023-05-15 04:00:00	5	2023	CANTV - mayo 2023	\N	\N	PAGADO	f	2026-01-02 15:23:55.277
+1104	24	15.22	USD	\N	2023-06-15 04:00:00	6	2023	CANTV - junio 2023	\N	\N	PAGADO	f	2026-01-02 15:23:55.279
+1105	24	15.31	USD	\N	2023-07-15 04:00:00	7	2023	CANTV - julio 2023	\N	\N	PAGADO	f	2026-01-02 15:23:55.28
+1106	24	14.51	USD	\N	2023-08-15 04:00:00	8	2023	CANTV - agosto 2023	\N	\N	PAGADO	f	2026-01-02 15:23:55.282
+1107	24	15.04	USD	\N	2023-09-15 03:00:00	9	2023	CANTV - septiembre 2023	\N	\N	PAGADO	f	2026-01-02 15:23:55.287
+1108	24	15.81	USD	\N	2023-10-15 03:00:00	10	2023	CANTV - octubre 2023	\N	\N	PAGADO	f	2026-01-02 15:23:55.289
+1109	24	24.06	USD	\N	2023-11-15 03:00:00	11	2023	CANTV - noviembre 2023	\N	\N	PAGADO	f	2026-01-02 15:23:55.291
+1110	24	24.00	USD	\N	2023-12-15 03:00:00	12	2023	CANTV - diciembre 2023	\N	\N	PAGADO	f	2026-01-02 15:23:55.292
+1111	24	17.67	USD	\N	2024-01-15 03:00:00	1	2024	CANTV - enero 2024	\N	\N	PAGADO	f	2026-01-02 15:23:55.293
+1112	24	17.55	USD	\N	2024-05-15 04:00:00	5	2024	CANTV - mayo 2024	\N	\N	PAGADO	f	2026-01-02 15:23:55.295
+1113	24	17.50	USD	\N	2024-07-15 04:00:00	7	2024	CANTV - julio 2024	\N	\N	PAGADO	f	2026-01-02 15:23:55.297
+1114	24	17.23	USD	\N	2024-08-15 04:00:00	8	2024	CANTV - agosto 2024	\N	\N	PAGADO	f	2026-01-02 15:23:55.301
+1115	24	17.51	USD	\N	2024-09-15 03:00:00	9	2024	CANTV - septiembre 2024	\N	\N	PAGADO	f	2026-01-02 15:23:55.303
+1116	24	17.22	USD	\N	2024-11-15 03:00:00	11	2024	CANTV - noviembre 2024	\N	\N	PAGADO	f	2026-01-02 15:23:55.306
+1117	24	16.91	USD	\N	2024-12-15 03:00:00	12	2024	CANTV - diciembre 2024	\N	\N	PAGADO	f	2026-01-02 15:23:55.309
+1118	24	19.16	USD	\N	2025-01-15 03:00:00	1	2025	CANTV - enero 2025	\N	\N	PAGADO	f	2026-01-02 15:23:55.311
+1119	24	18.73	USD	\N	2025-02-15 03:00:00	2	2025	CANTV - febrero 2025	\N	\N	PAGADO	f	2026-01-02 15:23:55.313
+1120	24	17.19	USD	\N	2025-03-15 03:00:00	3	2025	CANTV - marzo 2025	\N	\N	PAGADO	f	2026-01-02 15:23:55.314
+1121	24	13.79	USD	\N	2025-04-15 04:00:00	4	2025	CANTV - abril 2025	\N	\N	PAGADO	f	2026-01-02 15:23:55.316
+1122	24	12.18	USD	\N	2025-05-15 04:00:00	5	2025	CANTV - mayo 2025	\N	\N	PAGADO	f	2026-01-02 15:23:55.317
+1123	24	16.88	USD	\N	2025-06-15 04:00:00	6	2025	CANTV - junio 2025	\N	\N	PAGADO	f	2026-01-02 15:23:55.319
+1124	24	16.82	USD	\N	2025-07-15 04:00:00	7	2025	CANTV - julio 2025	\N	\N	PAGADO	f	2026-01-02 15:23:55.32
+1125	24	16.23	USD	\N	2025-08-15 04:00:00	8	2025	CANTV - agosto 2025	\N	\N	PAGADO	f	2026-01-02 15:23:55.321
+1126	24	16.42	USD	\N	2025-09-15 03:00:00	9	2025	CANTV - septiembre 2025	\N	\N	PAGADO	f	2026-01-02 15:23:55.322
+1127	24	16.50	USD	\N	2025-10-15 03:00:00	10	2025	CANTV - octubre 2025	\N	\N	PAGADO	f	2026-01-02 15:23:55.323
+1128	25	5.50	USD	\N	2023-05-15 04:00:00	5	2023	CELULAR 1 - mayo 2023	\N	\N	PAGADO	f	2026-01-02 15:23:55.325
+1129	25	4.60	USD	\N	2023-06-15 04:00:00	6	2023	CELULAR 1 - junio 2023	\N	\N	PAGADO	f	2026-01-02 15:23:55.326
+1130	25	4.50	USD	\N	2023-07-15 04:00:00	7	2023	CELULAR 1 - julio 2023	\N	\N	PAGADO	f	2026-01-02 15:23:55.327
+1131	25	8.50	USD	\N	2023-08-15 04:00:00	8	2023	CELULAR 1 - agosto 2023	\N	\N	PAGADO	f	2026-01-02 15:23:55.328
+1132	25	29.00	USD	\N	2024-01-15 03:00:00	1	2024	CELULAR 1 - enero 2024	\N	\N	PAGADO	f	2026-01-02 15:23:55.33
+1133	25	28.27	USD	\N	2024-02-15 03:00:00	2	2024	CELULAR 1 - febrero 2024	\N	\N	PAGADO	f	2026-01-02 15:23:55.331
+1134	25	28.98	USD	\N	2024-03-15 03:00:00	3	2024	CELULAR 1 - marzo 2024	\N	\N	PAGADO	f	2026-01-02 15:23:55.335
+1135	25	43.00	USD	\N	2024-04-15 04:00:00	4	2024	CELULAR 1 - abril 2024	\N	\N	PAGADO	f	2026-01-02 15:23:55.337
+1136	25	27.62	USD	\N	2024-05-15 04:00:00	5	2024	CELULAR 1 - mayo 2024	\N	\N	PAGADO	f	2026-01-02 15:23:55.338
+1137	25	27.65	USD	\N	2024-06-15 04:00:00	6	2024	CELULAR 1 - junio 2024	\N	\N	PAGADO	f	2026-01-02 15:23:55.342
+1138	25	33.90	USD	\N	2024-07-15 04:00:00	7	2024	CELULAR 1 - julio 2024	\N	\N	PAGADO	f	2026-01-02 15:23:55.344
+1139	25	33.53	USD	\N	2024-08-15 04:00:00	8	2024	CELULAR 1 - agosto 2024	\N	\N	PAGADO	f	2026-01-02 15:23:55.346
+1140	25	36.20	USD	\N	2024-09-15 03:00:00	9	2024	CELULAR 1 - septiembre 2024	\N	\N	PAGADO	f	2026-01-02 15:23:55.348
+1141	25	37.55	USD	\N	2024-10-15 03:00:00	10	2024	CELULAR 1 - octubre 2024	\N	\N	PAGADO	f	2026-01-02 15:23:55.356
+1142	25	47.59	USD	\N	2024-11-15 03:00:00	11	2024	CELULAR 1 - noviembre 2024	\N	\N	PAGADO	f	2026-01-02 15:23:55.358
+1143	25	22.88	USD	\N	2025-02-15 03:00:00	2	2025	CELULAR 1 - febrero 2025	\N	\N	PAGADO	f	2026-01-02 15:23:55.359
+1144	25	27.28	USD	\N	2025-03-15 03:00:00	3	2025	CELULAR 1 - marzo 2025	\N	\N	PAGADO	f	2026-01-02 15:23:55.36
+1145	25	23.61	USD	\N	2025-04-15 04:00:00	4	2025	CELULAR 1 - abril 2025	\N	\N	PAGADO	f	2026-01-02 15:23:55.361
+1146	25	27.02	USD	\N	2025-05-15 04:00:00	5	2025	CELULAR 1 - mayo 2025	\N	\N	PAGADO	f	2026-01-02 15:23:55.362
+1147	25	35.09	USD	\N	2025-06-15 04:00:00	6	2025	CELULAR 1 - junio 2025	\N	\N	PAGADO	f	2026-01-02 15:23:55.363
+1148	25	25.43	USD	\N	2025-07-15 04:00:00	7	2025	CELULAR 1 - julio 2025	\N	\N	PAGADO	f	2026-01-02 15:23:55.364
+1149	25	24.45	USD	\N	2025-08-15 04:00:00	8	2025	CELULAR 1 - agosto 2025	\N	\N	PAGADO	f	2026-01-02 15:23:55.366
+1150	25	28.96	USD	\N	2025-09-15 03:00:00	9	2025	CELULAR 1 - septiembre 2025	\N	\N	PAGADO	f	2026-01-02 15:23:55.369
+1151	25	34.53	USD	\N	2025-10-15 03:00:00	10	2025	CELULAR 1 - octubre 2025	\N	\N	PAGADO	f	2026-01-02 15:23:55.371
+1152	25	14.20	USD	\N	2023-04-15 04:00:00	4	2023	CELULAR ELEVASHOP - abril 2023	\N	\N	PAGADO	f	2026-01-02 15:23:55.373
+1153	25	3.20	USD	\N	2023-05-15 04:00:00	5	2023	CELULAR ELEVASHOP - mayo 2023	\N	\N	PAGADO	f	2026-01-02 15:23:55.374
+1154	25	3.21	USD	\N	2023-06-15 04:00:00	6	2023	CELULAR ELEVASHOP - junio 2023	\N	\N	PAGADO	f	2026-01-02 15:23:55.375
+1155	25	3.13	USD	\N	2023-07-15 04:00:00	7	2023	CELULAR ELEVASHOP - julio 2023	\N	\N	PAGADO	f	2026-01-02 15:23:55.377
+1156	25	3.15	USD	\N	2023-08-15 04:00:00	8	2023	CELULAR ELEVASHOP - agosto 2023	\N	\N	PAGADO	f	2026-01-02 15:23:55.378
+1157	25	4.17	USD	\N	2023-12-15 03:00:00	12	2023	CELULAR ELEVASHOP - diciembre 2023	\N	\N	PAGADO	f	2026-01-02 15:23:55.38
+1158	25	4.17	USD	\N	2024-01-15 03:00:00	1	2024	CELULAR ELEVASHOP - enero 2024	\N	\N	PAGADO	f	2026-01-02 15:23:55.382
+1159	25	2.77	USD	\N	2024-02-15 03:00:00	2	2024	CELULAR ELEVASHOP - febrero 2024	\N	\N	PAGADO	f	2026-01-02 15:23:55.383
+1160	25	4.15	USD	\N	2024-03-15 03:00:00	3	2024	CELULAR ELEVASHOP - marzo 2024	\N	\N	PAGADO	f	2026-01-02 15:23:55.384
+1161	25	4.11	USD	\N	2024-04-15 04:00:00	4	2024	CELULAR ELEVASHOP - abril 2024	\N	\N	PAGADO	f	2026-01-02 15:23:55.386
+1162	25	4.12	USD	\N	2024-05-15 04:00:00	5	2024	CELULAR ELEVASHOP - mayo 2024	\N	\N	PAGADO	f	2026-01-02 15:23:55.388
+1163	25	4.12	USD	\N	2024-06-15 04:00:00	6	2024	CELULAR ELEVASHOP - junio 2024	\N	\N	PAGADO	f	2026-01-02 15:23:55.389
+1164	25	9.57	USD	\N	2024-07-15 04:00:00	7	2024	CELULAR ELEVASHOP - julio 2024	\N	\N	PAGADO	f	2026-01-02 15:23:55.39
+1165	25	4.11	USD	\N	2024-08-15 04:00:00	8	2024	CELULAR ELEVASHOP - agosto 2024	\N	\N	PAGADO	f	2026-01-02 15:23:55.391
+1166	25	5.55	USD	\N	2024-09-15 03:00:00	9	2024	CELULAR ELEVASHOP - septiembre 2024	\N	\N	PAGADO	f	2026-01-02 15:23:55.392
+1167	25	3.44	USD	\N	2024-10-15 03:00:00	10	2024	CELULAR ELEVASHOP - octubre 2024	\N	\N	PAGADO	f	2026-01-02 15:23:55.394
+1168	25	6.74	USD	\N	2025-02-15 03:00:00	2	2025	CELULAR ELEVASHOP - febrero 2025	\N	\N	PAGADO	f	2026-01-02 15:23:55.397
+1169	25	6.14	USD	\N	2025-03-15 03:00:00	3	2025	CELULAR ELEVASHOP - marzo 2025	\N	\N	PAGADO	f	2026-01-02 15:23:55.398
+1170	25	6.08	USD	\N	2025-04-15 04:00:00	4	2025	CELULAR ELEVASHOP - abril 2025	\N	\N	PAGADO	f	2026-01-02 15:23:55.4
+1171	25	5.98	USD	\N	2025-05-15 04:00:00	5	2025	CELULAR ELEVASHOP - mayo 2025	\N	\N	PAGADO	f	2026-01-02 15:23:55.4
+1172	25	6.49	USD	\N	2025-06-15 04:00:00	6	2025	CELULAR ELEVASHOP - junio 2025	\N	\N	PAGADO	f	2026-01-02 15:23:55.402
+1173	25	5.61	USD	\N	2025-07-15 04:00:00	7	2025	CELULAR ELEVASHOP - julio 2025	\N	\N	PAGADO	f	2026-01-02 15:23:55.403
+1174	25	4.94	USD	\N	2025-08-15 04:00:00	8	2025	CELULAR ELEVASHOP - agosto 2025	\N	\N	PAGADO	f	2026-01-02 15:23:55.405
+1175	25	3.30	USD	\N	2025-09-15 03:00:00	9	2025	CELULAR ELEVASHOP - septiembre 2025	\N	\N	PAGADO	f	2026-01-02 15:23:55.406
+1176	25	5.92	USD	\N	2025-10-15 03:00:00	10	2025	CELULAR ELEVASHOP - octubre 2025	\N	\N	PAGADO	f	2026-01-02 15:23:55.407
+1177	26	23.12	USD	\N	2023-01-15 03:00:00	1	2023	LUZ - enero 2023	\N	\N	PAGADO	f	2026-01-02 15:23:55.408
+1178	26	30.24	USD	\N	2023-02-15 03:00:00	2	2023	LUZ - febrero 2023	\N	\N	PAGADO	f	2026-01-02 15:23:55.409
+1179	26	34.85	USD	\N	2023-03-15 03:00:00	3	2023	LUZ - marzo 2023	\N	\N	PAGADO	f	2026-01-02 15:23:55.41
+1180	26	36.10	USD	\N	2023-04-15 04:00:00	4	2023	LUZ - abril 2023	\N	\N	PAGADO	f	2026-01-02 15:23:55.411
+1181	26	36.11	USD	\N	2023-05-15 04:00:00	5	2023	LUZ - mayo 2023	\N	\N	PAGADO	f	2026-01-02 15:23:55.412
+1182	26	36.64	USD	\N	2023-06-15 04:00:00	6	2023	LUZ - junio 2023	\N	\N	PAGADO	f	2026-01-02 15:23:55.413
+1183	26	34.67	USD	\N	2023-07-15 04:00:00	7	2023	LUZ - julio 2023	\N	\N	PAGADO	f	2026-01-02 15:23:55.414
+1184	26	31.69	USD	\N	2023-08-15 04:00:00	8	2023	LUZ - agosto 2023	\N	\N	PAGADO	f	2026-01-02 15:23:55.415
+1185	26	31.49	USD	\N	2023-09-15 03:00:00	9	2023	LUZ - septiembre 2023	\N	\N	PAGADO	f	2026-01-02 15:23:55.417
+1186	26	30.42	USD	\N	2023-10-15 03:00:00	10	2023	LUZ - octubre 2023	\N	\N	PAGADO	f	2026-01-02 15:23:55.418
+1187	26	35.88	USD	\N	2023-11-15 03:00:00	11	2023	LUZ - noviembre 2023	\N	\N	PAGADO	f	2026-01-02 15:23:55.419
+1188	26	36.64	USD	\N	2023-12-15 03:00:00	12	2023	LUZ - diciembre 2023	\N	\N	PAGADO	f	2026-01-02 15:23:55.42
+1189	26	36.59	USD	\N	2024-01-15 03:00:00	1	2024	LUZ - enero 2024	\N	\N	PAGADO	f	2026-01-02 15:23:55.422
+1190	26	36.10	USD	\N	2024-02-15 03:00:00	2	2024	LUZ - febrero 2024	\N	\N	PAGADO	f	2026-01-02 15:23:55.423
+1191	26	33.14	USD	\N	2024-03-15 03:00:00	3	2024	LUZ - marzo 2024	\N	\N	PAGADO	f	2026-01-02 15:23:55.425
+1192	26	35.30	USD	\N	2024-04-15 04:00:00	4	2024	LUZ - abril 2024	\N	\N	PAGADO	f	2026-01-02 15:23:55.427
+1193	26	41.81	USD	\N	2024-05-15 04:00:00	5	2024	LUZ - mayo 2024	\N	\N	PAGADO	f	2026-01-02 15:23:55.428
+1194	26	41.38	USD	\N	2024-06-15 04:00:00	6	2024	LUZ - junio 2024	\N	\N	PAGADO	f	2026-01-02 15:23:55.43
+1195	26	36.81	USD	\N	2024-08-15 04:00:00	8	2024	LUZ - agosto 2024	\N	\N	PAGADO	f	2026-01-02 15:23:55.435
+1196	26	24.65	USD	\N	2024-10-15 03:00:00	10	2024	LUZ - octubre 2024	\N	\N	PAGADO	f	2026-01-02 15:23:55.437
+1197	26	44.46	USD	\N	2024-11-15 03:00:00	11	2024	LUZ - noviembre 2024	\N	\N	PAGADO	f	2026-01-02 15:23:55.439
+1198	26	31.82	USD	\N	2024-12-15 03:00:00	12	2024	LUZ - diciembre 2024	\N	\N	PAGADO	f	2026-01-02 15:23:55.441
+1199	26	28.32	USD	\N	2025-01-15 03:00:00	1	2025	LUZ - enero 2025	\N	\N	PAGADO	f	2026-01-02 15:23:55.442
+1200	26	27.28	USD	\N	2025-02-15 03:00:00	2	2025	LUZ - febrero 2025	\N	\N	PAGADO	f	2026-01-02 15:23:55.443
+1201	26	27.08	USD	\N	2025-03-15 03:00:00	3	2025	LUZ - marzo 2025	\N	\N	PAGADO	f	2026-01-02 15:23:55.445
+1202	26	27.38	USD	\N	2025-04-15 04:00:00	4	2025	LUZ - abril 2025	\N	\N	PAGADO	f	2026-01-02 15:23:55.446
+1203	26	25.09	USD	\N	2025-05-15 04:00:00	5	2025	LUZ - mayo 2025	\N	\N	PAGADO	f	2026-01-02 15:23:55.447
+1204	26	29.03	USD	\N	2025-06-15 04:00:00	6	2025	LUZ - junio 2025	\N	\N	PAGADO	f	2026-01-02 15:23:55.451
+1205	26	24.35	USD	\N	2025-07-15 04:00:00	7	2025	LUZ - julio 2025	\N	\N	PAGADO	f	2026-01-02 15:23:55.454
+1206	26	21.20	USD	\N	2025-08-15 04:00:00	8	2025	LUZ - agosto 2025	\N	\N	PAGADO	f	2026-01-02 15:23:55.456
+1207	26	26.68	USD	\N	2025-09-15 03:00:00	9	2025	LUZ - septiembre 2025	\N	\N	PAGADO	f	2026-01-02 15:23:55.458
+1208	26	29.89	USD	\N	2025-10-15 03:00:00	10	2025	LUZ - octubre 2025	\N	\N	PAGADO	f	2026-01-02 15:23:55.459
+1209	27	56.36	USD	\N	2023-01-15 03:00:00	1	2023	ALCALDIA - enero 2023	\N	\N	PAGADO	f	2026-01-02 15:23:55.46
+1210	27	145.00	USD	\N	2023-02-15 03:00:00	2	2023	ALCALDIA - febrero 2023	\N	\N	PAGADO	f	2026-01-02 15:23:55.462
+1211	27	146.00	USD	\N	2023-03-15 03:00:00	3	2023	ALCALDIA - marzo 2023	\N	\N	PAGADO	f	2026-01-02 15:23:55.463
+1212	27	141.00	USD	\N	2023-04-15 04:00:00	4	2023	ALCALDIA - abril 2023	\N	\N	PAGADO	f	2026-01-02 15:23:55.464
+1213	27	144.00	USD	\N	2023-05-15 04:00:00	5	2023	ALCALDIA - mayo 2023	\N	\N	PAGADO	f	2026-01-02 15:23:55.465
+1214	27	145.00	USD	\N	2023-06-15 04:00:00	6	2023	ALCALDIA - junio 2023	\N	\N	PAGADO	f	2026-01-02 15:23:55.467
+1215	27	146.00	USD	\N	2023-07-15 04:00:00	7	2023	ALCALDIA - julio 2023	\N	\N	PAGADO	f	2026-01-02 15:23:55.468
+1216	27	144.60	USD	\N	2023-08-15 04:00:00	8	2023	ALCALDIA - agosto 2023	\N	\N	PAGADO	f	2026-01-02 15:23:55.47
+1217	27	145.15	USD	\N	2023-09-15 03:00:00	9	2023	ALCALDIA - septiembre 2023	\N	\N	PAGADO	f	2026-01-02 15:23:55.472
+1218	27	146.00	USD	\N	2023-10-15 03:00:00	10	2023	ALCALDIA - octubre 2023	\N	\N	PAGADO	f	2026-01-02 15:23:55.474
+1219	27	146.10	USD	\N	2023-11-15 03:00:00	11	2023	ALCALDIA - noviembre 2023	\N	\N	PAGADO	f	2026-01-02 15:23:55.476
+1220	27	148.12	USD	\N	2023-12-15 03:00:00	12	2023	ALCALDIA - diciembre 2023	\N	\N	PAGADO	f	2026-01-02 15:23:55.477
+1221	27	170.94	USD	\N	2024-01-15 03:00:00	1	2024	ALCALDIA - enero 2024	\N	\N	PAGADO	f	2026-01-02 15:23:55.479
+1222	27	143.30	USD	\N	2024-02-15 03:00:00	2	2024	ALCALDIA - febrero 2024	\N	\N	PAGADO	f	2026-01-02 15:23:55.48
+1223	27	152.30	USD	\N	2024-03-15 03:00:00	3	2024	ALCALDIA - marzo 2024	\N	\N	PAGADO	f	2026-01-02 15:23:55.481
+1224	27	142.00	USD	\N	2024-04-15 04:00:00	4	2024	ALCALDIA - abril 2024	\N	\N	PAGADO	f	2026-01-02 15:23:55.485
+1225	27	139.74	USD	\N	2024-05-15 04:00:00	5	2024	ALCALDIA - mayo 2024	\N	\N	PAGADO	f	2026-01-02 15:23:55.487
+1226	27	142.03	USD	\N	2024-06-15 04:00:00	6	2024	ALCALDIA - junio 2024	\N	\N	PAGADO	f	2026-01-02 15:23:55.489
+1227	27	139.88	USD	\N	2024-07-15 04:00:00	7	2024	ALCALDIA - julio 2024	\N	\N	PAGADO	f	2026-01-02 15:23:55.491
+1228	27	141.70	USD	\N	2024-08-15 04:00:00	8	2024	ALCALDIA - agosto 2024	\N	\N	PAGADO	f	2026-01-02 15:23:55.492
+1229	27	145.68	USD	\N	2024-09-15 03:00:00	9	2024	ALCALDIA - septiembre 2024	\N	\N	PAGADO	f	2026-01-02 15:23:55.493
+1230	27	137.80	USD	\N	2024-10-15 03:00:00	10	2024	ALCALDIA - octubre 2024	\N	\N	PAGADO	f	2026-01-02 15:23:55.494
+1231	27	138.79	USD	\N	2024-11-15 03:00:00	11	2024	ALCALDIA - noviembre 2024	\N	\N	PAGADO	f	2026-01-02 15:23:55.495
+1232	27	136.26	USD	\N	2024-12-15 03:00:00	12	2024	ALCALDIA - diciembre 2024	\N	\N	PAGADO	f	2026-01-02 15:23:55.496
+1233	27	131.12	USD	\N	2025-01-15 03:00:00	1	2025	ALCALDIA - enero 2025	\N	\N	PAGADO	f	2026-01-02 15:23:55.497
+1234	27	148.61	USD	\N	2025-02-15 03:00:00	2	2025	ALCALDIA - febrero 2025	\N	\N	PAGADO	f	2026-01-02 15:23:55.498
+1235	27	149.44	USD	\N	2025-03-15 03:00:00	3	2025	ALCALDIA - marzo 2025	\N	\N	PAGADO	f	2026-01-02 15:23:55.5
+1236	27	148.00	USD	\N	2025-04-15 04:00:00	4	2025	ALCALDIA - abril 2025	\N	\N	PAGADO	f	2026-01-02 15:23:55.502
+1237	27	148.00	USD	\N	2025-05-15 04:00:00	5	2025	ALCALDIA - mayo 2025	\N	\N	PAGADO	f	2026-01-02 15:23:55.503
+1238	27	149.05	USD	\N	2025-06-15 04:00:00	6	2025	ALCALDIA - junio 2025	\N	\N	PAGADO	f	2026-01-02 15:23:55.505
+1239	27	134.52	USD	\N	2025-07-15 04:00:00	7	2025	ALCALDIA - julio 2025	\N	\N	PAGADO	f	2026-01-02 15:23:55.506
+1240	27	131.00	USD	\N	2025-08-15 04:00:00	8	2025	ALCALDIA - agosto 2025	\N	\N	PAGADO	f	2026-01-02 15:23:55.509
+1241	27	132.21	USD	\N	2025-09-15 03:00:00	9	2025	ALCALDIA - septiembre 2025	\N	\N	PAGADO	f	2026-01-02 15:23:55.511
+1242	27	133.07	USD	\N	2025-10-15 03:00:00	10	2025	ALCALDIA - octubre 2025	\N	\N	PAGADO	f	2026-01-02 15:23:55.515
+1243	27	130.09	USD	\N	2025-11-15 03:00:00	11	2025	ALCALDIA - noviembre 2025	\N	\N	PAGADO	f	2026-01-02 15:23:55.517
+1244	28	140.00	USD	\N	2024-01-15 03:00:00	1	2024	GASTOS VARIOS - enero 2024	\N	\N	PAGADO	f	2026-01-02 15:23:55.519
+1245	28	20.00	USD	\N	2024-02-15 03:00:00	2	2024	GASTOS VARIOS - febrero 2024	\N	\N	PAGADO	f	2026-01-02 15:23:55.521
+1246	28	20.00	USD	\N	2024-03-15 03:00:00	3	2024	GASTOS VARIOS - marzo 2024	\N	\N	PAGADO	f	2026-01-02 15:23:55.522
+1247	28	40.00	USD	\N	2024-04-15 04:00:00	4	2024	GASTOS VARIOS - abril 2024	\N	\N	PAGADO	f	2026-01-02 15:23:55.524
+1248	28	40.00	USD	\N	2024-05-15 04:00:00	5	2024	GASTOS VARIOS - mayo 2024	\N	\N	PAGADO	f	2026-01-02 15:23:55.526
+1249	28	51.00	USD	\N	2024-06-15 04:00:00	6	2024	GASTOS VARIOS - junio 2024	\N	\N	PAGADO	f	2026-01-02 15:23:55.528
+1250	28	64.70	USD	\N	2024-07-15 04:00:00	7	2024	GASTOS VARIOS - julio 2024	\N	\N	PAGADO	f	2026-01-02 15:23:55.53
+1251	28	51.71	USD	\N	2024-08-15 04:00:00	8	2024	GASTOS VARIOS - agosto 2024	\N	\N	PAGADO	f	2026-01-02 15:23:55.532
+1252	28	51.05	USD	\N	2024-09-15 03:00:00	9	2024	GASTOS VARIOS - septiembre 2024	\N	\N	PAGADO	f	2026-01-02 15:23:55.537
+1253	28	50.26	USD	\N	2024-10-15 03:00:00	10	2024	GASTOS VARIOS - octubre 2024	\N	\N	PAGADO	f	2026-01-02 15:23:55.539
+1254	28	51.48	USD	\N	2024-11-15 03:00:00	11	2024	GASTOS VARIOS - noviembre 2024	\N	\N	PAGADO	f	2026-01-02 15:23:55.54
+1255	28	90.92	USD	\N	2024-12-15 03:00:00	12	2024	GASTOS VARIOS - diciembre 2024	\N	\N	PAGADO	f	2026-01-02 15:23:55.543
+1256	28	88.90	USD	\N	2025-01-15 03:00:00	1	2025	GASTOS VARIOS - enero 2025	\N	\N	PAGADO	f	2026-01-02 15:23:55.545
+1257	28	48.48	USD	\N	2025-02-15 03:00:00	2	2025	GASTOS VARIOS - febrero 2025	\N	\N	PAGADO	f	2026-01-02 15:23:55.546
+1258	28	49.57	USD	\N	2025-03-15 03:00:00	3	2025	GASTOS VARIOS - marzo 2025	\N	\N	PAGADO	f	2026-01-02 15:23:55.547
+1259	28	49.05	USD	\N	2025-04-15 04:00:00	4	2025	GASTOS VARIOS - abril 2025	\N	\N	PAGADO	f	2026-01-02 15:23:55.553
+1260	28	70.38	USD	\N	2025-05-15 04:00:00	5	2025	GASTOS VARIOS - mayo 2025	\N	\N	PAGADO	f	2026-01-02 15:23:55.555
+1261	28	71.13	USD	\N	2025-06-15 04:00:00	6	2025	GASTOS VARIOS - junio 2025	\N	\N	PAGADO	f	2026-01-02 15:23:55.557
+1262	28	72.81	USD	\N	2025-07-15 04:00:00	7	2025	GASTOS VARIOS - julio 2025	\N	\N	PAGADO	f	2026-01-02 15:23:55.559
+1263	28	74.00	USD	\N	2025-08-15 04:00:00	8	2025	GASTOS VARIOS - agosto 2025	\N	\N	PAGADO	f	2026-01-02 15:23:55.56
+1264	28	68.76	USD	\N	2025-09-15 03:00:00	9	2025	GASTOS VARIOS - septiembre 2025	\N	\N	PAGADO	f	2026-01-02 15:23:55.562
+1265	28	70.13	USD	\N	2025-10-15 03:00:00	10	2025	GASTOS VARIOS - octubre 2025	\N	\N	PAGADO	f	2026-01-02 15:23:55.563
+1266	30	4904.61	USD	\N	2023-06-15 04:00:00	6	2023	GASTO IMPORTACION - junio 2023	\N	\N	PAGADO	f	2026-01-02 15:23:55.564
+1267	30	731.09	USD	\N	2023-07-15 04:00:00	7	2023	GASTO IMPORTACION - julio 2023	\N	\N	PAGADO	f	2026-01-02 15:23:55.567
+1268	30	1880.83	USD	\N	2023-11-15 03:00:00	11	2023	GASTO IMPORTACION - noviembre 2023	\N	\N	PAGADO	f	2026-01-02 15:23:55.569
+1269	30	3134.60	USD	\N	2024-02-15 03:00:00	2	2024	GASTO IMPORTACION - febrero 2024	\N	\N	PAGADO	f	2026-01-02 15:23:55.571
+\.
+
+
+--
+-- Data for Name: importaciones; Type: TABLE DATA; Schema: public; Owner: -
+--
+
+COPY public.importaciones (id, factura, proveedor_id, monto_factura, monto_transferido, diferencia, numero_transferencia, comision_banco_banesco, comision_banco_controles, porcentaje_nacionalizacion, seguro_nacionalizacion, sub_total, estado, descripcion, fecha_factura, fecha_llegada, created_at, updated_at) FROM stdin;
+17	A2667	2	68778.37	68850.00	71.63	\N	53.50	85.50	0.1017	7000.00	75917.37	RECIBIDA		2024-09-06 04:00:00	\N	2026-01-02 15:20:06.813	2026-01-02 15:23:55.606
+18	A-2802	2	30393.17	30393.17	-20.41	\N	0.00	0.00	0.2368	7195.73	37588.90	RECIBIDA	Le debemos a Controles 20,41USD	2025-05-19 04:00:00	\N	2026-01-02 15:20:06.816	2026-01-02 15:23:55.61
+19	$69.218,95	2	207656.86	\N	\N	\N	\N	\N	0.0000	\N	\N	RECIBIDA		\N	\N	2026-01-02 15:20:06.818	2026-01-02 15:23:55.613
+10	A-2113	2	32784.76	33005.00	220.24	\N	160.50	73.02	0.0843	2781.20	35799.48	RECIBIDA	INVERSION INCIAL	2023-03-07 03:00:00	\N	2026-01-02 15:20:06.786	2026-01-02 15:23:55.585
+11	A.2167	2	26469.79	23435.29	-3034.51	\N	26.75	\N	0.1063	2490.00	28986.54	RECIBIDA	Monto Compra sale de  Inversion Inicial de Sr Jose y Alberto	2023-06-09 04:00:00	\N	2026-01-02 15:20:06.794	2026-01-02 15:23:55.591
+12	A.2171	2	20668.78	23435.29	2766.51	\N	26.75	\N	0.1030	2414.61	23110.14	RECIBIDA	Monto Compra sale de  Inversion Inicial de Sr Jose y Alberto	2023-06-16 04:00:00	\N	2026-01-02 15:20:06.797	2026-01-02 15:23:55.594
+13	A2193	2	1969.00	2000.00	31.00	\N	26.75	73.02	0.1829	365.82	2434.59	RECIBIDA	Falta descontar compra, nacionalizacion y revisar comision banco que no se coloco en tabla	2023-06-27 04:00:00	\N	2026-01-02 15:20:06.8	2026-01-02 15:23:55.597
+14	A2195	2	1969.00	2000.00	31.00	\N	26.75	73.02	0.1826	365.27	2434.04	RECIBIDA	Falta descontar compra, nacionalizacion y revisar comision banco que no se coloco en tabla	2023-06-27 04:00:00	\N	2026-01-02 15:20:06.804	2026-01-02 15:23:55.599
+15	A2272	2	13826.22	13900.00	73.78	\N	53.50	73.02	0.1353	1880.83	15833.57	RECIBIDA	Falta descontar compra, nacionalizacion y revisar comision banco que no se coloco en tabla , ademas la nacionalizacion no es colocada colocar	2023-11-17 03:00:00	\N	2026-01-02 15:20:06.807	2026-01-02 15:23:55.601
+16	A.2308	2	41190.94	41300.00	109.06	\N	107.00	86.00	0.0759	3134.60	44518.54	RECIBIDA	Falta descontar compra, nacionalizacion y revisar comision banco que no se coloco en tabla , ademas la nacionalizacion no es colocada colocar	2024-02-02 03:00:00	\N	2026-01-02 15:20:06.81	2026-01-02 15:23:55.604
+\.
+
+
+--
+-- Data for Name: movimientos_stock; Type: TABLE DATA; Schema: public; Owner: -
+--
+
+COPY public.movimientos_stock (id, producto_id, tipo, cantidad, stock_anterior, stock_nuevo, referencia, motivo, created_at) FROM stdin;
+\.
+
+
+--
+-- Data for Name: operaciones_cambio; Type: TABLE DATA; Schema: public; Owner: -
+--
+
+COPY public.operaciones_cambio (id, cuenta, plataforma, vendedor, fecha, monto_usd, monto_bs, tasa_cambio, monto_elevashop, estado, created_at) FROM stdin;
+\.
+
+
+--
+-- Data for Name: ordenes_compra; Type: TABLE DATA; Schema: public; Owner: -
+--
+
+COPY public.ordenes_compra (id, numero_orden, proveedor_id, fecha, total, estado, importacion_id, created_at) FROM stdin;
+\.
+
+
+--
+-- Data for Name: ordenes_compra_detalle; Type: TABLE DATA; Schema: public; Owner: -
+--
+
+COPY public.ordenes_compra_detalle (id, orden_compra_id, producto_id, cantidad_ordenada, cantidad_recibida, precio_unitario, precio_descuento) FROM stdin;
+\.
+
+
+--
+-- Data for Name: productos; Type: TABLE DATA; Schema: public; Owner: -
+--
+
+COPY public.productos (id, codigo, nombre, descripcion, categoria_id, precio_mercado_libre, precio_mercado, precio_elevapartes, precio_costo, stock_actual, stock_minimo, stock_advertencia, estado, ubicacion, notificacion_enviada, activo, created_at, updated_at) FROM stdin;
+41	CEA51FC+	Controlador 51-CD	\N	1	625.54	510.00	519.20	311.52	5	4	6	ALERTA-W	\N	t	t	2026-01-02 15:20:04.642	2026-01-02 15:23:46.496
+42	CEA51FC-S	Controlador 51-CS	\N	1	0.00	490.00	484.85	290.91	1	2	4	ALERTA	\N	t	t	2026-01-02 15:20:04.717	2026-01-02 15:23:46.498
+43	EXT51FB	Extension de llamadas 51-FB	\N	5	0.00	0.00	445.71	267.43	3	0	1	OK	\N	t	t	2026-01-02 15:20:04.724	2026-01-02 15:23:46.501
+44	AV51P24-U	Anunciador Vocal	\N	5	0.00	0.00	244.72	146.83	2	1	2	ALERTA-W	\N	t	t	2026-01-02 15:20:04.728	2026-01-02 15:23:46.503
+45	SOD	Sensor Optico	\N	3	44.40	40.00	45.69	27.41	0	10	16	ALERTA	\N	t	t	2026-01-02 15:20:04.731	2026-01-02 15:23:46.505
+46	ATTL/USB-F	Adaptador USB Firmware	\N	4	118.50	110.00	98.36	59.02	7	2	3	OK	\N	t	t	2026-01-02 15:20:04.733	2026-01-02 15:23:46.507
+47	ATTL/BT-C	Adaptador Bluetooth	\N	4	229.36	200.00	190.37	114.22	2	0	1	OK	\N	t	t	2026-01-02 15:20:04.736	2026-01-02 15:23:46.509
+48	SPM-E	Sensor Magnetico	\N	3	48.17	40.00	39.98	23.99	18	10	16	OK	\N	t	t	2026-01-02 15:20:04.739	2026-01-02 15:23:46.512
+49	COO51FB	COORDINADOR	\N	5	948.26	800.00	787.06	472.24	3	0	0	OK	\N	t	t	2026-01-02 15:20:04.74	2026-01-02 15:23:46.519
+50	IMP3S37R	Display 3D 37mm	\N	2	0.00	80.00	89.47	53.68	35	0	0	OK	\N	t	t	2026-01-02 15:20:04.743	2026-01-02 15:23:46.525
+51	EXP51FB	EXPANSION 51FB	\N	5	0.00	50.00	428.34	257.00	4	0	0	OK	\N	t	t	2026-01-02 15:20:04.749	2026-01-02 15:23:46.527
+124	FIBRA OPTICA	Fibra Optica	\N	4	0.00	0.00	50.00	30.00	0	1	2	ALERTA	\N	f	t	2026-01-02 15:24:23.006	2026-01-02 15:24:23.006
+125	ILCD70C	Display grafico a color 70mm	\N	2	0.00	0.00	200.00	120.00	0	1	2	ALERTA	\N	f	t	2026-01-02 15:24:23.017	2026-01-02 15:24:23.017
+28	IMP2S37RA	IMP2S37RA	\N	2	85.18	75.00	70.70	42.42	16	10	20	ALERTA-W	\N	t	t	2026-01-02 15:20:04.454	2026-01-02 15:23:46.458
+29	I7S14	Display 2D 14mm	\N	2	36.20	30.00	30.05	18.03	13	4	5	OK	\N	t	t	2026-01-02 15:20:04.538	2026-01-02 15:23:46.464
+30	I7S25	Display 2D 25mm	\N	2	42.05	35.00	34.90	20.94	8	4	38	ALERTA-W	\N	t	t	2026-01-02 15:20:04.546	2026-01-02 15:23:46.467
+31	I7S38	Display 2D 38mm	\N	2	42.59	40.00	35.35	21.21	3	4	3	ALERTA	\N	t	t	2026-01-02 15:20:04.551	2026-01-02 15:23:46.469
+32	ILCD35M	Display 35mm LCD	\N	2	199.31	170.00	165.43	99.26	1	0	0	OK	\N	f	t	2026-01-02 15:20:04.556	2026-01-02 15:23:46.471
+33	ILCD28C	Display grafico a color 43x58	\N	2	0.00	150.00	142.68	85.61	8	4	8	ALERTA-W	\N	t	t	2026-01-02 15:20:04.571	2026-01-02 15:23:46.473
+34	ILCD50C	Display grafico a color 111x63mm	\N	2	0.00	350.00	256.28	153.77	8	2	4	OK	\N	t	t	2026-01-02 15:20:04.584	2026-01-02 15:23:46.476
+35	CEA15+	Controlador 15	\N	1	0.00	0.00	318.87	191.32	8	2	4	OK	\N	t	t	2026-01-02 15:20:04.592	2026-01-02 15:23:46.477
+36	CEA15+C	Controlador 15C	\N	1	330.67	280.00	274.45	164.67	21	4	10	OK	\N	t	t	2026-01-02 15:20:04.596	2026-01-02 15:23:46.479
+37	CEA36+	Controlador 36	\N	1	575.12	480.00	477.35	286.41	9	4	10	ALERTA-W	\N	t	t	2026-01-02 15:20:04.606	2026-01-02 15:23:46.484
+38	CEA36+C	Controlador 36C	\N	1	528.29	440.00	438.48	263.09	23	8	14	OK	\N	t	t	2026-01-02 15:20:04.62	2026-01-02 15:23:46.486
+39	CEA51FB	Controlador 51-BD	\N	1	667.24	560.00	553.81	332.29	6	6	10	ALERTA	\N	t	t	2026-01-02 15:20:04.631	2026-01-02 15:23:46.488
+40	CEA51FB-S	Controlador 51-BS	\N	1	627.17	520.00	520.55	312.33	3	10	18	ALERTA	\N	t	t	2026-01-02 15:20:04.637	2026-01-02 15:23:46.494
+\.
+
+
+--
+-- Data for Name: proveedores; Type: TABLE DATA; Schema: public; Owner: -
+--
+
+COPY public.proveedores (id, nombre, razon_social, contacto, email, telefono, pais, activo, created_at) FROM stdin;
+2	CONTROLES URUGUAY	Controles Elevadores Uruguay	\N	\N	\N	Uruguay	t	2026-01-02 15:20:06.775
+3	CONTROLES URUGUAY	Controles Elevadores Uruguay	\N	\N	\N	Uruguay	t	2026-01-02 15:21:19.194
+4	CONTROLES URUGUAY	Controles Elevadores Uruguay	\N	\N	\N	Uruguay	t	2026-01-02 15:23:04.712
+5	CONTROLES URUGUAY	Controles Elevadores Uruguay	\N	\N	\N	Uruguay	t	2026-01-02 15:23:55.574
+\.
+
+
+--
+-- Data for Name: roles; Type: TABLE DATA; Schema: public; Owner: -
+--
+
+COPY public.roles (id, nombre, descripcion, permisos) FROM stdin;
+2	ADMIN	Administrador del sistema	["*"]
+3	VENDEDOR	Vendedor	["ventas:*", "productos:read", "clientes:*"]
+4	ALMACEN	Encargado de almacén	["inventario:*", "productos:*"]
+5	REPORTES	Solo lectura de reportes y ventas	["reportes:read", "ventas:read", "dashboard:read"]
+6	SUPER_ADMIN	Super Administrador con acceso total	["*"]
+\.
+
+
+--
+-- Data for Name: tasas_cambio; Type: TABLE DATA; Schema: public; Owner: -
+--
+
+COPY public.tasas_cambio (id, fecha, moneda_origen, moneda_destino, tipo, tasa, created_at) FROM stdin;
+\.
+
+
+--
+-- Data for Name: transacciones; Type: TABLE DATA; Schema: public; Owner: -
+--
+
+COPY public.transacciones (id, tipo, producto_id, cliente_id, cantidad, precio_unitario, costo_unitario, total, utilidad, serial, produccion, metodo_pago, usuario_id, fecha_entrada, fecha_salida, numero_orden, ubicacion, mes, anio, monto_efectivo_usd, monto_bs, monto_zelle, monto_banesco, tasa_cambio, created_at) FROM stdin;
+\.
+
+
+--
+-- Data for Name: unidades_inventario; Type: TABLE DATA; Schema: public; Owner: -
+--
+
+COPY public.unidades_inventario (id, producto_id, serial, estado, fecha_entrada, origen_tipo, costo_unitario, lote, fecha_venta, cliente_id, precio_venta, metodo_pago, venta_id, utilidad, garantia_meses, garantia_hasta, notas, created_at, updated_at) FROM stdin;
+1687	28	7085-001	VENDIDO	2023-03-07 03:00:00	IMPORTACION	42.42	7085	2023-03-09 03:00:00	186	70.00	EFECTIVO_USD	\N	27.58	6	\N	\N	2026-01-02 15:23:46.766	2026-01-02 15:23:46.766
+1688	28	7085-002	VENDIDO	2023-03-07 03:00:00	IMPORTACION	42.42	7085	2023-03-09 03:00:00	186	70.00	EFECTIVO_USD	\N	27.58	6	\N	\N	2026-01-02 15:23:46.771	2026-01-02 15:23:46.771
+1689	28	7085-003	VENDIDO	2023-03-07 03:00:00	IMPORTACION	42.42	7085	2023-03-09 03:00:00	186	70.00	EFECTIVO_USD	\N	27.58	6	\N	\N	2026-01-02 15:23:46.773	2026-01-02 15:23:46.773
+1690	28	7085-004	VENDIDO	2023-03-07 03:00:00	IMPORTACION	42.42	7085	2023-03-09 03:00:00	186	70.00	EFECTIVO_USD	\N	27.58	6	\N	\N	2026-01-02 15:23:46.775	2026-01-02 15:23:46.775
+1691	28	7266-001	VENDIDO	2023-03-07 03:00:00	IMPORTACION	42.42	7266	2023-03-09 03:00:00	186	70.00	EFECTIVO_USD	\N	27.58	6	\N	\N	2026-01-02 15:23:46.777	2026-01-02 15:23:46.777
+1692	28	7266-002	VENDIDO	2023-03-07 03:00:00	IMPORTACION	42.42	7266	2023-03-09 03:00:00	186	70.00	EFECTIVO_USD	\N	27.58	6	\N	\N	2026-01-02 15:23:46.781	2026-01-02 15:23:46.781
+1693	28	7266-003	VENDIDO	2023-03-07 03:00:00	IMPORTACION	42.42	7266	2023-03-09 03:00:00	186	70.00	EFECTIVO_USD	\N	27.58	6	\N	\N	2026-01-02 15:23:46.783	2026-01-02 15:23:46.783
+1694	28	7266-004	VENDIDO	2023-03-07 03:00:00	IMPORTACION	42.42	7266	2023-03-30 03:00:00	187	75.00	MIXTO	\N	32.58	6	\N	\N	2026-01-02 15:23:46.786	2026-01-02 15:23:46.786
+1695	28	7266-005	VENDIDO	2023-03-07 03:00:00	IMPORTACION	42.42	7266	2023-03-30 03:00:00	187	75.00	MIXTO	\N	32.58	6	\N	\N	2026-01-02 15:23:46.788	2026-01-02 15:23:46.788
+1696	28	7266-006	VENDIDO	2023-03-07 03:00:00	IMPORTACION	42.42	7266	2023-04-24 04:00:00	186	70.00	EFECTIVO_USD	\N	27.58	6	\N	\N	2026-01-02 15:23:46.791	2026-01-02 15:23:46.791
+1697	28	7266-007	VENDIDO	2023-03-07 03:00:00	IMPORTACION	42.42	7266	2023-04-24 04:00:00	186	70.00	EFECTIVO_USD	\N	27.58	6	\N	\N	2026-01-02 15:23:46.792	2026-01-02 15:23:46.792
+1698	28	7266-008	VENDIDO	2023-03-07 03:00:00	IMPORTACION	42.42	7266	2023-06-12 04:00:00	188	75.00	EFECTIVO_USD	\N	32.58	6	\N	\N	2026-01-02 15:23:46.794	2026-01-02 15:23:46.794
+1699	28	7266-009	VENDIDO	2023-03-07 03:00:00	IMPORTACION	42.42	7266	2023-06-14 04:00:00	189	75.00	EFECTIVO_USD	\N	32.58	6	\N	\N	2026-01-02 15:23:46.797	2026-01-02 15:23:46.797
+1700	28	7266-010	VENDIDO	2023-03-07 03:00:00	IMPORTACION	42.42	7266	2023-06-15 04:00:00	190	75.00	EFECTIVO_USD	\N	32.58	6	\N	\N	2026-01-02 15:23:46.798	2026-01-02 15:23:46.798
+1701	28	7266-011	VENDIDO	2023-03-07 03:00:00	IMPORTACION	42.42	7266	2023-07-18 04:00:00	191	75.00	TRANSFERENCIA_BS	\N	32.58	6	\N	\N	2026-01-02 15:23:46.8	2026-01-02 15:23:46.8
+1702	28	7266-012	VENDIDO	2023-03-07 03:00:00	IMPORTACION	42.42	7266	2023-07-18 04:00:00	191	75.00	TRANSFERENCIA_BS	\N	32.58	6	\N	\N	2026-01-02 15:23:46.801	2026-01-02 15:23:46.801
+1703	28	7266-013	VENDIDO	2023-03-07 03:00:00	IMPORTACION	42.42	7266	2023-07-18 04:00:00	191	75.00	TRANSFERENCIA_BS	\N	32.58	6	\N	\N	2026-01-02 15:23:46.803	2026-01-02 15:23:46.803
+1704	28	7266-014	VENDIDO	2023-03-07 03:00:00	IMPORTACION	42.42	7266	2023-07-18 04:00:00	191	75.00	TRANSFERENCIA_BS	\N	32.58	6	\N	\N	2026-01-02 15:23:46.805	2026-01-02 15:23:46.805
+1705	28	7266-015	VENDIDO	2023-03-07 03:00:00	IMPORTACION	42.42	7266	2023-07-18 04:00:00	191	75.00	TRANSFERENCIA_BS	\N	32.58	6	\N	\N	2026-01-02 15:23:46.813	2026-01-02 15:23:46.813
+1706	28	7266-016	VENDIDO	2023-03-07 03:00:00	IMPORTACION	42.42	7266	2023-07-18 04:00:00	191	75.00	TRANSFERENCIA_BS	\N	32.58	6	\N	\N	2026-01-02 15:23:46.817	2026-01-02 15:23:46.817
+1707	28	7266-017	VENDIDO	2023-03-07 03:00:00	IMPORTACION	42.42	7266	2023-07-18 04:00:00	191	75.00	TRANSFERENCIA_BS	\N	32.58	6	\N	\N	2026-01-02 15:23:46.821	2026-01-02 15:23:46.821
+1708	28	7266-018	VENDIDO	2023-03-07 03:00:00	IMPORTACION	42.42	7266	2023-07-18 04:00:00	191	75.00	TRANSFERENCIA_BS	\N	32.58	6	\N	\N	2026-01-02 15:23:46.826	2026-01-02 15:23:46.826
+1709	28	7266-019	VENDIDO	2023-03-07 03:00:00	IMPORTACION	42.42	7266	2023-08-15 04:00:00	192	75.00	EFECTIVO_USD	\N	32.58	6	\N	\N	2026-01-02 15:23:46.83	2026-01-02 15:23:46.83
+1710	28	7266-020	VENDIDO	2023-03-07 03:00:00	IMPORTACION	42.42	7266	2023-08-15 04:00:00	192	75.00	EFECTIVO_USD	\N	32.58	6	\N	\N	2026-01-02 15:23:46.834	2026-01-02 15:23:46.834
+1711	28	7266-021	VENDIDO	2023-03-07 03:00:00	IMPORTACION	42.42	7266	2023-08-17 04:00:00	188	75.00	EFECTIVO_USD	\N	32.58	6	\N	\N	2026-01-02 15:23:46.838	2026-01-02 15:23:46.838
+1712	28	7266-022	VENDIDO	2023-03-07 03:00:00	IMPORTACION	42.42	7266	2023-08-17 04:00:00	188	75.00	EFECTIVO_USD	\N	32.58	6	\N	\N	2026-01-02 15:23:46.841	2026-01-02 15:23:46.841
+1713	28	7266-023	VENDIDO	2023-03-07 03:00:00	IMPORTACION	42.42	7266	2023-10-06 03:00:00	193	75.00	EFECTIVO_USD	\N	32.58	6	\N	\N	2026-01-02 15:23:46.843	2026-01-02 15:23:46.843
+1714	28	7266-024	VENDIDO	2023-03-07 03:00:00	IMPORTACION	42.42	7266	2023-10-09 03:00:00	193	75.00	EFECTIVO_USD	\N	32.58	6	\N	\N	2026-01-02 15:23:46.845	2026-01-02 15:23:46.845
+1715	28	7266-025	VENDIDO	2023-03-07 03:00:00	IMPORTACION	42.42	7266	2023-10-20 03:00:00	193	70.00	EFECTIVO_USD	\N	27.58	6	\N	\N	2026-01-02 15:23:46.849	2026-01-02 15:23:46.849
+1716	28	7266-026	VENDIDO	2023-03-07 03:00:00	IMPORTACION	42.42	7266	2023-10-20 03:00:00	193	75.00	TRANSFERENCIA_BS	\N	32.58	6	\N	\N	2026-01-02 15:23:46.851	2026-01-02 15:23:46.851
+1717	28	7266-027	VENDIDO	2023-03-07 03:00:00	IMPORTACION	42.42	7266	2023-11-14 03:00:00	193	70.00	EFECTIVO_USD	\N	27.58	6	\N	\N	2026-01-02 15:23:46.859	2026-01-02 15:23:46.859
+1718	28	7266-028	VENDIDO	2023-03-07 03:00:00	IMPORTACION	42.42	7266	2023-11-14 03:00:00	193	70.00	EFECTIVO_USD	\N	27.58	6	\N	\N	2026-01-02 15:23:46.865	2026-01-02 15:23:46.865
+1719	28	7266-029	VENDIDO	2023-03-07 03:00:00	IMPORTACION	42.42	7266	2023-11-22 03:00:00	193	75.00	EFECTIVO_USD	\N	32.58	6	\N	\N	2026-01-02 15:23:46.871	2026-01-02 15:23:46.871
+1720	28	7266-030	VENDIDO	2023-03-07 03:00:00	IMPORTACION	42.42	7266	2023-12-01 03:00:00	193	70.00	EFECTIVO_USD	\N	27.58	6	\N	\N	2026-01-02 15:23:46.874	2026-01-02 15:23:46.874
+1721	28	7266-031	VENDIDO	2023-03-07 03:00:00	IMPORTACION	42.42	7266	2023-12-01 03:00:00	193	70.00	EFECTIVO_USD	\N	27.58	6	\N	\N	2026-01-02 15:23:46.88	2026-01-02 15:23:46.88
+1722	28	7266-032	VENDIDO	2023-03-07 03:00:00	IMPORTACION	42.42	7266	2023-12-01 03:00:00	193	70.00	EFECTIVO_USD	\N	27.58	6	\N	\N	2026-01-02 15:23:46.885	2026-01-02 15:23:46.885
+1723	28	7266-033	VENDIDO	2023-03-07 03:00:00	IMPORTACION	42.42	7266	2023-12-01 03:00:00	193	70.00	EFECTIVO_USD	\N	27.58	6	\N	\N	2026-01-02 15:23:46.892	2026-01-02 15:23:46.892
+1724	28	7266-034	VENDIDO	2023-03-07 03:00:00	IMPORTACION	42.42	7266	2023-12-05 03:00:00	194	75.00	EFECTIVO_USD	\N	32.58	6	\N	\N	2026-01-02 15:23:46.897	2026-01-02 15:23:46.897
+1725	28	7266-035	VENDIDO	2023-03-07 03:00:00	IMPORTACION	42.42	7266	2023-12-15 03:00:00	195	75.00	EFECTIVO_USD	\N	32.58	6	\N	\N	2026-01-02 15:23:46.901	2026-01-02 15:23:46.901
+1726	28	7266-036	VENDIDO	2023-03-07 03:00:00	IMPORTACION	42.42	7266	2023-12-15 03:00:00	193	70.00	EFECTIVO_USD	\N	27.58	6	\N	\N	2026-01-02 15:23:46.907	2026-01-02 15:23:46.907
+1727	28	7642-001	VENDIDO	2024-02-15 03:00:00	IMPORTACION	42.42	7642	2024-04-03 03:00:00	193	75.00	TRANSFERENCIA_BS	\N	32.58	6	\N	\N	2026-01-02 15:23:46.909	2026-01-02 15:23:46.909
+1728	28	7642-002	VENDIDO	2024-02-15 03:00:00	IMPORTACION	42.42	7642	2024-05-29 04:00:00	193	75.00	EFECTIVO_USD	\N	32.58	6	\N	\N	2026-01-02 15:23:46.911	2026-01-02 15:23:46.911
+1729	28	7642-003	VENDIDO	2024-02-15 03:00:00	IMPORTACION	42.42	7642	2024-06-03 04:00:00	196	75.00	EFECTIVO_USD	\N	32.58	6	\N	\N	2026-01-02 15:23:46.913	2026-01-02 15:23:46.913
+1730	28	7642-004	VENDIDO	2024-02-15 03:00:00	IMPORTACION	42.42	7642	2024-06-03 04:00:00	196	75.00	EFECTIVO_USD	\N	32.58	6	\N	\N	2026-01-02 15:23:46.915	2026-01-02 15:23:46.915
+1731	28	7642-005	VENDIDO	2024-02-15 03:00:00	IMPORTACION	42.42	7642	2024-06-27 04:00:00	197	75.00	EFECTIVO_USD	\N	32.58	6	\N	\N	2026-01-02 15:23:46.917	2026-01-02 15:23:46.917
+1732	28	7642-006	VENDIDO	2024-02-15 03:00:00	IMPORTACION	42.42	7642	2024-06-27 04:00:00	197	75.00	EFECTIVO_USD	\N	32.58	6	\N	\N	2026-01-02 15:23:46.92	2026-01-02 15:23:46.92
+1733	28	7642-007	VENDIDO	2024-02-15 03:00:00	IMPORTACION	42.42	7642	2024-07-08 04:00:00	198	75.00	ZELLE	\N	32.58	6	\N	\N	2026-01-02 15:23:46.923	2026-01-02 15:23:46.923
+1734	28	7642-008	VENDIDO	2024-02-15 03:00:00	IMPORTACION	42.42	7642	2024-07-08 04:00:00	198	75.00	ZELLE	\N	32.58	6	\N	\N	2026-01-02 15:23:46.925	2026-01-02 15:23:46.925
+1735	28	7642-009	VENDIDO	2024-02-15 03:00:00	IMPORTACION	42.42	7642	2024-09-18 03:00:00	199	75.00	TRANSFERENCIA_BS	\N	32.58	6	\N	\N	2026-01-02 15:23:46.927	2026-01-02 15:23:46.927
+1736	28	7642-010	VENDIDO	2024-02-15 03:00:00	IMPORTACION	42.42	7642	2024-09-18 03:00:00	199	75.00	TRANSFERENCIA_BS	\N	32.58	6	\N	\N	2026-01-02 15:23:46.929	2026-01-02 15:23:46.929
+1737	28	7642-011	VENDIDO	2024-02-15 03:00:00	IMPORTACION	42.42	7642	2024-09-18 03:00:00	199	75.00	TRANSFERENCIA_BS	\N	32.58	6	\N	\N	2026-01-02 15:23:46.931	2026-01-02 15:23:46.931
+1738	28	7642-012	VENDIDO	2024-02-15 03:00:00	IMPORTACION	42.42	7642	2024-09-18 03:00:00	199	75.00	TRANSFERENCIA_BS	\N	32.58	6	\N	\N	2026-01-02 15:23:46.933	2026-01-02 15:23:46.933
+1739	28	7642-013	VENDIDO	2024-02-15 03:00:00	IMPORTACION	42.42	7642	2024-09-18 03:00:00	199	75.00	TRANSFERENCIA_BS	\N	32.58	6	\N	\N	2026-01-02 15:23:46.934	2026-01-02 15:23:46.934
+1740	28	7642-014	VENDIDO	2024-02-15 03:00:00	IMPORTACION	42.42	7642	2024-09-18 03:00:00	199	75.00	TRANSFERENCIA_BS	\N	32.58	6	\N	\N	2026-01-02 15:23:46.936	2026-01-02 15:23:46.936
+1741	28	7642-015	VENDIDO	2024-02-15 03:00:00	IMPORTACION	42.42	7642	2024-09-18 03:00:00	199	75.00	TRANSFERENCIA_BS	\N	32.58	6	\N	\N	2026-01-02 15:23:46.938	2026-01-02 15:23:46.938
+1742	28	7642-016	VENDIDO	2024-02-15 03:00:00	IMPORTACION	42.42	7642	2024-09-18 03:00:00	199	75.00	TRANSFERENCIA_BS	\N	32.58	6	\N	\N	2026-01-02 15:23:46.941	2026-01-02 15:23:46.941
+1743	28	7642-017	VENDIDO	2024-02-15 03:00:00	IMPORTACION	42.42	7642	2024-09-18 03:00:00	199	75.00	TRANSFERENCIA_BS	\N	32.58	6	\N	\N	2026-01-02 15:23:46.943	2026-01-02 15:23:46.943
+1744	28	7642-018	VENDIDO	2024-02-15 03:00:00	IMPORTACION	42.42	7642	2024-09-18 03:00:00	199	75.00	TRANSFERENCIA_BS	\N	32.58	6	\N	\N	2026-01-02 15:23:46.945	2026-01-02 15:23:46.945
+1745	28	7642-019	VENDIDO	2024-02-15 03:00:00	IMPORTACION	42.42	7642	2024-09-18 03:00:00	199	75.00	TRANSFERENCIA_BS	\N	32.58	6	\N	\N	2026-01-02 15:23:46.947	2026-01-02 15:23:46.947
+1746	28	7642-020	VENDIDO	2024-02-15 03:00:00	IMPORTACION	42.42	7642	2024-09-18 03:00:00	199	75.00	TRANSFERENCIA_BS	\N	32.58	6	\N	\N	2026-01-02 15:23:46.95	2026-01-02 15:23:46.95
+1747	28	7642-021	VENDIDO	2024-02-15 03:00:00	IMPORTACION	42.42	7642	2024-11-08 03:00:00	194	75.00	EFECTIVO_USD	\N	32.58	6	\N	\N	2026-01-02 15:23:46.953	2026-01-02 15:23:46.953
+1748	28	7642-022	VENDIDO	2024-02-15 03:00:00	IMPORTACION	42.42	7642	2024-12-05 03:00:00	200	75.00	EFECTIVO_USD	\N	32.58	6	\N	\N	2026-01-02 15:23:46.955	2026-01-02 15:23:46.955
+1749	28	7642-023	VENDIDO	2024-02-15 03:00:00	IMPORTACION	42.42	7642	2024-12-05 03:00:00	200	75.00	EFECTIVO_USD	\N	32.58	6	\N	\N	2026-01-02 15:23:46.957	2026-01-02 15:23:46.957
+1750	28	7642-024	VENDIDO	2024-02-15 03:00:00	IMPORTACION	42.42	7642	2024-12-10 03:00:00	201	75.00	EFECTIVO_USD	\N	32.58	6	\N	\N	2026-01-02 15:23:46.959	2026-01-02 15:23:46.959
+1751	28	7642-025	VENDIDO	2024-02-15 03:00:00	IMPORTACION	42.42	7642	2024-12-16 03:00:00	191	75.00	ZELLE	\N	32.58	6	\N	\N	2026-01-02 15:23:46.961	2026-01-02 15:23:46.961
+1752	28	7642-026	VENDIDO	2024-02-15 03:00:00	IMPORTACION	42.42	7642	2024-12-16 03:00:00	191	75.00	ZELLE	\N	32.58	6	\N	\N	2026-01-02 15:23:46.963	2026-01-02 15:23:46.963
+1753	28	7642-027	VENDIDO	2024-02-15 03:00:00	IMPORTACION	42.42	7642	2024-12-16 03:00:00	191	75.00	ZELLE	\N	32.58	6	\N	\N	2026-01-02 15:23:46.968	2026-01-02 15:23:46.968
+1754	28	7642-028	VENDIDO	2024-02-15 03:00:00	IMPORTACION	42.42	7642	2024-12-16 03:00:00	191	75.00	ZELLE	\N	32.58	6	\N	\N	2026-01-02 15:23:46.97	2026-01-02 15:23:46.97
+1755	28	7642-029	VENDIDO	2024-02-15 03:00:00	IMPORTACION	42.42	7642	2024-12-16 03:00:00	191	75.00	ZELLE	\N	32.58	6	\N	\N	2026-01-02 15:23:46.972	2026-01-02 15:23:46.972
+1756	28	7642-030	VENDIDO	2024-02-15 03:00:00	IMPORTACION	42.42	7642	2024-12-16 03:00:00	191	75.00	ZELLE	\N	32.58	6	\N	\N	2026-01-02 15:23:46.974	2026-01-02 15:23:46.974
+1757	28	7642-031	VENDIDO	2024-02-15 03:00:00	IMPORTACION	42.42	7642	2024-12-16 03:00:00	191	75.00	ZELLE	\N	32.58	6	\N	\N	2026-01-02 15:23:46.976	2026-01-02 15:23:46.976
+1758	28	7642-032	VENDIDO	2024-02-15 03:00:00	IMPORTACION	42.42	7642	2024-12-16 03:00:00	191	75.00	ZELLE	\N	32.58	6	\N	\N	2026-01-02 15:23:46.98	2026-01-02 15:23:46.98
+1759	28	7642-033	VENDIDO	2024-02-15 03:00:00	IMPORTACION	42.42	7642	2024-12-16 03:00:00	202	75.00	EFECTIVO_USD	\N	32.58	6	\N	\N	2026-01-02 15:23:46.982	2026-01-02 15:23:46.982
+1760	28	7642-034	VENDIDO	2024-02-15 03:00:00	IMPORTACION	42.42	7642	2024-12-18 03:00:00	203	75.00	EFECTIVO_USD	\N	32.58	6	\N	\N	2026-01-02 15:23:46.985	2026-01-02 15:23:46.985
+1761	28	7642-035	VENDIDO	2024-02-15 03:00:00	IMPORTACION	42.42	7642	2024-12-18 03:00:00	203	75.00	EFECTIVO_USD	\N	32.58	6	\N	\N	2026-01-02 15:23:46.986	2026-01-02 15:23:46.986
+1762	28	7642-036	VENDIDO	2024-02-15 03:00:00	IMPORTACION	42.42	7642	2025-02-07 03:00:00	204	75.00	EFECTIVO_USD	\N	32.58	6	\N	\N	2026-01-02 15:23:46.989	2026-01-02 15:23:46.989
+1763	28	7642-037	VENDIDO	2024-02-15 03:00:00	IMPORTACION	42.42	7642	2025-02-07 03:00:00	204	75.00	EFECTIVO_USD	\N	32.58	6	\N	\N	2026-01-02 15:23:46.99	2026-01-02 15:23:46.99
+1764	28	7642-038	VENDIDO	2024-02-15 03:00:00	IMPORTACION	42.42	7642	2025-04-01 03:00:00	205	75.00	EFECTIVO_USD	\N	32.58	6	\N	\N	2026-01-02 15:23:46.992	2026-01-02 15:23:46.992
+1765	28	7642-039	VENDIDO	2024-02-15 03:00:00	IMPORTACION	42.42	7642	2025-04-01 03:00:00	205	75.00	EFECTIVO_USD	\N	32.58	6	\N	\N	2026-01-02 15:23:46.994	2026-01-02 15:23:46.994
+1766	28	7642-040	DISPONIBLE	2024-02-15 03:00:00	IMPORTACION	42.42	7642	\N	\N	\N	\N	\N	0.00	6	\N	\N	2026-01-02 15:23:46.996	2026-01-02 15:23:46.996
+1767	28	8139-001	VENDIDO	2025-05-21 04:00:00	IMPORTACION	42.42	8139	2025-10-17 03:00:00	191	75.00	EFECTIVO_USD	\N	32.58	6	\N	\N	2026-01-02 15:23:47.004	2026-01-02 15:23:47.004
+1768	28	8139-002	VENDIDO	2025-05-21 04:00:00	IMPORTACION	42.42	8139	2025-10-17 03:00:00	191	75.00	EFECTIVO_USD	\N	32.58	6	\N	\N	2026-01-02 15:23:47.008	2026-01-02 15:23:47.008
+1769	28	8139-003	VENDIDO	2025-05-21 04:00:00	IMPORTACION	42.42	8139	2025-10-17 03:00:00	191	75.00	EFECTIVO_USD	\N	32.58	6	\N	\N	2026-01-02 15:23:47.012	2026-01-02 15:23:47.012
+1770	28	8139-004	VENDIDO	2025-05-21 04:00:00	IMPORTACION	42.42	8139	2025-10-17 03:00:00	191	75.00	EFECTIVO_USD	\N	32.58	6	\N	\N	2026-01-02 15:23:47.017	2026-01-02 15:23:47.017
+1771	28	8139-005	VENDIDO	2025-05-21 04:00:00	IMPORTACION	42.42	8139	2025-10-17 03:00:00	191	75.00	EFECTIVO_USD	\N	32.58	6	\N	\N	2026-01-02 15:23:47.02	2026-01-02 15:23:47.02
+1772	28	8139-006	DISPONIBLE	2025-05-21 04:00:00	IMPORTACION	42.42	8139	\N	\N	\N	\N	\N	0.00	6	\N	\N	2026-01-02 15:23:47.022	2026-01-02 15:23:47.022
+1773	28	8139-007	DISPONIBLE	2025-05-21 04:00:00	IMPORTACION	42.42	8139	\N	\N	\N	\N	\N	0.00	6	\N	\N	2026-01-02 15:23:47.024	2026-01-02 15:23:47.024
+1774	28	8139-008	DISPONIBLE	2025-05-21 04:00:00	IMPORTACION	42.42	8139	\N	\N	\N	\N	\N	0.00	6	\N	\N	2026-01-02 15:23:47.025	2026-01-02 15:23:47.025
+1775	28	8139-009	DISPONIBLE	2025-05-21 04:00:00	IMPORTACION	42.42	8139	\N	\N	\N	\N	\N	0.00	6	\N	\N	2026-01-02 15:23:47.027	2026-01-02 15:23:47.027
+1776	28	8139-010	DISPONIBLE	2025-05-21 04:00:00	IMPORTACION	42.42	8139	\N	\N	\N	\N	\N	0.00	6	\N	\N	2026-01-02 15:23:47.029	2026-01-02 15:23:47.029
+1777	28	8139-011	DISPONIBLE	2025-05-21 04:00:00	IMPORTACION	42.42	8139	\N	\N	\N	\N	\N	0.00	6	\N	\N	2026-01-02 15:23:47.031	2026-01-02 15:23:47.031
+1778	28	8139-012	DISPONIBLE	2025-05-21 04:00:00	IMPORTACION	42.42	8139	\N	\N	\N	\N	\N	0.00	6	\N	\N	2026-01-02 15:23:47.033	2026-01-02 15:23:47.033
+1779	28	8139-013	DISPONIBLE	2025-05-21 04:00:00	IMPORTACION	42.42	8139	\N	\N	\N	\N	\N	0.00	6	\N	\N	2026-01-02 15:23:47.035	2026-01-02 15:23:47.035
+1780	28	8139-014	DISPONIBLE	2025-05-21 04:00:00	IMPORTACION	42.42	8139	\N	\N	\N	\N	\N	0.00	6	\N	\N	2026-01-02 15:23:47.039	2026-01-02 15:23:47.039
+1781	28	8139-015	DISPONIBLE	2025-05-21 04:00:00	IMPORTACION	42.42	8139	\N	\N	\N	\N	\N	0.00	6	\N	\N	2026-01-02 15:23:47.041	2026-01-02 15:23:47.041
+1782	28	8139-016	DISPONIBLE	2025-05-21 04:00:00	IMPORTACION	42.42	8139	\N	\N	\N	\N	\N	0.00	6	\N	\N	2026-01-02 15:23:47.044	2026-01-02 15:23:47.044
+1783	28	8139-017	DISPONIBLE	2025-05-21 04:00:00	IMPORTACION	42.42	8139	\N	\N	\N	\N	\N	0.00	6	\N	\N	2026-01-02 15:23:47.046	2026-01-02 15:23:47.046
+1784	28	8139-018	DISPONIBLE	2025-05-21 04:00:00	IMPORTACION	42.42	8139	\N	\N	\N	\N	\N	0.00	6	\N	\N	2026-01-02 15:23:47.047	2026-01-02 15:23:47.047
+1785	28	8139-019	DISPONIBLE	2025-05-21 04:00:00	IMPORTACION	42.42	8139	\N	\N	\N	\N	\N	0.00	6	\N	\N	2026-01-02 15:23:47.049	2026-01-02 15:23:47.049
+1786	28	8139-020	DISPONIBLE	2025-05-21 04:00:00	IMPORTACION	42.42	8139	\N	\N	\N	\N	\N	0.00	6	\N	\N	2026-01-02 15:23:47.05	2026-01-02 15:23:47.05
+1787	50	7802-001	VENDIDO	2024-09-30 03:00:00	IMPORTACION	44.74	7802	2024-10-17 03:00:00	195	80.00	EFECTIVO_USD	\N	35.26	6	\N	\N	2026-01-02 15:23:47.052	2026-01-02 15:23:47.052
+1788	50	7802-002	VENDIDO	2024-09-30 03:00:00	IMPORTACION	44.74	7802	2024-10-21 03:00:00	206	80.00	EFECTIVO_USD	\N	35.26	6	\N	\N	2026-01-02 15:23:47.054	2026-01-02 15:23:47.054
+1789	50	7802-003	VENDIDO	2024-09-30 03:00:00	IMPORTACION	44.74	7802	2024-10-21 03:00:00	206	80.00	EFECTIVO_USD	\N	35.26	6	\N	\N	2026-01-02 15:23:47.056	2026-01-02 15:23:47.056
+1790	50	7802-004	VENDIDO	2024-09-30 03:00:00	IMPORTACION	44.74	7802	2024-12-06 03:00:00	207	80.00	EFECTIVO_USD	\N	35.26	6	\N	\N	2026-01-02 15:23:47.058	2026-01-02 15:23:47.058
+1791	50	7802-005	VENDIDO	2024-09-30 03:00:00	IMPORTACION	44.74	7802	2024-12-06 03:00:00	207	80.00	EFECTIVO_USD	\N	35.26	6	\N	\N	2026-01-02 15:23:47.059	2026-01-02 15:23:47.059
+1792	50	7802-006	VENDIDO	2024-09-30 03:00:00	IMPORTACION	44.74	7802	2024-12-06 03:00:00	207	80.00	EFECTIVO_USD	\N	35.26	6	\N	\N	2026-01-02 15:23:47.062	2026-01-02 15:23:47.062
+1793	50	7802-007	VENDIDO	2024-09-30 03:00:00	IMPORTACION	44.74	7802	2024-12-06 03:00:00	207	80.00	EFECTIVO_USD	\N	35.26	6	\N	\N	2026-01-02 15:23:47.064	2026-01-02 15:23:47.064
+1794	50	7802-008	VENDIDO	2024-09-30 03:00:00	IMPORTACION	44.74	7802	2024-12-10 03:00:00	202	80.00	EFECTIVO_USD	\N	35.26	6	\N	\N	2026-01-02 15:23:47.067	2026-01-02 15:23:47.067
+1795	50	7802-009	VENDIDO	2024-09-30 03:00:00	IMPORTACION	44.74	7802	2024-12-10 03:00:00	202	80.00	EFECTIVO_USD	\N	35.26	6	\N	\N	2026-01-02 15:23:47.07	2026-01-02 15:23:47.07
+1796	50	7802-010	VENDIDO	2024-09-30 03:00:00	IMPORTACION	44.74	7802	2024-12-10 03:00:00	202	80.00	EFECTIVO_USD	\N	35.26	6	\N	\N	2026-01-02 15:23:47.072	2026-01-02 15:23:47.072
+1797	50	7802-011	VENDIDO	2024-09-30 03:00:00	IMPORTACION	44.74	7802	2024-12-18 03:00:00	208	80.00	ZELLE	\N	35.26	6	\N	\N	2026-01-02 15:23:47.075	2026-01-02 15:23:47.075
+1798	50	7802-012	VENDIDO	2024-09-30 03:00:00	IMPORTACION	44.74	7802	2024-12-18 03:00:00	208	80.00	ZELLE	\N	35.26	6	\N	\N	2026-01-02 15:23:47.076	2026-01-02 15:23:47.076
+1799	50	7802-013	VENDIDO	2024-09-30 03:00:00	IMPORTACION	44.74	7802	2024-12-18 03:00:00	208	80.00	ZELLE	\N	35.26	6	\N	\N	2026-01-02 15:23:47.078	2026-01-02 15:23:47.078
+1800	50	7802-014	VENDIDO	2024-09-30 03:00:00	IMPORTACION	44.74	7802	2024-12-17 03:00:00	209	80.00	EFECTIVO_USD	\N	35.26	6	\N	\N	2026-01-02 15:23:47.079	2026-01-02 15:23:47.079
+1801	50	7802-015	VENDIDO	2024-09-30 03:00:00	IMPORTACION	44.74	7802	2024-12-18 03:00:00	207	80.00	EFECTIVO_USD	\N	35.26	6	\N	\N	2026-01-02 15:23:47.081	2026-01-02 15:23:47.081
+1802	50	7802-016	VENDIDO	2024-09-30 03:00:00	IMPORTACION	44.74	7802	2024-12-18 03:00:00	207	80.00	EFECTIVO_USD	\N	35.26	6	\N	\N	2026-01-02 15:23:47.083	2026-01-02 15:23:47.083
+1803	50	7802-017	VENDIDO	2024-09-30 03:00:00	IMPORTACION	44.74	7802	2024-12-19 03:00:00	210	80.00	EFECTIVO_USD	\N	35.26	6	\N	\N	2026-01-02 15:23:47.085	2026-01-02 15:23:47.085
+1804	50	7802-018	VENDIDO	2024-09-30 03:00:00	IMPORTACION	44.74	7802	2024-12-19 03:00:00	210	80.00	EFECTIVO_USD	\N	35.26	6	\N	\N	2026-01-02 15:23:47.089	2026-01-02 15:23:47.089
+1805	50	7802-019	VENDIDO	2024-09-30 03:00:00	IMPORTACION	44.74	7802	2025-01-06 03:00:00	192	80.00	EFECTIVO_USD	\N	35.26	6	\N	\N	2026-01-02 15:23:47.092	2026-01-02 15:23:47.092
+1806	50	7802-020	VENDIDO	2024-09-30 03:00:00	IMPORTACION	44.74	7802	2025-01-06 03:00:00	192	80.00	EFECTIVO_USD	\N	35.26	6	\N	\N	2026-01-02 15:23:47.094	2026-01-02 15:23:47.094
+1807	50	7802-021	VENDIDO	2024-09-30 03:00:00	IMPORTACION	44.74	7802	2025-01-23 03:00:00	211	80.00	EFECTIVO_USD	\N	35.26	6	\N	\N	2026-01-02 15:23:47.097	2026-01-02 15:23:47.097
+1808	50	7802-022	VENDIDO	2024-09-30 03:00:00	IMPORTACION	44.74	7802	2025-01-23 03:00:00	211	80.00	EFECTIVO_USD	\N	35.26	6	\N	\N	2026-01-02 15:23:47.101	2026-01-02 15:23:47.101
+1809	50	7802-023	VENDIDO	2024-09-30 03:00:00	IMPORTACION	44.74	7802	2025-02-25 03:00:00	212	80.00	\N	\N	35.26	6	\N	\N	2026-01-02 15:23:47.104	2026-01-02 15:23:47.104
+1810	50	7802-024	VENDIDO	2024-09-30 03:00:00	IMPORTACION	44.74	7802	2025-02-25 03:00:00	212	80.00	\N	\N	35.26	6	\N	\N	2026-01-02 15:23:47.108	2026-01-02 15:23:47.108
+1811	50	7802-025	VENDIDO	2024-09-30 03:00:00	IMPORTACION	44.74	7802	2025-02-25 03:00:00	212	80.00	\N	\N	35.26	6	\N	\N	2026-01-02 15:23:47.111	2026-01-02 15:23:47.111
+1812	50	7802-026	VENDIDO	2024-09-30 03:00:00	IMPORTACION	44.74	7802	2025-02-25 03:00:00	212	80.00	\N	\N	35.26	6	\N	\N	2026-01-02 15:23:47.114	2026-01-02 15:23:47.114
+1813	50	7802-027	VENDIDO	2024-09-30 03:00:00	IMPORTACION	44.74	7802	2025-02-25 03:00:00	212	80.00	\N	\N	35.26	6	\N	\N	2026-01-02 15:23:47.117	2026-01-02 15:23:47.117
+1814	50	7802-028	VENDIDO	2024-09-30 03:00:00	IMPORTACION	44.74	7802	2025-02-25 03:00:00	212	80.00	\N	\N	35.26	6	\N	\N	2026-01-02 15:23:47.12	2026-01-02 15:23:47.12
+1815	50	7802-029	VENDIDO	2024-09-30 03:00:00	IMPORTACION	44.74	7802	2025-02-25 03:00:00	212	80.00	\N	\N	35.26	6	\N	\N	2026-01-02 15:23:47.122	2026-01-02 15:23:47.122
+1816	50	7802-030	VENDIDO	2024-09-30 03:00:00	IMPORTACION	44.74	7802	2025-02-25 03:00:00	212	80.00	\N	\N	35.26	6	\N	\N	2026-01-02 15:23:47.124	2026-01-02 15:23:47.124
+1817	50	7802-031	VENDIDO	2024-09-30 03:00:00	IMPORTACION	44.74	7802	2025-02-25 03:00:00	212	80.00	\N	\N	35.26	6	\N	\N	2026-01-02 15:23:47.125	2026-01-02 15:23:47.125
+1818	50	7802-032	VENDIDO	2024-09-30 03:00:00	IMPORTACION	44.74	7802	2025-02-25 03:00:00	212	80.00	\N	\N	35.26	6	\N	\N	2026-01-02 15:23:47.127	2026-01-02 15:23:47.127
+1819	50	7802-033	VENDIDO	2024-09-30 03:00:00	IMPORTACION	44.74	7802	2025-02-26 03:00:00	213	75.00	EFECTIVO_USD	\N	30.26	6	\N	\N	2026-01-02 15:23:47.132	2026-01-02 15:23:47.132
+1820	50	7802-034	VENDIDO	2024-09-30 03:00:00	IMPORTACION	44.74	7802	2025-02-26 03:00:00	213	75.00	EFECTIVO_USD	\N	30.26	6	\N	\N	2026-01-02 15:23:47.134	2026-01-02 15:23:47.134
+1821	50	7802-035	VENDIDO	2024-09-30 03:00:00	IMPORTACION	44.74	7802	2025-02-26 03:00:00	213	75.00	EFECTIVO_USD	\N	30.26	6	\N	\N	2026-01-02 15:23:47.135	2026-01-02 15:23:47.135
+1822	50	7802-036	VENDIDO	2024-09-30 03:00:00	IMPORTACION	44.74	7802	2025-02-26 03:00:00	213	75.00	EFECTIVO_USD	\N	30.26	6	\N	\N	2026-01-02 15:23:47.137	2026-01-02 15:23:47.137
+1823	50	7802-037	VENDIDO	2024-09-30 03:00:00	IMPORTACION	44.74	7802	2025-02-26 03:00:00	213	75.00	EFECTIVO_USD	\N	30.26	6	\N	\N	2026-01-02 15:23:47.143	2026-01-02 15:23:47.143
+1824	50	7802-038	VENDIDO	2024-09-30 03:00:00	IMPORTACION	44.74	7802	2025-02-26 03:00:00	213	75.00	EFECTIVO_USD	\N	30.26	6	\N	\N	2026-01-02 15:23:47.145	2026-01-02 15:23:47.145
+1825	50	7802-039	VENDIDO	2024-09-30 03:00:00	IMPORTACION	44.74	7802	2025-02-26 03:00:00	213	75.00	EFECTIVO_USD	\N	30.26	6	\N	\N	2026-01-02 15:23:47.148	2026-01-02 15:23:47.148
+1826	50	7802-040	VENDIDO	2024-09-30 03:00:00	IMPORTACION	44.74	7802	2025-02-26 03:00:00	213	75.00	EFECTIVO_USD	\N	30.26	6	\N	\N	2026-01-02 15:23:47.151	2026-01-02 15:23:47.151
+1827	50	7802-041	VENDIDO	2024-09-30 03:00:00	IMPORTACION	44.74	7802	2025-02-26 03:00:00	213	75.00	EFECTIVO_USD	\N	30.26	6	\N	\N	2026-01-02 15:23:47.154	2026-01-02 15:23:47.154
+1828	50	7802-042	VENDIDO	2024-09-30 03:00:00	IMPORTACION	44.74	7802	2025-02-26 03:00:00	213	75.00	EFECTIVO_USD	\N	30.26	6	\N	\N	2026-01-02 15:23:47.156	2026-01-02 15:23:47.156
+1829	50	7802-043	VENDIDO	2024-09-30 03:00:00	IMPORTACION	44.74	7802	2025-02-26 03:00:00	213	75.00	EFECTIVO_USD	\N	30.26	6	\N	\N	2026-01-02 15:23:47.158	2026-01-02 15:23:47.158
+1830	50	7802-044	VENDIDO	2024-09-30 03:00:00	IMPORTACION	44.74	7802	2025-03-03 03:00:00	214	80.00	TRANSFERENCIA_BS	\N	35.26	6	\N	\N	2026-01-02 15:23:47.16	2026-01-02 15:23:47.16
+1831	50	7802-045	VENDIDO	2024-09-30 03:00:00	IMPORTACION	44.74	7802	2025-03-03 03:00:00	214	80.00	TRANSFERENCIA_BS	\N	35.26	6	\N	\N	2026-01-02 15:23:47.162	2026-01-02 15:23:47.162
+1832	50	7802-046	VENDIDO	2024-09-30 03:00:00	IMPORTACION	44.74	7802	2025-03-06 03:00:00	215	80.00	EFECTIVO_USD	\N	35.26	6	\N	\N	2026-01-02 15:23:47.164	2026-01-02 15:23:47.164
+1833	50	7802-047	VENDIDO	2024-09-30 03:00:00	IMPORTACION	44.74	7802	2025-03-06 03:00:00	215	80.00	EFECTIVO_USD	\N	35.26	6	\N	\N	2026-01-02 15:23:47.166	2026-01-02 15:23:47.166
+1834	50	7802-048	VENDIDO	2024-09-30 03:00:00	IMPORTACION	44.74	7802	2025-03-18 03:00:00	216	80.00	ZELLE	\N	35.26	6	\N	\N	2026-01-02 15:23:47.168	2026-01-02 15:23:47.168
+1835	50	7802-049	VENDIDO	2024-09-30 03:00:00	IMPORTACION	44.74	7802	2025-03-31 03:00:00	195	80.00	EFECTIVO_USD	\N	35.26	6	\N	\N	2026-01-02 15:23:47.17	2026-01-02 15:23:47.17
+1836	50	7802-050	VENDIDO	2024-09-30 03:00:00	IMPORTACION	44.74	7802	2025-03-31 03:00:00	195	80.00	EFECTIVO_USD	\N	35.26	6	\N	\N	2026-01-02 15:23:47.175	2026-01-02 15:23:47.175
+1837	50	7802-051	VENDIDO	2024-09-30 03:00:00	IMPORTACION	44.74	7802	2025-03-31 03:00:00	195	80.00	EFECTIVO_USD	\N	35.26	6	\N	\N	2026-01-02 15:23:47.178	2026-01-02 15:23:47.178
+1838	50	7802-052	VENDIDO	2024-09-30 03:00:00	IMPORTACION	44.74	7802	2025-04-01 03:00:00	217	80.00	ZELLE	\N	35.26	6	\N	\N	2026-01-02 15:23:47.18	2026-01-02 15:23:47.18
+1839	50	7802-053	VENDIDO	2024-09-30 03:00:00	IMPORTACION	44.74	7802	2025-05-08 04:00:00	218	80.00	EFECTIVO_USD	\N	35.26	6	\N	\N	2026-01-02 15:23:47.183	2026-01-02 15:23:47.183
+1840	50	7802-054	VENDIDO	2024-09-30 03:00:00	IMPORTACION	44.74	7802	2025-07-16 04:00:00	219	80.00	EFECTIVO_USD	\N	35.26	6	\N	\N	2026-01-02 15:23:47.185	2026-01-02 15:23:47.185
+1841	50	7802-055	VENDIDO	2024-09-30 03:00:00	IMPORTACION	44.74	7802	2025-07-16 04:00:00	219	80.00	EFECTIVO_USD	\N	35.26	6	\N	\N	2026-01-02 15:23:47.188	2026-01-02 15:23:47.188
+1842	50	7802-056	VENDIDO	2024-09-30 03:00:00	IMPORTACION	44.74	7802	2025-08-01 04:00:00	191	80.00	EFECTIVO_USD	\N	35.26	6	\N	\N	2026-01-02 15:23:47.192	2026-01-02 15:23:47.192
+1843	50	7802-057	VENDIDO	2024-09-30 03:00:00	IMPORTACION	44.74	7802	2025-08-01 04:00:00	191	80.00	EFECTIVO_USD	\N	35.26	6	\N	\N	2026-01-02 15:23:47.195	2026-01-02 15:23:47.195
+1844	50	7802-058	VENDIDO	2024-09-30 03:00:00	IMPORTACION	44.74	7802	2025-08-05 04:00:00	220	80.00	EFECTIVO_USD	\N	35.26	6	\N	\N	2026-01-02 15:23:47.198	2026-01-02 15:23:47.198
+1845	50	7802-059	VENDIDO	2024-09-30 03:00:00	IMPORTACION	44.74	7802	2025-08-05 04:00:00	220	80.00	EFECTIVO_USD	\N	35.26	6	\N	\N	2026-01-02 15:23:47.201	2026-01-02 15:23:47.201
+1846	50	7802-060	VENDIDO	2024-09-30 03:00:00	IMPORTACION	44.74	7802	2025-08-29 04:00:00	221	80.00	EFECTIVO_USD	\N	35.26	6	\N	\N	2026-01-02 15:23:47.203	2026-01-02 15:23:47.203
+1847	50	7802-061	VENDIDO	2024-09-30 03:00:00	IMPORTACION	44.74	7802	2025-08-29 04:00:00	221	80.00	EFECTIVO_USD	\N	35.26	6	\N	\N	2026-01-02 15:23:47.207	2026-01-02 15:23:47.207
+1848	50	7802-062	VENDIDO	2024-09-30 03:00:00	IMPORTACION	44.74	7802	2025-09-04 04:00:00	222	80.00	EFECTIVO_USD	\N	35.26	6	\N	\N	2026-01-02 15:23:47.211	2026-01-02 15:23:47.211
+1849	50	7802-063	VENDIDO	2024-09-30 03:00:00	IMPORTACION	44.74	7802	2025-09-15 03:00:00	223	80.00	EFECTIVO_USD	\N	35.26	6	\N	\N	2026-01-02 15:23:47.214	2026-01-02 15:23:47.214
+1850	50	7802-064	VENDIDO	2024-09-30 03:00:00	IMPORTACION	44.74	7802	2025-10-08 03:00:00	195	80.00	EFECTIVO_USD	\N	35.26	6	\N	\N	2026-01-02 15:23:47.218	2026-01-02 15:23:47.218
+1851	50	7802-065	VENDIDO	2024-09-30 03:00:00	IMPORTACION	44.74	7802	2025-12-15 03:00:00	207	80.00	EFECTIVO_USD	\N	35.26	6	\N	\N	2026-01-02 15:23:47.224	2026-01-02 15:23:47.224
+1852	50	7802-066	DISPONIBLE	2024-09-30 03:00:00	IMPORTACION	44.74	7802	\N	\N	\N	\N	\N	0.00	6	\N	\N	2026-01-02 15:23:47.229	2026-01-02 15:23:47.229
+1853	50	7802-067	DISPONIBLE	2024-09-30 03:00:00	IMPORTACION	44.74	7802	\N	\N	\N	\N	\N	0.00	6	\N	\N	2026-01-02 15:23:47.231	2026-01-02 15:23:47.231
+1854	50	7802-068	DISPONIBLE	2024-09-30 03:00:00	IMPORTACION	44.74	7802	\N	\N	\N	\N	\N	0.00	6	\N	\N	2026-01-02 15:23:47.233	2026-01-02 15:23:47.233
+1855	50	7802-069	DISPONIBLE	2024-09-30 03:00:00	IMPORTACION	44.74	7802	\N	\N	\N	\N	\N	0.00	6	\N	\N	2026-01-02 15:23:47.236	2026-01-02 15:23:47.236
+1856	50	7802-070	DISPONIBLE	2024-09-30 03:00:00	IMPORTACION	44.74	7802	\N	\N	\N	\N	\N	0.00	6	\N	\N	2026-01-02 15:23:47.238	2026-01-02 15:23:47.238
+1857	50	7802-071	DISPONIBLE	2024-09-30 03:00:00	IMPORTACION	44.74	7802	\N	\N	\N	\N	\N	0.00	6	\N	\N	2026-01-02 15:23:47.241	2026-01-02 15:23:47.241
+1858	50	7802-072	DISPONIBLE	2024-09-30 03:00:00	IMPORTACION	44.74	7802	\N	\N	\N	\N	\N	0.00	6	\N	\N	2026-01-02 15:23:47.243	2026-01-02 15:23:47.243
+1859	50	7802-073	DISPONIBLE	2024-09-30 03:00:00	IMPORTACION	44.74	7802	\N	\N	\N	\N	\N	0.00	6	\N	\N	2026-01-02 15:23:47.245	2026-01-02 15:23:47.245
+1860	50	7802-074	DISPONIBLE	2024-09-30 03:00:00	IMPORTACION	44.74	7802	\N	\N	\N	\N	\N	0.00	6	\N	\N	2026-01-02 15:23:47.247	2026-01-02 15:23:47.247
+1861	50	7802-075	DISPONIBLE	2024-09-30 03:00:00	IMPORTACION	44.74	7802	\N	\N	\N	\N	\N	0.00	6	\N	\N	2026-01-02 15:23:47.249	2026-01-02 15:23:47.249
+1862	50	7802-076	DISPONIBLE	2024-09-30 03:00:00	IMPORTACION	44.74	7802	\N	\N	\N	\N	\N	0.00	6	\N	\N	2026-01-02 15:23:47.251	2026-01-02 15:23:47.251
+1863	50	7802-077	DISPONIBLE	2024-09-30 03:00:00	IMPORTACION	44.74	7802	\N	\N	\N	\N	\N	0.00	6	\N	\N	2026-01-02 15:23:47.253	2026-01-02 15:23:47.253
+1864	50	7802-078	DISPONIBLE	2024-09-30 03:00:00	IMPORTACION	44.74	7802	\N	\N	\N	\N	\N	0.00	6	\N	\N	2026-01-02 15:23:47.255	2026-01-02 15:23:47.255
+1865	50	7802-079	DISPONIBLE	2024-09-30 03:00:00	IMPORTACION	44.74	7802	\N	\N	\N	\N	\N	0.00	6	\N	\N	2026-01-02 15:23:47.257	2026-01-02 15:23:47.257
+1866	50	7802-080	DISPONIBLE	2024-09-30 03:00:00	IMPORTACION	44.74	7802	\N	\N	\N	\N	\N	0.00	6	\N	\N	2026-01-02 15:23:47.259	2026-01-02 15:23:47.259
+1867	50	7802-081	DISPONIBLE	2024-09-30 03:00:00	IMPORTACION	44.74	7802	\N	\N	\N	\N	\N	0.00	6	\N	\N	2026-01-02 15:23:47.261	2026-01-02 15:23:47.261
+1868	50	7802-082	DISPONIBLE	2024-09-30 03:00:00	IMPORTACION	44.74	7802	\N	\N	\N	\N	\N	0.00	6	\N	\N	2026-01-02 15:23:47.263	2026-01-02 15:23:47.263
+1869	50	7802-083	DISPONIBLE	2024-09-30 03:00:00	IMPORTACION	44.74	7802	\N	\N	\N	\N	\N	0.00	6	\N	\N	2026-01-02 15:23:47.264	2026-01-02 15:23:47.264
+1870	50	7802-084	DISPONIBLE	2024-09-30 03:00:00	IMPORTACION	44.74	7802	\N	\N	\N	\N	\N	0.00	6	\N	\N	2026-01-02 15:23:47.266	2026-01-02 15:23:47.266
+1871	50	7802-085	DISPONIBLE	2024-09-30 03:00:00	IMPORTACION	44.74	7802	\N	\N	\N	\N	\N	0.00	6	\N	\N	2026-01-02 15:23:47.268	2026-01-02 15:23:47.268
+1872	50	7802-086	DISPONIBLE	2024-09-30 03:00:00	IMPORTACION	44.74	7802	\N	\N	\N	\N	\N	0.00	6	\N	\N	2026-01-02 15:23:47.269	2026-01-02 15:23:47.269
+1873	50	7802-087	DISPONIBLE	2024-09-30 03:00:00	IMPORTACION	44.74	7802	\N	\N	\N	\N	\N	0.00	6	\N	\N	2026-01-02 15:23:47.271	2026-01-02 15:23:47.271
+1874	50	7802-088	DISPONIBLE	2024-09-30 03:00:00	IMPORTACION	44.74	7802	\N	\N	\N	\N	\N	0.00	6	\N	\N	2026-01-02 15:23:47.273	2026-01-02 15:23:47.273
+1875	50	7802-089	DISPONIBLE	2024-09-30 03:00:00	IMPORTACION	44.74	7802	\N	\N	\N	\N	\N	0.00	6	\N	\N	2026-01-02 15:23:47.274	2026-01-02 15:23:47.274
+1876	50	7802-090	DISPONIBLE	2024-09-30 03:00:00	IMPORTACION	44.74	7802	\N	\N	\N	\N	\N	0.00	6	\N	\N	2026-01-02 15:23:47.276	2026-01-02 15:23:47.276
+1877	50	7802-091	DISPONIBLE	2024-09-30 03:00:00	IMPORTACION	44.74	7802	\N	\N	\N	\N	\N	0.00	6	\N	\N	2026-01-02 15:23:47.277	2026-01-02 15:23:47.277
+1878	50	7802-092	DISPONIBLE	2024-09-30 03:00:00	IMPORTACION	44.74	7802	\N	\N	\N	\N	\N	0.00	6	\N	\N	2026-01-02 15:23:47.279	2026-01-02 15:23:47.279
+1879	50	7802-093	DISPONIBLE	2024-09-30 03:00:00	IMPORTACION	44.74	7802	\N	\N	\N	\N	\N	0.00	6	\N	\N	2026-01-02 15:23:47.28	2026-01-02 15:23:47.28
+1880	50	7802-094	DISPONIBLE	2024-09-30 03:00:00	IMPORTACION	44.74	7802	\N	\N	\N	\N	\N	0.00	6	\N	\N	2026-01-02 15:23:47.288	2026-01-02 15:23:47.288
+1881	50	7802-095	DISPONIBLE	2024-09-30 03:00:00	IMPORTACION	44.74	7802	\N	\N	\N	\N	\N	0.00	6	\N	\N	2026-01-02 15:23:47.29	2026-01-02 15:23:47.29
+1882	50	7802-096	DISPONIBLE	2024-09-30 03:00:00	IMPORTACION	44.74	7802	\N	\N	\N	\N	\N	0.00	6	\N	\N	2026-01-02 15:23:47.291	2026-01-02 15:23:47.291
+1883	50	7802-097	DISPONIBLE	2024-09-30 03:00:00	IMPORTACION	44.74	7802	\N	\N	\N	\N	\N	0.00	6	\N	\N	2026-01-02 15:23:47.294	2026-01-02 15:23:47.294
+1884	50	7802-098	DISPONIBLE	2024-09-30 03:00:00	IMPORTACION	44.74	7802	\N	\N	\N	\N	\N	0.00	6	\N	\N	2026-01-02 15:23:47.3	2026-01-02 15:23:47.3
+1885	50	7802-099	DISPONIBLE	2024-09-30 03:00:00	IMPORTACION	44.74	7802	\N	\N	\N	\N	\N	0.00	6	\N	\N	2026-01-02 15:23:47.302	2026-01-02 15:23:47.302
+1886	50	7802-100	DISPONIBLE	2024-09-30 03:00:00	IMPORTACION	44.74	7802	\N	\N	\N	\N	\N	0.00	6	\N	\N	2026-01-02 15:23:47.303	2026-01-02 15:23:47.303
+1888	29	-002	VENDIDO	2023-03-07 03:00:00	IMPORTACION	18.03		2023-04-05 04:00:00	238	40.00	EFECTIVO_USD	\N	20.01	6	\N	\N	2026-01-02 15:23:47.307	2026-01-02 15:23:50.473
+1889	29	-003	VENDIDO	2023-03-07 03:00:00	IMPORTACION	18.03		2023-04-17 04:00:00	196	40.00	EFECTIVO_USD	\N	20.01	6	\N	\N	2026-01-02 15:23:47.311	2026-01-02 15:23:50.474
+1890	29	-004	VENDIDO	2023-03-07 03:00:00	IMPORTACION	18.03		2023-04-17 04:00:00	196	40.00	EFECTIVO_USD	\N	20.01	6	\N	\N	2026-01-02 15:23:47.314	2026-01-02 15:23:50.477
+1891	29	-005	VENDIDO	2023-03-07 03:00:00	IMPORTACION	18.03		2023-05-30 04:00:00	191	40.00	EFECTIVO_USD	\N	20.01	6	\N	\N	2026-01-02 15:23:47.316	2026-01-02 15:23:50.478
+1892	29	-006	VENDIDO	2023-03-07 03:00:00	IMPORTACION	18.03		2023-05-30 04:00:00	191	40.00	EFECTIVO_USD	\N	20.01	6	\N	\N	2026-01-02 15:23:47.319	2026-01-02 15:23:50.48
+1893	29	-007	VENDIDO	2023-03-07 03:00:00	IMPORTACION	18.03		2023-05-31 04:00:00	188	40.00	EFECTIVO_USD	\N	20.01	6	\N	\N	2026-01-02 15:23:47.321	2026-01-02 15:23:50.481
+1894	29	-008	VENDIDO	2023-03-07 03:00:00	IMPORTACION	18.03		2023-05-31 04:00:00	188	40.00	EFECTIVO_USD	\N	20.01	6	\N	\N	2026-01-02 15:23:47.322	2026-01-02 15:23:50.483
+1895	29	-009	VENDIDO	2023-03-07 03:00:00	IMPORTACION	18.03		2023-05-31 04:00:00	188	40.00	EFECTIVO_USD	\N	20.01	6	\N	\N	2026-01-02 15:23:47.324	2026-01-02 15:23:50.484
+1896	29	-010	VENDIDO	2023-03-07 03:00:00	IMPORTACION	18.03		2023-06-28 04:00:00	234	40.00	EFECTIVO_USD	\N	20.01	6	\N	\N	2026-01-02 15:23:47.325	2026-01-02 15:23:50.486
+1897	29	-011	VENDIDO	2023-03-07 03:00:00	IMPORTACION	18.03		2023-06-28 04:00:00	234	40.00	EFECTIVO_USD	\N	20.01	6	\N	\N	2026-01-02 15:23:47.327	2026-01-02 15:23:50.489
+1898	29	-012	VENDIDO	2023-03-07 03:00:00	IMPORTACION	18.03		2023-07-18 04:00:00	191	40.00	TRANSFERENCIA_BS	\N	20.01	6	\N	\N	2026-01-02 15:23:47.329	2026-01-02 15:23:50.491
+1899	29	-013	VENDIDO	2023-03-07 03:00:00	IMPORTACION	18.03		2023-08-17 04:00:00	191	40.00	TRANSFERENCIA_BS	\N	20.01	6	\N	\N	2026-01-02 15:23:47.331	2026-01-02 15:23:50.494
+1900	29	-014	VENDIDO	2023-03-07 03:00:00	IMPORTACION	18.03		2023-07-18 04:00:00	191	40.00	TRANSFERENCIA_BS	\N	20.01	6	\N	\N	2026-01-02 15:23:47.333	2026-01-02 15:23:50.495
+1901	29	-015	VENDIDO	2023-03-07 03:00:00	IMPORTACION	18.03		2023-08-17 04:00:00	191	40.00	EFECTIVO_USD	\N	20.01	6	\N	\N	2026-01-02 15:23:47.335	2026-01-02 15:23:50.497
+1902	29	-016	VENDIDO	2023-03-07 03:00:00	IMPORTACION	18.03		2023-08-15 04:00:00	192	40.00	EFECTIVO_USD	\N	20.01	6	\N	\N	2026-01-02 15:23:47.336	2026-01-02 15:23:50.499
+1904	29	-018	VENDIDO	2023-03-07 03:00:00	IMPORTACION	18.03		2023-08-15 04:00:00	192	40.00	EFECTIVO_USD	\N	20.01	6	\N	\N	2026-01-02 15:23:47.341	2026-01-02 15:23:50.502
+1905	29	-019	VENDIDO	2023-03-07 03:00:00	IMPORTACION	18.03		2023-08-15 04:00:00	192	40.00	EFECTIVO_USD	\N	20.01	6	\N	\N	2026-01-02 15:23:47.342	2026-01-02 15:23:50.504
+1907	29	-021	VENDIDO	2025-05-21 04:00:00	IMPORTACION	18.03		2023-09-18 03:00:00	366	0.00	EFECTIVO_USD	\N	0.00	6	\N	\N	2026-01-02 15:23:47.346	2026-01-02 15:23:50.506
+1908	29	-022	VENDIDO	2025-05-21 04:00:00	IMPORTACION	18.03		2023-11-13 03:00:00	292	40.00	EFECTIVO_USD	\N	20.01	6	\N	\N	2026-01-02 15:23:47.348	2026-01-02 15:23:50.508
+1909	29	-023	VENDIDO	2025-05-21 04:00:00	IMPORTACION	18.03		2023-11-13 03:00:00	292	40.00	EFECTIVO_USD	\N	20.01	6	\N	\N	2026-01-02 15:23:47.35	2026-01-02 15:23:50.509
+1910	29	-024	VENDIDO	2025-05-21 04:00:00	IMPORTACION	18.03		2023-10-31 03:00:00	292	40.00	EFECTIVO_USD	\N	20.01	6	\N	\N	2026-01-02 15:23:47.356	2026-01-02 15:23:50.511
+1912	29	-026	VENDIDO	2025-05-21 04:00:00	IMPORTACION	18.03		2023-10-31 03:00:00	292	40.00	EFECTIVO_USD	\N	20.01	6	\N	\N	2026-01-02 15:23:47.361	2026-01-02 15:23:50.514
+1913	29	-027	VENDIDO	2025-05-21 04:00:00	IMPORTACION	18.03		2023-11-13 03:00:00	292	40.00	EFECTIVO_USD	\N	20.01	6	\N	\N	2026-01-02 15:23:47.362	2026-01-02 15:23:50.515
+1914	29	-028	DISPONIBLE	2025-05-21 04:00:00	IMPORTACION	18.03		\N	189	\N	\N	\N	0.00	6	\N	\N	2026-01-02 15:23:47.364	2026-01-02 15:23:50.517
+1916	29	-030	VENDIDO	2025-05-21 04:00:00	IMPORTACION	18.03		2023-12-06 03:00:00	219	40.00	EFECTIVO_USD	\N	20.01	6	\N	\N	2026-01-02 15:23:47.368	2026-01-02 15:23:50.52
+1917	29	-031	VENDIDO	2025-05-21 04:00:00	IMPORTACION	18.03		2023-12-06 03:00:00	219	40.00	EFECTIVO_USD	\N	20.01	6	\N	\N	2026-01-02 15:23:47.37	2026-01-02 15:23:50.521
+1918	29	-032	VENDIDO	2025-05-21 04:00:00	IMPORTACION	18.03		2023-12-13 03:00:00	292	40.00	EFECTIVO_USD	\N	20.01	6	\N	\N	2026-01-02 15:23:47.371	2026-01-02 15:23:50.522
+1920	29	-034	VENDIDO	2025-05-21 04:00:00	IMPORTACION	18.03		2023-12-13 03:00:00	292	40.00	EFECTIVO_USD	\N	20.01	6	\N	\N	2026-01-02 15:23:47.374	2026-01-02 15:23:50.525
+1921	29	-035	VENDIDO	2025-05-21 04:00:00	IMPORTACION	18.03		2023-12-15 03:00:00	292	40.00	EFECTIVO_USD	\N	20.01	6	\N	\N	2026-01-02 15:23:47.376	2026-01-02 15:23:50.527
+1922	29	-036	VENDIDO	2025-05-21 04:00:00	IMPORTACION	18.03		2023-12-15 03:00:00	292	40.00	EFECTIVO_USD	\N	20.01	6	\N	\N	2026-01-02 15:23:47.377	2026-01-02 15:23:50.529
+1967	30	-041	VENDIDO	2023-07-13 04:00:00	IMPORTACION	23.38		2023-10-26 03:00:00	230	35.00	EFECTIVO_USD	\N	11.62	6	\N	\N	2026-01-02 15:23:47.497	2026-01-02 15:23:47.497
+1968	30	-042	VENDIDO	2023-07-13 04:00:00	IMPORTACION	23.38		2023-10-26 03:00:00	230	35.00	EFECTIVO_USD	\N	11.62	6	\N	\N	2026-01-02 15:23:47.499	2026-01-02 15:23:47.499
+1969	30	-043	VENDIDO	2023-07-13 04:00:00	IMPORTACION	23.38		2023-11-01 03:00:00	240	35.00	EFECTIVO_USD	\N	11.62	6	\N	\N	2026-01-02 15:23:47.501	2026-01-02 15:23:47.501
+1970	30	-044	VENDIDO	2023-07-13 04:00:00	IMPORTACION	23.38		2023-11-01 03:00:00	193	35.00	EFECTIVO_USD	\N	11.62	6	\N	\N	2026-01-02 15:23:47.503	2026-01-02 15:23:47.503
+1971	30	-045	VENDIDO	2023-07-13 04:00:00	IMPORTACION	23.38		2023-11-01 03:00:00	241	35.00	EFECTIVO_USD	\N	11.62	6	\N	\N	2026-01-02 15:23:47.505	2026-01-02 15:23:47.505
+1972	30	-046	VENDIDO	2023-07-13 04:00:00	IMPORTACION	23.38		2023-11-07 03:00:00	219	35.00	EFECTIVO_USD	\N	11.62	6	\N	\N	2026-01-02 15:23:47.508	2026-01-02 15:23:47.508
+1973	30	-047	VENDIDO	2023-07-13 04:00:00	IMPORTACION	23.38		2023-11-07 03:00:00	241	35.00	EFECTIVO_USD	\N	11.62	6	\N	\N	2026-01-02 15:23:47.511	2026-01-02 15:23:47.511
+1974	30	-048	VENDIDO	2023-07-13 04:00:00	IMPORTACION	23.38		2023-11-07 03:00:00	241	35.00	EFECTIVO_USD	\N	11.62	6	\N	\N	2026-01-02 15:23:47.514	2026-01-02 15:23:47.514
+1975	30	-049	VENDIDO	2023-07-13 04:00:00	IMPORTACION	23.38		2023-11-14 03:00:00	193	35.00	EFECTIVO_USD	\N	11.62	6	\N	\N	2026-01-02 15:23:47.517	2026-01-02 15:23:47.517
+1976	30	-050	VENDIDO	2023-07-13 04:00:00	IMPORTACION	23.38		2023-12-07 03:00:00	195	35.00	EFECTIVO_USD	\N	11.62	6	\N	\N	2026-01-02 15:23:47.521	2026-01-02 15:23:47.521
+1977	30	-051	VENDIDO	2023-07-13 04:00:00	IMPORTACION	23.38		2023-12-07 03:00:00	195	35.00	EFECTIVO_USD	\N	11.62	6	\N	\N	2026-01-02 15:23:47.525	2026-01-02 15:23:47.525
+1978	30	-052	VENDIDO	2023-07-13 04:00:00	IMPORTACION	23.38		2023-12-18 03:00:00	188	35.00	EFECTIVO_USD	\N	11.62	6	\N	\N	2026-01-02 15:23:47.528	2026-01-02 15:23:47.528
+1979	30	-053	VENDIDO	2023-07-13 04:00:00	IMPORTACION	23.38		2023-12-18 03:00:00	188	35.00	EFECTIVO_USD	\N	11.62	6	\N	\N	2026-01-02 15:23:47.531	2026-01-02 15:23:47.531
+1980	30	-054	VENDIDO	2023-07-13 04:00:00	IMPORTACION	23.38		2023-12-04 03:00:00	193	35.00	EFECTIVO_USD	\N	11.62	6	\N	\N	2026-01-02 15:23:47.534	2026-01-02 15:23:47.534
+1981	30	-055	VENDIDO	2023-07-13 04:00:00	IMPORTACION	23.38		2023-12-04 03:00:00	193	35.00	EFECTIVO_USD	\N	11.62	6	\N	\N	2026-01-02 15:23:47.538	2026-01-02 15:23:47.538
+1982	30	-056	VENDIDO	2023-07-13 04:00:00	IMPORTACION	23.38		2023-12-05 03:00:00	194	35.00	EFECTIVO_USD	\N	11.62	6	\N	\N	2026-01-02 15:23:47.541	2026-01-02 15:23:47.541
+1983	30	-057	VENDIDO	2023-07-13 04:00:00	IMPORTACION	23.38		2023-12-05 03:00:00	194	35.00	EFECTIVO_USD	\N	11.62	6	\N	\N	2026-01-02 15:23:47.543	2026-01-02 15:23:47.543
+1984	30	-058	VENDIDO	2023-07-13 04:00:00	IMPORTACION	23.38		2023-12-06 03:00:00	242	35.00	EFECTIVO_USD	\N	11.62	6	\N	\N	2026-01-02 15:23:47.545	2026-01-02 15:23:47.545
+1985	30	-059	VENDIDO	2023-07-13 04:00:00	IMPORTACION	23.38		2023-12-06 03:00:00	242	35.00	EFECTIVO_USD	\N	11.62	6	\N	\N	2026-01-02 15:23:47.547	2026-01-02 15:23:47.547
+1986	30	-060	VENDIDO	2023-07-13 04:00:00	IMPORTACION	23.38		2023-12-06 03:00:00	208	35.00	EFECTIVO_USD	\N	11.62	6	\N	\N	2026-01-02 15:23:47.549	2026-01-02 15:23:47.549
+1987	30	-061	VENDIDO	2023-07-13 04:00:00	IMPORTACION	23.38		2023-12-06 03:00:00	208	35.00	EFECTIVO_USD	\N	11.62	6	\N	\N	2026-01-02 15:23:47.55	2026-01-02 15:23:47.55
+1988	30	-062	VENDIDO	2023-07-13 04:00:00	IMPORTACION	23.38		2023-12-06 03:00:00	208	35.00	EFECTIVO_USD	\N	11.62	6	\N	\N	2026-01-02 15:23:47.552	2026-01-02 15:23:47.552
+1989	30	-063	VENDIDO	2023-07-13 04:00:00	IMPORTACION	23.38		2023-12-06 03:00:00	208	35.00	EFECTIVO_USD	\N	11.62	6	\N	\N	2026-01-02 15:23:47.555	2026-01-02 15:23:47.555
+1990	30	-064	VENDIDO	2023-07-13 04:00:00	IMPORTACION	23.38		2023-12-06 03:00:00	208	35.00	EFECTIVO_USD	\N	11.62	6	\N	\N	2026-01-02 15:23:47.557	2026-01-02 15:23:47.557
+1991	30	-065	VENDIDO	2023-07-13 04:00:00	IMPORTACION	23.38		2023-12-06 03:00:00	208	35.00	EFECTIVO_USD	\N	11.62	6	\N	\N	2026-01-02 15:23:47.558	2026-01-02 15:23:47.558
+1992	30	-066	VENDIDO	2023-07-13 04:00:00	IMPORTACION	23.38		2023-12-06 03:00:00	208	35.00	EFECTIVO_USD	\N	11.62	6	\N	\N	2026-01-02 15:23:47.56	2026-01-02 15:23:47.56
+1993	30	-067	VENDIDO	2023-07-13 04:00:00	IMPORTACION	23.38		2023-12-06 03:00:00	208	35.00	EFECTIVO_USD	\N	11.62	6	\N	\N	2026-01-02 15:23:47.563	2026-01-02 15:23:47.563
+1994	30	-068	VENDIDO	2023-07-13 04:00:00	IMPORTACION	23.38		2023-12-06 03:00:00	208	35.00	EFECTIVO_USD	\N	11.62	6	\N	\N	2026-01-02 15:23:47.566	2026-01-02 15:23:47.566
+1995	30	-069	VENDIDO	2023-07-13 04:00:00	IMPORTACION	23.38		2023-12-06 03:00:00	208	35.00	EFECTIVO_USD	\N	11.62	6	\N	\N	2026-01-02 15:23:47.569	2026-01-02 15:23:47.569
+1996	30	-070	VENDIDO	2023-07-13 04:00:00	IMPORTACION	23.38		2023-12-06 03:00:00	208	35.00	EFECTIVO_USD	\N	11.62	6	\N	\N	2026-01-02 15:23:47.573	2026-01-02 15:23:47.573
+1997	30	-071	VENDIDO	2023-07-13 04:00:00	IMPORTACION	23.38		2023-12-06 03:00:00	208	35.00	EFECTIVO_USD	\N	11.62	6	\N	\N	2026-01-02 15:23:47.576	2026-01-02 15:23:47.576
+1998	30	-072	VENDIDO	2023-07-13 04:00:00	IMPORTACION	23.38		2023-12-06 03:00:00	208	35.00	EFECTIVO_USD	\N	11.62	6	\N	\N	2026-01-02 15:23:47.579	2026-01-02 15:23:47.579
+1999	30	-073	VENDIDO	2023-07-13 04:00:00	IMPORTACION	23.38		2023-12-06 03:00:00	208	35.00	EFECTIVO_USD	\N	11.62	6	\N	\N	2026-01-02 15:23:47.583	2026-01-02 15:23:47.583
+2000	30	-074	VENDIDO	2023-07-13 04:00:00	IMPORTACION	23.38		2023-12-06 03:00:00	208	35.00	EFECTIVO_USD	\N	11.62	6	\N	\N	2026-01-02 15:23:47.585	2026-01-02 15:23:47.585
+2001	30	-075	VENDIDO	2023-07-13 04:00:00	IMPORTACION	23.38		2023-12-06 03:00:00	208	35.00	EFECTIVO_USD	\N	11.62	6	\N	\N	2026-01-02 15:23:47.588	2026-01-02 15:23:47.588
+2002	30	-076	VENDIDO	2023-07-13 04:00:00	IMPORTACION	23.38		2023-12-06 03:00:00	208	35.00	EFECTIVO_USD	\N	11.62	6	\N	\N	2026-01-02 15:23:47.591	2026-01-02 15:23:47.591
+2003	30	-077	VENDIDO	2023-07-13 04:00:00	IMPORTACION	23.38		2023-12-06 03:00:00	208	35.00	EFECTIVO_USD	\N	11.62	6	\N	\N	2026-01-02 15:23:47.593	2026-01-02 15:23:47.593
+2004	30	-078	VENDIDO	2023-07-13 04:00:00	IMPORTACION	23.38		2023-12-06 03:00:00	208	35.00	EFECTIVO_USD	\N	11.62	6	\N	\N	2026-01-02 15:23:47.596	2026-01-02 15:23:47.596
+2005	30	-079	VENDIDO	2023-07-13 04:00:00	IMPORTACION	23.38		2023-12-06 03:00:00	208	35.00	EFECTIVO_USD	\N	11.62	6	\N	\N	2026-01-02 15:23:47.598	2026-01-02 15:23:47.598
+2006	30	-080	VENDIDO	2023-07-13 04:00:00	IMPORTACION	23.38		2023-12-20 03:00:00	193	35.00	EFECTIVO_USD	\N	11.62	6	\N	\N	2026-01-02 15:23:47.6	2026-01-02 15:23:47.6
+2007	30	-081	VENDIDO	2023-07-13 04:00:00	IMPORTACION	23.38		2023-12-20 03:00:00	193	35.00	EFECTIVO_USD	\N	11.62	6	\N	\N	2026-01-02 15:23:47.603	2026-01-02 15:23:47.603
+2008	30	-082	VENDIDO	2023-07-13 04:00:00	IMPORTACION	23.38		2023-12-19 03:00:00	243	35.00	EFECTIVO_USD	\N	11.62	6	\N	\N	2026-01-02 15:23:47.607	2026-01-02 15:23:47.607
+2009	30	-083	VENDIDO	2023-07-13 04:00:00	IMPORTACION	23.38		2023-12-19 03:00:00	243	35.00	EFECTIVO_USD	\N	11.62	6	\N	\N	2026-01-02 15:23:47.609	2026-01-02 15:23:47.609
+2010	30	-084	VENDIDO	2023-07-13 04:00:00	IMPORTACION	23.38		2023-12-19 03:00:00	243	35.00	EFECTIVO_USD	\N	11.62	6	\N	\N	2026-01-02 15:23:47.613	2026-01-02 15:23:47.613
+2011	30	-085	VENDIDO	2023-07-13 04:00:00	IMPORTACION	23.38		2023-12-19 03:00:00	243	35.00	EFECTIVO_USD	\N	11.62	6	\N	\N	2026-01-02 15:23:47.615	2026-01-02 15:23:47.615
+1887	29	-001	VENDIDO	2023-03-07 03:00:00	IMPORTACION	18.03		2023-04-05 04:00:00	238	40.00	EFECTIVO_USD	\N	20.01	6	\N	\N	2026-01-02 15:23:47.305	2026-01-02 15:23:50.471
+1903	29	-017	VENDIDO	2023-03-07 03:00:00	IMPORTACION	18.03		2023-08-15 04:00:00	192	40.00	EFECTIVO_USD	\N	20.01	6	\N	\N	2026-01-02 15:23:47.339	2026-01-02 15:23:50.501
+1911	29	-025	VENDIDO	2025-05-21 04:00:00	IMPORTACION	18.03		2023-10-31 03:00:00	292	40.00	EFECTIVO_USD	\N	20.01	6	\N	\N	2026-01-02 15:23:47.359	2026-01-02 15:23:50.512
+1915	29	-029	VENDIDO	2025-05-21 04:00:00	IMPORTACION	18.03		2023-11-13 03:00:00	292	40.00	EFECTIVO_USD	\N	20.01	6	\N	\N	2026-01-02 15:23:47.366	2026-01-02 15:23:50.518
+1919	29	-033	VENDIDO	2025-05-21 04:00:00	IMPORTACION	18.03		2023-12-13 03:00:00	292	40.00	EFECTIVO_USD	\N	20.01	6	\N	\N	2026-01-02 15:23:47.373	2026-01-02 15:23:50.524
+1923	29	-037	VENDIDO	2025-05-21 04:00:00	IMPORTACION	18.03		2024-02-05 03:00:00	292	40.00	EFECTIVO_USD	\N	20.01	6	\N	\N	2026-01-02 15:23:47.379	2026-01-02 15:23:50.531
+1924	29	-038	VENDIDO	2025-05-21 04:00:00	IMPORTACION	18.03		2024-04-22 04:00:00	292	40.00	EFECTIVO_USD	\N	20.01	6	\N	\N	2026-01-02 15:23:47.381	2026-01-02 15:23:50.533
+1925	29	-039	VENDIDO	2025-05-21 04:00:00	IMPORTACION	18.03		2024-04-22 04:00:00	292	40.00	EFECTIVO_USD	\N	20.01	6	\N	\N	2026-01-02 15:23:47.387	2026-01-02 15:23:50.534
+1926	29	-040	VENDIDO	2025-05-21 04:00:00	IMPORTACION	18.03		2025-02-11 03:00:00	191	40.00	EFECTIVO_USD	\N	20.01	6	\N	\N	2026-01-02 15:23:47.39	2026-01-02 15:23:50.537
+2012	30	-086	VENDIDO	2023-07-13 04:00:00	IMPORTACION	23.38		2023-12-20 03:00:00	193	35.00	EFECTIVO_USD	\N	11.62	6	\N	\N	2026-01-02 15:23:47.618	2026-01-02 15:23:47.618
+2013	30	-087	VENDIDO	2023-07-13 04:00:00	IMPORTACION	23.38		2023-12-20 03:00:00	193	35.00	EFECTIVO_USD	\N	11.62	6	\N	\N	2026-01-02 15:23:47.62	2026-01-02 15:23:47.62
+2014	30	-088	VENDIDO	2023-07-13 04:00:00	IMPORTACION	23.38		2023-12-20 03:00:00	193	35.00	EFECTIVO_USD	\N	11.62	6	\N	\N	2026-01-02 15:23:47.624	2026-01-02 15:23:47.624
+2015	30	-089	VENDIDO	2023-07-13 04:00:00	IMPORTACION	23.38		2023-12-20 03:00:00	193	35.00	EFECTIVO_USD	\N	11.62	6	\N	\N	2026-01-02 15:23:47.628	2026-01-02 15:23:47.628
+2016	30	-090	VENDIDO	2023-07-13 04:00:00	IMPORTACION	23.38		2024-02-22 03:00:00	225	35.00	EFECTIVO_USD	\N	11.62	6	\N	\N	2026-01-02 15:23:47.631	2026-01-02 15:23:47.631
+2017	30	-091	VENDIDO	2023-07-13 04:00:00	IMPORTACION	23.38		2024-03-14 03:00:00	193	35.00	EFECTIVO_USD	\N	11.62	6	\N	\N	2026-01-02 15:23:47.635	2026-01-02 15:23:47.635
+2018	30	-092	VENDIDO	2023-07-13 04:00:00	IMPORTACION	23.38		2024-03-14 03:00:00	193	35.00	EFECTIVO_USD	\N	11.62	6	\N	\N	2026-01-02 15:23:47.637	2026-01-02 15:23:47.637
+2019	30	-093	VENDIDO	2023-07-13 04:00:00	IMPORTACION	23.38		2024-04-04 03:00:00	193	35.00	TRANSFERENCIA_BS	\N	11.62	6	\N	\N	2026-01-02 15:23:47.641	2026-01-02 15:23:47.641
+2020	30	-094	VENDIDO	2023-07-13 04:00:00	IMPORTACION	23.38		2024-04-08 04:00:00	244	35.00	EFECTIVO_USD	\N	11.62	6	\N	\N	2026-01-02 15:23:47.643	2026-01-02 15:23:47.643
+2021	30	-095	VENDIDO	2023-07-13 04:00:00	IMPORTACION	23.38		2024-04-10 04:00:00	230	35.00	EFECTIVO_USD	\N	11.62	6	\N	\N	2026-01-02 15:23:47.645	2026-01-02 15:23:47.645
+2022	30	-096	VENDIDO	2023-07-13 04:00:00	IMPORTACION	23.38		2024-03-15 03:00:00	193	35.00	EFECTIVO_USD	\N	11.62	6	\N	\N	2026-01-02 15:23:47.649	2026-01-02 15:23:47.649
+2023	30	-097	VENDIDO	2023-07-13 04:00:00	IMPORTACION	23.38		2024-04-08 04:00:00	244	35.00	EFECTIVO_USD	\N	11.62	6	\N	\N	2026-01-02 15:23:47.653	2026-01-02 15:23:47.653
+2024	30	-098	VENDIDO	2023-07-13 04:00:00	IMPORTACION	23.38		2024-04-10 04:00:00	230	35.00	EFECTIVO_USD	\N	11.62	6	\N	\N	2026-01-02 15:23:47.655	2026-01-02 15:23:47.655
+2025	30	-099	VENDIDO	2023-07-13 04:00:00	IMPORTACION	23.38		2024-05-08 04:00:00	193	35.00	EFECTIVO_USD	\N	11.62	6	\N	\N	2026-01-02 15:23:47.66	2026-01-02 15:23:47.66
+2047	30	-121	VENDIDO	2023-07-18 04:00:00	IMPORTACION	23.38		2024-06-05 04:00:00	208	35.00	EFECTIVO_USD	\N	11.62	6	\N	\N	2026-01-02 15:23:47.721	2026-01-02 15:23:47.721
+2048	30	-122	VENDIDO	2023-07-18 04:00:00	IMPORTACION	23.38		2024-06-05 04:00:00	208	35.00	EFECTIVO_USD	\N	11.62	6	\N	\N	2026-01-02 15:23:47.724	2026-01-02 15:23:47.724
+2049	30	-123	VENDIDO	2023-07-18 04:00:00	IMPORTACION	23.38		2024-06-05 04:00:00	208	35.00	EFECTIVO_USD	\N	11.62	6	\N	\N	2026-01-02 15:23:47.728	2026-01-02 15:23:47.728
+2050	30	-124	VENDIDO	2023-07-18 04:00:00	IMPORTACION	23.38		2024-06-05 04:00:00	208	35.00	EFECTIVO_USD	\N	11.62	6	\N	\N	2026-01-02 15:23:47.731	2026-01-02 15:23:47.731
+2051	30	-125	VENDIDO	2023-07-18 04:00:00	IMPORTACION	23.38		2024-06-05 04:00:00	208	35.00	EFECTIVO_USD	\N	11.62	6	\N	\N	2026-01-02 15:23:47.733	2026-01-02 15:23:47.733
+2052	30	-126	VENDIDO	2023-07-18 04:00:00	IMPORTACION	23.38		2024-06-05 04:00:00	208	35.00	EFECTIVO_USD	\N	11.62	6	\N	\N	2026-01-02 15:23:47.737	2026-01-02 15:23:47.737
+2053	30	-127	VENDIDO	2023-07-18 04:00:00	IMPORTACION	23.38		2024-06-05 04:00:00	208	35.00	EFECTIVO_USD	\N	11.62	6	\N	\N	2026-01-02 15:23:47.739	2026-01-02 15:23:47.739
+2054	30	-128	VENDIDO	2023-07-18 04:00:00	IMPORTACION	23.38		2024-06-05 04:00:00	208	35.00	EFECTIVO_USD	\N	11.62	6	\N	\N	2026-01-02 15:23:47.741	2026-01-02 15:23:47.741
+2055	30	-129	VENDIDO	2023-07-18 04:00:00	IMPORTACION	23.38		2024-06-05 04:00:00	208	35.00	EFECTIVO_USD	\N	11.62	6	\N	\N	2026-01-02 15:23:47.744	2026-01-02 15:23:47.744
+2056	30	-130	VENDIDO	2023-07-18 04:00:00	IMPORTACION	23.38		2024-06-05 04:00:00	208	35.00	EFECTIVO_USD	\N	11.62	6	\N	\N	2026-01-02 15:23:47.748	2026-01-02 15:23:47.748
+2057	30	-131	VENDIDO	2023-07-18 04:00:00	IMPORTACION	23.38		2024-06-05 04:00:00	208	35.00	EFECTIVO_USD	\N	11.62	6	\N	\N	2026-01-02 15:23:47.75	2026-01-02 15:23:47.75
+2058	30	-132	VENDIDO	2023-07-18 04:00:00	IMPORTACION	23.38		2024-06-05 04:00:00	208	35.00	EFECTIVO_USD	\N	11.62	6	\N	\N	2026-01-02 15:23:47.759	2026-01-02 15:23:47.759
+2059	30	-133	VENDIDO	2023-07-18 04:00:00	IMPORTACION	23.38		2024-06-05 04:00:00	208	35.00	EFECTIVO_USD	\N	11.62	6	\N	\N	2026-01-02 15:23:47.761	2026-01-02 15:23:47.761
+2060	30	-134	VENDIDO	2023-07-18 04:00:00	IMPORTACION	23.38		2024-06-07 04:00:00	208	35.00	EFECTIVO_USD	\N	11.62	6	\N	\N	2026-01-02 15:23:47.763	2026-01-02 15:23:47.763
+2061	30	-135	VENDIDO	2023-07-18 04:00:00	IMPORTACION	23.38		2024-06-07 04:00:00	208	35.00	EFECTIVO_USD	\N	11.62	6	\N	\N	2026-01-02 15:23:47.766	2026-01-02 15:23:47.766
+2062	30	-136	VENDIDO	2023-07-18 04:00:00	IMPORTACION	23.38		2024-06-07 04:00:00	208	35.00	EFECTIVO_USD	\N	11.62	6	\N	\N	2026-01-02 15:23:47.776	2026-01-02 15:23:47.776
+2063	30	-137	VENDIDO	2023-07-18 04:00:00	IMPORTACION	23.38		2024-06-07 04:00:00	208	35.00	EFECTIVO_USD	\N	11.62	6	\N	\N	2026-01-02 15:23:47.78	2026-01-02 15:23:47.78
+2064	30	-138	VENDIDO	2023-07-18 04:00:00	IMPORTACION	23.38		2024-06-07 04:00:00	208	35.00	EFECTIVO_USD	\N	11.62	6	\N	\N	2026-01-02 15:23:47.783	2026-01-02 15:23:47.783
+2065	30	-139	VENDIDO	2023-07-18 04:00:00	IMPORTACION	23.38		2024-06-07 04:00:00	208	35.00	EFECTIVO_USD	\N	11.62	6	\N	\N	2026-01-02 15:23:47.788	2026-01-02 15:23:47.788
+2066	30	-140	VENDIDO	2023-07-18 04:00:00	IMPORTACION	23.38		2024-06-07 04:00:00	208	35.00	EFECTIVO_USD	\N	11.62	6	\N	\N	2026-01-02 15:23:47.792	2026-01-02 15:23:47.792
+2067	30	-141	VENDIDO	2023-07-18 04:00:00	IMPORTACION	23.38		2024-06-07 04:00:00	208	35.00	EFECTIVO_USD	\N	11.62	6	\N	\N	2026-01-02 15:23:47.794	2026-01-02 15:23:47.794
+2068	30	-142	VENDIDO	2023-07-18 04:00:00	IMPORTACION	23.38		2024-06-07 04:00:00	208	35.00	EFECTIVO_USD	\N	11.62	6	\N	\N	2026-01-02 15:23:47.797	2026-01-02 15:23:47.797
+2069	30	-143	VENDIDO	2023-07-18 04:00:00	IMPORTACION	23.38		2024-06-07 04:00:00	208	35.00	EFECTIVO_USD	\N	11.62	6	\N	\N	2026-01-02 15:23:47.799	2026-01-02 15:23:47.799
+2027	30	-101	VENDIDO	2023-07-13 04:00:00	IMPORTACION	23.38		2025-11-26 03:00:00	299	40.00	EFECTIVO_USD	\N	20.01	6	\N	\N	2026-01-02 15:23:47.665	2026-01-02 15:23:50.662
+2028	30	-102	VENDIDO	2023-07-13 04:00:00	IMPORTACION	23.38		2025-12-11 03:00:00	299	40.00	EFECTIVO_USD	\N	20.01	6	\N	\N	2026-01-02 15:23:47.674	2026-01-02 15:23:50.664
+2029	30	-103	VENDIDO	2023-07-13 04:00:00	IMPORTACION	23.38		2025-12-11 03:00:00	299	40.00	EFECTIVO_USD	\N	20.01	6	\N	\N	2026-01-02 15:23:47.678	2026-01-02 15:23:50.665
+2030	30	-104	DISPONIBLE	2023-07-13 04:00:00	IMPORTACION	23.38		\N	187	\N	\N	\N	0.00	6	\N	\N	2026-01-02 15:23:47.682	2026-01-02 15:23:50.668
+2031	30	-105	DISPONIBLE	2023-07-13 04:00:00	IMPORTACION	23.38		\N	244	\N	\N	\N	0.00	6	\N	\N	2026-01-02 15:23:47.685	2026-01-02 15:23:50.67
+2032	30	-106	DISPONIBLE	2023-07-13 04:00:00	IMPORTACION	23.38		\N	244	\N	\N	\N	0.00	6	\N	\N	2026-01-02 15:23:47.687	2026-01-02 15:23:50.672
+2033	30	-107	DISPONIBLE	2023-07-13 04:00:00	IMPORTACION	23.38		\N	230	\N	\N	\N	0.00	6	\N	\N	2026-01-02 15:23:47.689	2026-01-02 15:23:50.674
+2034	30	-108	DISPONIBLE	2023-07-13 04:00:00	IMPORTACION	23.38		\N	230	\N	\N	\N	0.00	6	\N	\N	2026-01-02 15:23:47.692	2026-01-02 15:23:50.675
+2035	30	-109	DISPONIBLE	2023-07-13 04:00:00	IMPORTACION	23.38		\N	230	\N	\N	\N	0.00	6	\N	\N	2026-01-02 15:23:47.694	2026-01-02 15:23:50.676
+2036	30	-110	DISPONIBLE	2023-07-13 04:00:00	IMPORTACION	23.38		\N	230	\N	\N	\N	0.00	6	\N	\N	2026-01-02 15:23:47.696	2026-01-02 15:23:50.678
+2037	30	-111	DISPONIBLE	2023-07-13 04:00:00	IMPORTACION	23.38		\N	193	\N	\N	\N	0.00	6	\N	\N	2026-01-02 15:23:47.698	2026-01-02 15:23:50.679
+2038	30	-112	DISPONIBLE	2023-07-13 04:00:00	IMPORTACION	23.38		\N	193	\N	\N	\N	0.00	6	\N	\N	2026-01-02 15:23:47.7	2026-01-02 15:23:50.681
+2039	30	-113	DISPONIBLE	2023-07-13 04:00:00	IMPORTACION	23.38		\N	193	\N	\N	\N	0.00	6	\N	\N	2026-01-02 15:23:47.703	2026-01-02 15:23:50.682
+2040	30	-114	DISPONIBLE	2023-07-13 04:00:00	IMPORTACION	23.38		\N	193	\N	\N	\N	0.00	6	\N	\N	2026-01-02 15:23:47.706	2026-01-02 15:23:50.684
+2041	30	-115	DISPONIBLE	2023-07-13 04:00:00	IMPORTACION	23.38		\N	193	\N	\N	\N	0.00	6	\N	\N	2026-01-02 15:23:47.709	2026-01-02 15:23:50.685
+2042	30	-116	DISPONIBLE	2023-07-13 04:00:00	IMPORTACION	23.38		\N	193	\N	\N	\N	0.00	6	\N	\N	2026-01-02 15:23:47.712	2026-01-02 15:23:50.687
+2043	30	-117	DISPONIBLE	2023-07-13 04:00:00	IMPORTACION	23.38		\N	193	\N	\N	\N	0.00	6	\N	\N	2026-01-02 15:23:47.714	2026-01-02 15:23:50.688
+2044	30	-118	DISPONIBLE	2023-07-13 04:00:00	IMPORTACION	23.38		\N	220	\N	\N	\N	0.00	6	\N	\N	2026-01-02 15:23:47.716	2026-01-02 15:23:50.689
+2045	30	-119	DISPONIBLE	2023-07-13 04:00:00	IMPORTACION	23.38		\N	208	\N	\N	\N	0.00	6	\N	\N	2026-01-02 15:23:47.717	2026-01-02 15:23:50.692
+2046	30	-120	DISPONIBLE	2023-07-13 04:00:00	IMPORTACION	23.38		\N	208	\N	\N	\N	0.00	6	\N	\N	2026-01-02 15:23:47.719	2026-01-02 15:23:50.693
+2070	30	-144	VENDIDO	2023-07-18 04:00:00	IMPORTACION	23.38		2024-06-13 04:00:00	193	35.00	EFECTIVO_USD	\N	11.62	6	\N	\N	2026-01-02 15:23:47.801	2026-01-02 15:23:47.801
+2071	30	-145	VENDIDO	2023-07-18 04:00:00	IMPORTACION	23.38		2024-06-13 04:00:00	193	35.00	EFECTIVO_USD	\N	11.62	6	\N	\N	2026-01-02 15:23:47.803	2026-01-02 15:23:47.803
+2072	30	-146	VENDIDO	2023-07-18 04:00:00	IMPORTACION	23.38		2024-06-13 04:00:00	193	35.00	EFECTIVO_USD	\N	11.62	6	\N	\N	2026-01-02 15:23:47.807	2026-01-02 15:23:47.807
+2073	30	-147	VENDIDO	2023-07-18 04:00:00	IMPORTACION	23.38		2024-06-13 04:00:00	193	35.00	EFECTIVO_USD	\N	11.62	6	\N	\N	2026-01-02 15:23:47.811	2026-01-02 15:23:47.811
+2074	30	-148	VENDIDO	2023-07-18 04:00:00	IMPORTACION	23.38		2024-06-13 04:00:00	193	35.00	EFECTIVO_USD	\N	11.62	6	\N	\N	2026-01-02 15:23:47.814	2026-01-02 15:23:47.814
+2075	30	-149	VENDIDO	2023-07-18 04:00:00	IMPORTACION	23.38		2024-06-13 04:00:00	193	35.00	EFECTIVO_USD	\N	11.62	6	\N	\N	2026-01-02 15:23:47.817	2026-01-02 15:23:47.817
+2076	30	-150	VENDIDO	2023-07-18 04:00:00	IMPORTACION	23.38		2024-06-13 04:00:00	193	35.00	EFECTIVO_USD	\N	11.62	6	\N	\N	2026-01-02 15:23:47.821	2026-01-02 15:23:47.821
+2077	30	-151	VENDIDO	2023-07-18 04:00:00	IMPORTACION	23.38		2024-06-13 04:00:00	193	35.00	EFECTIVO_USD	\N	11.62	6	\N	\N	2026-01-02 15:23:47.823	2026-01-02 15:23:47.823
+2078	30	-152	VENDIDO	2023-07-18 04:00:00	IMPORTACION	23.38		2024-06-13 04:00:00	193	35.00	EFECTIVO_USD	\N	11.62	6	\N	\N	2026-01-02 15:23:47.825	2026-01-02 15:23:47.825
+2079	30	-153	VENDIDO	2023-07-18 04:00:00	IMPORTACION	23.38		2024-06-13 04:00:00	193	35.00	EFECTIVO_USD	\N	11.62	6	\N	\N	2026-01-02 15:23:47.828	2026-01-02 15:23:47.828
+2080	30	-154	VENDIDO	2023-07-18 04:00:00	IMPORTACION	23.38		2024-06-18 04:00:00	193	35.00	EFECTIVO_USD	\N	11.62	6	\N	\N	2026-01-02 15:23:47.83	2026-01-02 15:23:47.83
+2081	30	-155	VENDIDO	2023-07-18 04:00:00	IMPORTACION	23.38		2024-06-18 04:00:00	193	35.00	EFECTIVO_USD	\N	11.62	6	\N	\N	2026-01-02 15:23:47.832	2026-01-02 15:23:47.832
+2082	30	-156	VENDIDO	2023-07-18 04:00:00	IMPORTACION	23.38		2024-06-20 04:00:00	193	35.00	EFECTIVO_USD	\N	11.62	6	\N	\N	2026-01-02 15:23:47.833	2026-01-02 15:23:47.833
+2083	30	-157	VENDIDO	2023-07-18 04:00:00	IMPORTACION	23.38		2024-06-25 04:00:00	245	35.00	ZELLE	\N	11.62	6	\N	\N	2026-01-02 15:23:47.835	2026-01-02 15:23:47.835
+2084	30	-158	VENDIDO	2023-07-18 04:00:00	IMPORTACION	23.38		2024-06-25 04:00:00	226	35.00	EFECTIVO_USD	\N	11.62	6	\N	\N	2026-01-02 15:23:47.837	2026-01-02 15:23:47.837
+2085	30	-159	VENDIDO	2023-07-18 04:00:00	IMPORTACION	23.38		2024-06-25 04:00:00	226	35.00	EFECTIVO_USD	\N	11.62	6	\N	\N	2026-01-02 15:23:47.839	2026-01-02 15:23:47.839
+2086	30	-160	VENDIDO	2023-07-18 04:00:00	IMPORTACION	23.38		2024-06-25 04:00:00	226	35.00	MIXTO	\N	11.62	6	\N	\N	2026-01-02 15:23:47.842	2026-01-02 15:23:47.842
+2087	30	-161	VENDIDO	2023-07-18 04:00:00	IMPORTACION	23.38		2024-06-26 04:00:00	193	35.00	EFECTIVO_USD	\N	11.62	6	\N	\N	2026-01-02 15:23:47.845	2026-01-02 15:23:47.845
+2088	30	-162	VENDIDO	2023-07-18 04:00:00	IMPORTACION	23.38		2024-06-26 04:00:00	193	35.00	EFECTIVO_USD	\N	11.62	6	\N	\N	2026-01-02 15:23:47.848	2026-01-02 15:23:47.848
+2089	30	-163	VENDIDO	2023-07-18 04:00:00	IMPORTACION	23.38		2024-06-27 04:00:00	197	35.00	EFECTIVO_USD	\N	11.62	6	\N	\N	2026-01-02 15:23:47.851	2026-01-02 15:23:47.851
+2090	30	-164	VENDIDO	2023-07-18 04:00:00	IMPORTACION	23.38		2024-06-27 04:00:00	197	35.00	EFECTIVO_USD	\N	11.62	6	\N	\N	2026-01-02 15:23:47.853	2026-01-02 15:23:47.853
+2091	30	-165	VENDIDO	2023-07-18 04:00:00	IMPORTACION	23.38		2024-06-27 04:00:00	193	35.00	ZELLE	\N	11.62	6	\N	\N	2026-01-02 15:23:47.857	2026-01-02 15:23:47.857
+2092	30	-166	VENDIDO	2023-07-18 04:00:00	IMPORTACION	23.38		2024-06-27 04:00:00	193	35.00	ZELLE	\N	11.62	6	\N	\N	2026-01-02 15:23:47.859	2026-01-02 15:23:47.859
+2093	30	-167	VENDIDO	2023-07-18 04:00:00	IMPORTACION	23.38		2024-06-27 04:00:00	193	35.00	ZELLE	\N	11.62	6	\N	\N	2026-01-02 15:23:47.862	2026-01-02 15:23:47.862
+2094	30	-168	VENDIDO	2023-07-18 04:00:00	IMPORTACION	23.38		2024-07-12 04:00:00	246	35.00	TRANSFERENCIA_BS	\N	11.62	6	\N	\N	2026-01-02 15:23:47.864	2026-01-02 15:23:47.864
+2095	30	-169	VENDIDO	2023-07-18 04:00:00	IMPORTACION	23.38		2024-07-01 04:00:00	247	35.00	EFECTIVO_USD	\N	11.62	6	\N	\N	2026-01-02 15:23:47.865	2026-01-02 15:23:47.865
+2096	30	-170	VENDIDO	2023-07-18 04:00:00	IMPORTACION	23.38		2024-07-01 04:00:00	247	35.00	EFECTIVO_USD	\N	11.62	6	\N	\N	2026-01-02 15:23:47.869	2026-01-02 15:23:47.869
+2097	30	-171	VENDIDO	2023-07-18 04:00:00	IMPORTACION	23.38		2024-07-01 04:00:00	227	35.00	TRANSFERENCIA_BS	\N	11.62	6	\N	\N	2026-01-02 15:23:47.871	2026-01-02 15:23:47.871
+2098	30	-172	VENDIDO	2023-07-18 04:00:00	IMPORTACION	23.38		2024-07-09 04:00:00	208	35.00	ZELLE	\N	11.62	6	\N	\N	2026-01-02 15:23:47.873	2026-01-02 15:23:47.873
+2099	30	-173	VENDIDO	2023-07-18 04:00:00	IMPORTACION	23.38		2024-07-09 04:00:00	208	35.00	ZELLE	\N	11.62	6	\N	\N	2026-01-02 15:23:47.874	2026-01-02 15:23:47.874
+2100	30	-174	VENDIDO	2023-07-18 04:00:00	IMPORTACION	23.38		2024-07-09 04:00:00	208	35.00	ZELLE	\N	11.62	6	\N	\N	2026-01-02 15:23:47.876	2026-01-02 15:23:47.876
+2101	30	-175	VENDIDO	2023-07-18 04:00:00	IMPORTACION	23.38		2024-07-09 04:00:00	208	35.00	ZELLE	\N	11.62	6	\N	\N	2026-01-02 15:23:47.879	2026-01-02 15:23:47.879
+2102	30	-176	VENDIDO	2023-07-18 04:00:00	IMPORTACION	23.38		2024-07-09 04:00:00	208	35.00	ZELLE	\N	11.62	6	\N	\N	2026-01-02 15:23:47.883	2026-01-02 15:23:47.883
+2103	30	-177	VENDIDO	2023-07-18 04:00:00	IMPORTACION	23.38		2024-07-09 04:00:00	208	35.00	ZELLE	\N	11.62	6	\N	\N	2026-01-02 15:23:47.886	2026-01-02 15:23:47.886
+2104	30	-178	VENDIDO	2023-07-18 04:00:00	IMPORTACION	23.38		2024-07-11 04:00:00	220	35.00	EFECTIVO_USD	\N	11.62	6	\N	\N	2026-01-02 15:23:47.888	2026-01-02 15:23:47.888
+2105	30	-179	VENDIDO	2023-07-18 04:00:00	IMPORTACION	23.38		2024-07-11 04:00:00	220	35.00	EFECTIVO_USD	\N	11.62	6	\N	\N	2026-01-02 15:23:47.895	2026-01-02 15:23:47.895
+2106	30	-180	VENDIDO	2023-07-18 04:00:00	IMPORTACION	23.38		2024-07-22 04:00:00	248	35.00	EFECTIVO_USD	\N	11.62	6	\N	\N	2026-01-02 15:23:47.898	2026-01-02 15:23:47.898
+2107	30	-181	VENDIDO	2023-07-18 04:00:00	IMPORTACION	23.38		2024-08-06 04:00:00	249	35.00	EFECTIVO_USD	\N	11.62	6	\N	\N	2026-01-02 15:23:47.901	2026-01-02 15:23:47.901
+2108	30	-182	VENDIDO	2023-07-18 04:00:00	IMPORTACION	23.38		2024-08-06 04:00:00	249	35.00	EFECTIVO_USD	\N	11.62	6	\N	\N	2026-01-02 15:23:47.903	2026-01-02 15:23:47.903
+2109	30	-183	VENDIDO	2023-07-18 04:00:00	IMPORTACION	23.38		2024-09-03 04:00:00	238	35.00	EFECTIVO_USD	\N	11.62	6	\N	\N	2026-01-02 15:23:47.905	2026-01-02 15:23:47.905
+2110	30	-184	VENDIDO	2023-07-18 04:00:00	IMPORTACION	23.38		2024-09-03 04:00:00	238	35.00	EFECTIVO_USD	\N	11.62	6	\N	\N	2026-01-02 15:23:47.907	2026-01-02 15:23:47.907
+2111	30	-185	VENDIDO	2023-07-18 04:00:00	IMPORTACION	23.38		2024-09-26 03:00:00	220	35.00	EFECTIVO_USD	\N	11.62	6	\N	\N	2026-01-02 15:23:47.918	2026-01-02 15:23:47.918
+2112	30	-186	VENDIDO	2023-07-18 04:00:00	IMPORTACION	23.38		2024-09-26 03:00:00	220	35.00	EFECTIVO_USD	\N	11.62	6	\N	\N	2026-01-02 15:23:47.922	2026-01-02 15:23:47.922
+2113	30	-187	VENDIDO	2023-07-18 04:00:00	IMPORTACION	23.38		2024-09-19 03:00:00	195	35.00	EFECTIVO_USD	\N	11.62	6	\N	\N	2026-01-02 15:23:47.926	2026-01-02 15:23:47.926
+2114	30	-188	VENDIDO	2023-07-18 04:00:00	IMPORTACION	23.38		2024-09-19 03:00:00	195	35.00	EFECTIVO_USD	\N	11.62	6	\N	\N	2026-01-02 15:23:47.929	2026-01-02 15:23:47.929
+2115	30	-189	VENDIDO	2023-07-18 04:00:00	IMPORTACION	23.38		2024-09-28 03:00:00	246	35.00	TRANSFERENCIA_BS	\N	11.62	6	\N	\N	2026-01-02 15:23:47.932	2026-01-02 15:23:47.932
+2116	30	-190	VENDIDO	2023-07-18 04:00:00	IMPORTACION	23.38		2024-10-04 03:00:00	250	35.00	EFECTIVO_USD	\N	11.62	6	\N	\N	2026-01-02 15:23:47.935	2026-01-02 15:23:47.935
+2117	30	-191	VENDIDO	2023-07-18 04:00:00	IMPORTACION	23.38		2024-10-04 03:00:00	250	35.00	EFECTIVO_USD	\N	11.62	6	\N	\N	2026-01-02 15:23:47.938	2026-01-02 15:23:47.938
+2118	30	-192	VENDIDO	2023-07-18 04:00:00	IMPORTACION	23.38		2024-10-21 03:00:00	220	35.00	EFECTIVO_USD	\N	11.62	6	\N	\N	2026-01-02 15:23:47.94	2026-01-02 15:23:47.94
+2119	30	-193	VENDIDO	2023-07-18 04:00:00	IMPORTACION	23.38		2024-10-21 03:00:00	220	35.00	EFECTIVO_USD	\N	11.62	6	\N	\N	2026-01-02 15:23:47.942	2026-01-02 15:23:47.942
+2120	30	-194	VENDIDO	2023-07-18 04:00:00	IMPORTACION	23.38		2024-10-25 03:00:00	226	35.00	EFECTIVO_USD	\N	11.62	6	\N	\N	2026-01-02 15:23:47.944	2026-01-02 15:23:47.944
+2121	30	-195	VENDIDO	2023-07-18 04:00:00	IMPORTACION	23.38		2024-10-25 03:00:00	226	35.00	EFECTIVO_USD	\N	11.62	6	\N	\N	2026-01-02 15:23:47.947	2026-01-02 15:23:47.947
+2122	30	-196	VENDIDO	2023-07-18 04:00:00	IMPORTACION	23.38		2024-11-01 03:00:00	226	35.00	EFECTIVO_USD	\N	11.62	6	\N	\N	2026-01-02 15:23:47.949	2026-01-02 15:23:47.949
+2123	30	-197	VENDIDO	2023-07-18 04:00:00	IMPORTACION	23.38		2024-11-01 03:00:00	226	35.00	EFECTIVO_USD	\N	11.62	6	\N	\N	2026-01-02 15:23:47.951	2026-01-02 15:23:47.951
+2124	30	-198	VENDIDO	2023-07-18 04:00:00	IMPORTACION	23.38		2024-11-29 03:00:00	251	35.00	EFECTIVO_USD	\N	11.62	6	\N	\N	2026-01-02 15:23:47.953	2026-01-02 15:23:47.953
+2125	30	-199	VENDIDO	2023-07-18 04:00:00	IMPORTACION	23.38		2024-11-29 03:00:00	252	35.00	EFECTIVO_USD	\N	11.62	6	\N	\N	2026-01-02 15:23:47.956	2026-01-02 15:23:47.956
+2126	30	-200	VENDIDO	2023-07-18 04:00:00	IMPORTACION	23.38		2024-11-29 03:00:00	252	35.00	EFECTIVO_USD	\N	11.62	6	\N	\N	2026-01-02 15:23:47.965	2026-01-02 15:23:47.965
+2127	30	-201	VENDIDO	2023-07-18 04:00:00	IMPORTACION	23.38		2024-12-05 03:00:00	253	35.00	TRANSFERENCIA_BS	\N	11.62	6	\N	\N	2026-01-02 15:23:47.967	2026-01-02 15:23:47.967
+2128	30	-202	VENDIDO	2023-07-18 04:00:00	IMPORTACION	23.38		2024-12-05 03:00:00	253	35.00	TRANSFERENCIA_BS	\N	11.62	6	\N	\N	2026-01-02 15:23:47.969	2026-01-02 15:23:47.969
+2129	30	-203	VENDIDO	2023-07-18 04:00:00	IMPORTACION	23.38		2024-12-05 03:00:00	200	35.00	EFECTIVO_USD	\N	11.62	6	\N	\N	2026-01-02 15:23:47.974	2026-01-02 15:23:47.974
+2130	30	-204	VENDIDO	2023-07-18 04:00:00	IMPORTACION	23.38		2024-12-05 03:00:00	200	35.00	EFECTIVO_USD	\N	11.62	6	\N	\N	2026-01-02 15:23:47.976	2026-01-02 15:23:47.976
+2131	30	-205	VENDIDO	2023-07-18 04:00:00	IMPORTACION	23.38		2024-12-05 03:00:00	200	35.00	EFECTIVO_USD	\N	11.62	6	\N	\N	2026-01-02 15:23:47.988	2026-01-02 15:23:47.988
+2132	30	-206	VENDIDO	2023-07-18 04:00:00	IMPORTACION	23.38		2024-12-05 03:00:00	193	35.00	EFECTIVO_USD	\N	11.62	6	\N	\N	2026-01-02 15:23:47.992	2026-01-02 15:23:47.992
+2133	30	-207	VENDIDO	2023-07-18 04:00:00	IMPORTACION	23.38		2024-12-05 03:00:00	193	35.00	EFECTIVO_USD	\N	11.62	6	\N	\N	2026-01-02 15:23:47.995	2026-01-02 15:23:47.995
+2134	30	-208	VENDIDO	2023-07-18 04:00:00	IMPORTACION	23.38		2024-12-10 03:00:00	254	35.00	EFECTIVO_USD	\N	11.62	6	\N	\N	2026-01-02 15:23:48.007	2026-01-02 15:23:48.007
+2135	30	-209	VENDIDO	2023-07-18 04:00:00	IMPORTACION	23.38		2024-12-10 03:00:00	254	35.00	EFECTIVO_USD	\N	11.62	6	\N	\N	2026-01-02 15:23:48.01	2026-01-02 15:23:48.01
+2136	30	-210	VENDIDO	2023-07-18 04:00:00	IMPORTACION	23.38		2024-12-16 03:00:00	224	35.00	ZELLE	\N	11.62	6	\N	\N	2026-01-02 15:23:48.013	2026-01-02 15:23:48.013
+2137	30	-211	VENDIDO	2023-07-18 04:00:00	IMPORTACION	23.38		2024-12-16 03:00:00	224	35.00	ZELLE	\N	11.62	6	\N	\N	2026-01-02 15:23:48.022	2026-01-02 15:23:48.022
+2138	30	-212	VENDIDO	2023-07-18 04:00:00	IMPORTACION	23.38		2024-12-18 03:00:00	255	35.00	EFECTIVO_USD	\N	11.62	6	\N	\N	2026-01-02 15:23:48.026	2026-01-02 15:23:48.026
+2139	30	-213	VENDIDO	2023-07-18 04:00:00	IMPORTACION	23.38		2024-12-18 03:00:00	255	35.00	EFECTIVO_USD	\N	11.62	6	\N	\N	2026-01-02 15:23:48.028	2026-01-02 15:23:48.028
+2140	30	-214	VENDIDO	2023-07-18 04:00:00	IMPORTACION	23.38		2024-12-18 03:00:00	256	35.00	EFECTIVO_USD	\N	11.62	6	\N	\N	2026-01-02 15:23:48.033	2026-01-02 15:23:48.033
+2141	30	-215	VENDIDO	2023-07-18 04:00:00	IMPORTACION	23.38		2024-12-19 03:00:00	257	35.00	EFECTIVO_USD	\N	11.62	6	\N	\N	2026-01-02 15:23:48.035	2026-01-02 15:23:48.035
+2142	30	-216	VENDIDO	2023-07-18 04:00:00	IMPORTACION	23.38		2024-12-20 03:00:00	258	35.00	EFECTIVO_USD	\N	11.62	6	\N	\N	2026-01-02 15:23:48.037	2026-01-02 15:23:48.037
+2143	30	-217	VENDIDO	2023-07-18 04:00:00	IMPORTACION	23.38		2024-12-20 03:00:00	258	35.00	EFECTIVO_USD	\N	11.62	6	\N	\N	2026-01-02 15:23:48.039	2026-01-02 15:23:48.039
+2144	30	-218	VENDIDO	2023-07-18 04:00:00	IMPORTACION	23.38		2024-12-23 03:00:00	193	35.00	EFECTIVO_USD	\N	11.62	6	\N	\N	2026-01-02 15:23:48.041	2026-01-02 15:23:48.041
+2145	30	-219	VENDIDO	2023-07-18 04:00:00	IMPORTACION	23.38		2024-12-23 03:00:00	193	35.00	EFECTIVO_USD	\N	11.62	6	\N	\N	2026-01-02 15:23:48.045	2026-01-02 15:23:48.045
+2146	30	-220	VENDIDO	2023-07-18 04:00:00	IMPORTACION	23.38		2024-12-23 03:00:00	259	35.00	EFECTIVO_USD	\N	11.62	6	\N	\N	2026-01-02 15:23:48.047	2026-01-02 15:23:48.047
+2147	30	-221	VENDIDO	2024-09-30 03:00:00	IMPORTACION	23.38		2024-12-23 03:00:00	259	35.00	EFECTIVO_USD	\N	11.62	6	\N	\N	2026-01-02 15:23:48.049	2026-01-02 15:23:48.049
+2148	30	-222	VENDIDO	2024-09-30 03:00:00	IMPORTACION	23.38		2025-01-23 03:00:00	211	35.00	EFECTIVO_USD	\N	11.62	6	\N	\N	2026-01-02 15:23:48.05	2026-01-02 15:23:48.05
+2149	30	-223	VENDIDO	2024-09-30 03:00:00	IMPORTACION	23.38		2025-01-31 03:00:00	257	35.00	EFECTIVO_USD	\N	11.62	6	\N	\N	2026-01-02 15:23:48.052	2026-01-02 15:23:48.052
+2150	30	-224	VENDIDO	2024-09-30 03:00:00	IMPORTACION	23.38		2025-02-07 03:00:00	204	35.00	EFECTIVO_USD	\N	11.62	6	\N	\N	2026-01-02 15:23:48.055	2026-01-02 15:23:48.055
+2151	30	-225	VENDIDO	2024-09-30 03:00:00	IMPORTACION	23.38		2025-02-07 03:00:00	204	35.00	EFECTIVO_USD	\N	11.62	6	\N	\N	2026-01-02 15:23:48.061	2026-01-02 15:23:48.061
+2152	30	-226	VENDIDO	2024-09-30 03:00:00	IMPORTACION	23.38		2025-02-07 03:00:00	243	35.00	EFECTIVO_USD	\N	11.62	6	\N	\N	2026-01-02 15:23:48.064	2026-01-02 15:23:48.064
+2153	30	-227	VENDIDO	2024-09-30 03:00:00	IMPORTACION	23.38		2025-02-07 03:00:00	243	35.00	EFECTIVO_USD	\N	11.62	6	\N	\N	2026-01-02 15:23:48.066	2026-01-02 15:23:48.066
+2154	30	-228	VENDIDO	2024-09-30 03:00:00	IMPORTACION	23.38		2025-02-11 03:00:00	191	35.00	ZELLE	\N	11.62	6	\N	\N	2026-01-02 15:23:48.069	2026-01-02 15:23:48.069
+2155	30	-229	VENDIDO	2024-09-30 03:00:00	IMPORTACION	23.38		2025-02-11 03:00:00	191	35.00	ZELLE	\N	11.62	6	\N	\N	2026-01-02 15:23:48.073	2026-01-02 15:23:48.073
+2156	30	-230	VENDIDO	2024-09-30 03:00:00	IMPORTACION	23.38		2025-02-25 03:00:00	212	35.00	EFECTIVO_USD	\N	11.62	6	\N	\N	2026-01-02 15:23:48.076	2026-01-02 15:23:48.076
+2157	30	-231	VENDIDO	2024-09-30 03:00:00	IMPORTACION	23.38		2025-02-25 03:00:00	212	35.00	EFECTIVO_USD	\N	11.62	6	\N	\N	2026-01-02 15:23:48.078	2026-01-02 15:23:48.078
+2158	30	-232	VENDIDO	2024-09-30 03:00:00	IMPORTACION	23.38		2025-02-25 03:00:00	212	35.00	TRANSFERENCIA_BS	\N	11.62	6	\N	\N	2026-01-02 15:23:48.08	2026-01-02 15:23:48.08
+2159	30	-233	VENDIDO	2024-09-30 03:00:00	IMPORTACION	23.38		2025-02-25 03:00:00	212	35.00	\N	\N	11.62	6	\N	\N	2026-01-02 15:23:48.082	2026-01-02 15:23:48.082
+2160	30	-234	VENDIDO	2024-09-30 03:00:00	IMPORTACION	23.38		2025-02-25 03:00:00	212	35.00	TRANSFERENCIA_BS	\N	11.62	6	\N	\N	2026-01-02 15:23:48.084	2026-01-02 15:23:48.084
+2161	30	-235	VENDIDO	2024-09-30 03:00:00	IMPORTACION	23.38		2025-02-25 03:00:00	212	35.00	\N	\N	11.62	6	\N	\N	2026-01-02 15:23:48.088	2026-01-02 15:23:48.088
+2162	30	-236	VENDIDO	2024-09-30 03:00:00	IMPORTACION	23.38		2025-02-25 03:00:00	212	35.00	\N	\N	11.62	6	\N	\N	2026-01-02 15:23:48.09	2026-01-02 15:23:48.09
+2163	30	-237	VENDIDO	2024-09-30 03:00:00	IMPORTACION	23.38		2025-02-25 03:00:00	212	35.00	\N	\N	11.62	6	\N	\N	2026-01-02 15:23:48.092	2026-01-02 15:23:48.092
+2164	30	-238	VENDIDO	2024-09-30 03:00:00	IMPORTACION	23.38		2025-02-25 03:00:00	212	35.00	\N	\N	11.62	6	\N	\N	2026-01-02 15:23:48.094	2026-01-02 15:23:48.094
+2165	30	-239	VENDIDO	2024-09-30 03:00:00	IMPORTACION	23.38		2025-02-25 03:00:00	212	35.00	TRANSFERENCIA_BS	\N	11.62	6	\N	\N	2026-01-02 15:23:48.096	2026-01-02 15:23:48.096
+2166	30	-240	VENDIDO	2024-09-30 03:00:00	IMPORTACION	23.38		2025-04-01 03:00:00	260	35.00	EFECTIVO_USD	\N	11.62	6	\N	\N	2026-01-02 15:23:48.098	2026-01-02 15:23:48.098
+2167	30	-241	VENDIDO	2024-09-30 03:00:00	IMPORTACION	23.38		2025-04-01 03:00:00	260	35.00	EFECTIVO_USD	\N	11.62	6	\N	\N	2026-01-02 15:23:48.1	2026-01-02 15:23:48.1
+2168	30	-242	VENDIDO	2024-09-30 03:00:00	IMPORTACION	23.38		2025-04-01 03:00:00	260	35.00	EFECTIVO_USD	\N	11.62	6	\N	\N	2026-01-02 15:23:48.102	2026-01-02 15:23:48.102
+2169	30	-243	VENDIDO	2024-09-30 03:00:00	IMPORTACION	23.38		2025-04-01 03:00:00	260	35.00	EFECTIVO_USD	\N	11.62	6	\N	\N	2026-01-02 15:23:48.104	2026-01-02 15:23:48.104
+2170	30	-244	VENDIDO	2024-09-30 03:00:00	IMPORTACION	23.38		2025-04-03 03:00:00	261	35.00	EFECTIVO_USD	\N	11.62	6	\N	\N	2026-01-02 15:23:48.106	2026-01-02 15:23:48.106
+2171	30	-245	VENDIDO	2024-09-30 03:00:00	IMPORTACION	23.38		2025-04-03 03:00:00	261	35.00	EFECTIVO_USD	\N	11.62	6	\N	\N	2026-01-02 15:23:48.111	2026-01-02 15:23:48.111
+2172	30	-246	VENDIDO	2024-09-30 03:00:00	IMPORTACION	23.38		2025-04-03 03:00:00	261	35.00	EFECTIVO_USD	\N	11.62	6	\N	\N	2026-01-02 15:23:48.114	2026-01-02 15:23:48.114
+2173	30	-247	VENDIDO	2024-09-30 03:00:00	IMPORTACION	23.38		2025-04-08 04:00:00	262	35.00	EFECTIVO_USD	\N	11.62	6	\N	\N	2026-01-02 15:23:48.116	2026-01-02 15:23:48.116
+2174	30	-248	VENDIDO	2024-09-30 03:00:00	IMPORTACION	23.38		2025-04-08 04:00:00	262	35.00	EFECTIVO_USD	\N	11.62	6	\N	\N	2026-01-02 15:23:48.118	2026-01-02 15:23:48.118
+2175	30	-249	VENDIDO	2024-09-30 03:00:00	IMPORTACION	23.38		2025-04-16 04:00:00	263	35.00	EFECTIVO_USD	\N	11.62	6	\N	\N	2026-01-02 15:23:48.121	2026-01-02 15:23:48.121
+2176	30	-250	VENDIDO	2024-09-30 03:00:00	IMPORTACION	23.38		2025-04-16 04:00:00	263	35.00	EFECTIVO_USD	\N	11.62	6	\N	\N	2026-01-02 15:23:48.123	2026-01-02 15:23:48.123
+2177	30	-251	VENDIDO	2024-09-30 03:00:00	IMPORTACION	23.38		2025-04-21 04:00:00	264	35.00	EFECTIVO_USD	\N	11.62	6	\N	\N	2026-01-02 15:23:48.124	2026-01-02 15:23:48.124
+2178	30	-252	VENDIDO	2024-09-30 03:00:00	IMPORTACION	23.38		2025-04-21 04:00:00	264	35.00	EFECTIVO_USD	\N	11.62	6	\N	\N	2026-01-02 15:23:48.126	2026-01-02 15:23:48.126
+2179	30	-253	VENDIDO	2024-09-30 03:00:00	IMPORTACION	23.38		2025-05-06 04:00:00	195	35.00	EFECTIVO_USD	\N	11.62	6	\N	\N	2026-01-02 15:23:48.129	2026-01-02 15:23:48.129
+2180	30	-254	VENDIDO	2024-09-30 03:00:00	IMPORTACION	23.38		2025-06-07 04:00:00	195	35.00	EFECTIVO_USD	\N	11.62	6	\N	\N	2026-01-02 15:23:48.131	2026-01-02 15:23:48.131
+2181	30	-255	VENDIDO	2024-09-30 03:00:00	IMPORTACION	23.38		2025-06-07 04:00:00	195	35.00	EFECTIVO_USD	\N	11.62	6	\N	\N	2026-01-02 15:23:48.133	2026-01-02 15:23:48.133
+2182	30	-256	VENDIDO	2024-09-30 03:00:00	IMPORTACION	23.38		2025-05-21 04:00:00	265	35.00	EFECTIVO_USD	\N	11.62	6	\N	\N	2026-01-02 15:23:48.135	2026-01-02 15:23:48.135
+2183	30	-257	VENDIDO	2024-09-30 03:00:00	IMPORTACION	23.38		2025-05-21 04:00:00	265	35.00	EFECTIVO_USD	\N	11.62	6	\N	\N	2026-01-02 15:23:48.137	2026-01-02 15:23:48.137
+2184	30	-258	VENDIDO	2024-09-30 03:00:00	IMPORTACION	23.38		2025-05-28 04:00:00	259	35.00	EFECTIVO_USD	\N	11.62	6	\N	\N	2026-01-02 15:23:48.139	2026-01-02 15:23:48.139
+2185	30	-259	VENDIDO	2024-09-30 03:00:00	IMPORTACION	23.38		2025-05-28 04:00:00	259	35.00	EFECTIVO_USD	\N	11.62	6	\N	\N	2026-01-02 15:23:48.141	2026-01-02 15:23:48.141
+2186	30	-260	VENDIDO	2024-09-30 03:00:00	IMPORTACION	23.38		2025-05-29 04:00:00	226	35.00	EFECTIVO_USD	\N	11.62	6	\N	\N	2026-01-02 15:23:48.144	2026-01-02 15:23:48.144
+2187	30	-261	VENDIDO	2024-09-30 03:00:00	IMPORTACION	23.38		2025-05-29 04:00:00	226	35.00	EFECTIVO_USD	\N	11.62	6	\N	\N	2026-01-02 15:23:48.148	2026-01-02 15:23:48.148
+2188	30	-262	VENDIDO	2024-09-30 03:00:00	IMPORTACION	23.38		2025-05-29 04:00:00	226	35.00	EFECTIVO_USD	\N	11.62	6	\N	\N	2026-01-02 15:23:48.15	2026-01-02 15:23:48.15
+2189	30	-263	VENDIDO	2024-09-30 03:00:00	IMPORTACION	23.38		2025-05-29 04:00:00	226	35.00	EFECTIVO_USD	\N	11.62	6	\N	\N	2026-01-02 15:23:48.153	2026-01-02 15:23:48.153
+2190	30	-264	VENDIDO	2024-09-30 03:00:00	IMPORTACION	23.38		2025-06-03 04:00:00	266	35.00	EFECTIVO_USD	\N	11.62	6	\N	\N	2026-01-02 15:23:48.158	2026-01-02 15:23:48.158
+2191	30	-265	VENDIDO	2024-09-30 03:00:00	IMPORTACION	23.38		2025-06-03 04:00:00	266	35.00	EFECTIVO_USD	\N	11.62	6	\N	\N	2026-01-02 15:23:48.161	2026-01-02 15:23:48.161
+2192	30	-266	VENDIDO	2024-09-30 03:00:00	IMPORTACION	23.38		2025-06-03 04:00:00	230	35.00	EFECTIVO_USD	\N	11.62	6	\N	\N	2026-01-02 15:23:48.164	2026-01-02 15:23:48.164
+2193	30	-267	VENDIDO	2024-09-30 03:00:00	IMPORTACION	23.38		2025-06-03 04:00:00	230	35.00	EFECTIVO_USD	\N	11.62	6	\N	\N	2026-01-02 15:23:48.166	2026-01-02 15:23:48.166
+2194	30	-268	VENDIDO	2024-09-30 03:00:00	IMPORTACION	23.38		2025-06-03 04:00:00	230	35.00	EFECTIVO_USD	\N	11.62	6	\N	\N	2026-01-02 15:23:48.169	2026-01-02 15:23:48.169
+2195	30	-269	VENDIDO	2024-09-30 03:00:00	IMPORTACION	23.38		2025-06-03 04:00:00	230	35.00	EFECTIVO_USD	\N	11.62	6	\N	\N	2026-01-02 15:23:48.171	2026-01-02 15:23:48.171
+2196	30	-270	VENDIDO	2024-09-30 03:00:00	IMPORTACION	23.38		2025-06-03 04:00:00	230	35.00	EFECTIVO_USD	\N	11.62	6	\N	\N	2026-01-02 15:23:48.174	2026-01-02 15:23:48.174
+2197	30	-271	VENDIDO	2024-09-30 03:00:00	IMPORTACION	23.38		2025-06-05 04:00:00	267	35.00	EFECTIVO_USD	\N	11.62	6	\N	\N	2026-01-02 15:23:48.179	2026-01-02 15:23:48.179
+2198	30	-272	VENDIDO	2024-09-30 03:00:00	IMPORTACION	23.38		2025-06-05 04:00:00	267	35.00	EFECTIVO_USD	\N	11.62	6	\N	\N	2026-01-02 15:23:48.182	2026-01-02 15:23:48.182
+2199	30	-273	VENDIDO	2024-09-30 03:00:00	IMPORTACION	23.38		2025-06-17 04:00:00	252	35.00	EFECTIVO_USD	\N	11.62	6	\N	\N	2026-01-02 15:23:48.185	2026-01-02 15:23:48.185
+2200	30	-274	VENDIDO	2024-09-30 03:00:00	IMPORTACION	23.38		2025-06-17 04:00:00	252	35.00	EFECTIVO_USD	\N	11.62	6	\N	\N	2026-01-02 15:23:48.188	2026-01-02 15:23:48.188
+2201	30	-275	VENDIDO	2024-09-30 03:00:00	IMPORTACION	23.38		2025-06-30 04:00:00	265	35.00	EFECTIVO_USD	\N	11.62	6	\N	\N	2026-01-02 15:23:48.191	2026-01-02 15:23:48.191
+2202	30	-276	VENDIDO	2024-09-30 03:00:00	IMPORTACION	23.38		2025-07-03 04:00:00	268	35.00	EFECTIVO_USD	\N	11.62	6	\N	\N	2026-01-02 15:23:48.194	2026-01-02 15:23:48.194
+2203	30	-277	VENDIDO	2024-09-30 03:00:00	IMPORTACION	23.38		2025-07-03 04:00:00	268	35.00	EFECTIVO_USD	\N	11.62	6	\N	\N	2026-01-02 15:23:48.197	2026-01-02 15:23:48.197
+2204	30	-278	VENDIDO	2024-09-30 03:00:00	IMPORTACION	23.38		2025-07-08 04:00:00	195	35.00	EFECTIVO_USD	\N	11.62	6	\N	\N	2026-01-02 15:23:48.2	2026-01-02 15:23:48.2
+2205	30	-279	VENDIDO	2024-09-30 03:00:00	IMPORTACION	23.38		2025-07-08 04:00:00	195	35.00	EFECTIVO_USD	\N	11.62	6	\N	\N	2026-01-02 15:23:48.205	2026-01-02 15:23:48.205
+2206	30	-280	VENDIDO	2024-09-30 03:00:00	IMPORTACION	23.38		2025-08-06 04:00:00	269	35.00	EFECTIVO_USD	\N	11.62	6	\N	\N	2026-01-02 15:23:48.208	2026-01-02 15:23:48.208
+2207	30	-281	VENDIDO	2024-09-30 03:00:00	IMPORTACION	23.38		2025-08-06 04:00:00	269	35.00	EFECTIVO_USD	\N	11.62	6	\N	\N	2026-01-02 15:23:48.211	2026-01-02 15:23:48.211
+2208	30	-282	VENDIDO	2024-09-30 03:00:00	IMPORTACION	23.38		2025-08-06 04:00:00	195	35.00	EFECTIVO_USD	\N	11.62	6	\N	\N	2026-01-02 15:23:48.216	2026-01-02 15:23:48.216
+2209	30	-283	VENDIDO	2024-09-30 03:00:00	IMPORTACION	23.38		2025-08-06 04:00:00	195	35.00	EFECTIVO_USD	\N	11.62	6	\N	\N	2026-01-02 15:23:48.218	2026-01-02 15:23:48.218
+2210	30	-284	VENDIDO	2024-09-30 03:00:00	IMPORTACION	23.38		2025-08-06 04:00:00	195	35.00	EFECTIVO_USD	\N	11.62	6	\N	\N	2026-01-02 15:23:48.222	2026-01-02 15:23:48.222
+2211	30	-285	VENDIDO	2024-09-30 03:00:00	IMPORTACION	23.38		2025-08-06 04:00:00	195	35.00	EFECTIVO_USD	\N	11.62	6	\N	\N	2026-01-02 15:23:48.225	2026-01-02 15:23:48.225
+2212	30	-286	VENDIDO	2024-09-30 03:00:00	IMPORTACION	23.38		2025-08-15 04:00:00	259	35.00	EFECTIVO_USD	\N	11.62	6	\N	\N	2026-01-02 15:23:48.228	2026-01-02 15:23:48.228
+2213	30	-287	VENDIDO	2024-09-30 03:00:00	IMPORTACION	23.38		2025-08-15 04:00:00	259	35.00	EFECTIVO_USD	\N	11.62	6	\N	\N	2026-01-02 15:23:48.232	2026-01-02 15:23:48.232
+2214	30	-288	VENDIDO	2024-09-30 03:00:00	IMPORTACION	23.38		2025-09-02 04:00:00	230	35.00	EFECTIVO_USD	\N	11.62	6	\N	\N	2026-01-02 15:23:48.235	2026-01-02 15:23:48.235
+2215	30	-289	VENDIDO	2024-09-30 03:00:00	IMPORTACION	23.38		2025-09-02 04:00:00	230	35.00	EFECTIVO_USD	\N	11.62	6	\N	\N	2026-01-02 15:23:48.239	2026-01-02 15:23:48.239
+2216	30	-290	VENDIDO	2024-09-30 03:00:00	IMPORTACION	23.38		2025-09-02 04:00:00	230	35.00	EFECTIVO_USD	\N	11.62	6	\N	\N	2026-01-02 15:23:48.243	2026-01-02 15:23:48.243
+2217	30	-291	VENDIDO	2024-09-30 03:00:00	IMPORTACION	23.38		2025-09-02 04:00:00	230	35.00	EFECTIVO_USD	\N	11.62	6	\N	\N	2026-01-02 15:23:48.248	2026-01-02 15:23:48.248
+2218	30	-292	VENDIDO	2024-09-30 03:00:00	IMPORTACION	23.38		2025-09-02 04:00:00	230	35.00	EFECTIVO_USD	\N	11.62	6	\N	\N	2026-01-02 15:23:48.251	2026-01-02 15:23:48.251
+2219	30	-293	VENDIDO	2024-09-30 03:00:00	IMPORTACION	23.38		2025-09-02 04:00:00	230	35.00	EFECTIVO_USD	\N	11.62	6	\N	\N	2026-01-02 15:23:48.254	2026-01-02 15:23:48.254
+2220	30	-294	VENDIDO	2024-09-30 03:00:00	IMPORTACION	23.38		2025-09-02 04:00:00	230	35.00	EFECTIVO_USD	\N	11.62	6	\N	\N	2026-01-02 15:23:48.26	2026-01-02 15:23:48.26
+2221	30	-295	VENDIDO	2024-09-30 03:00:00	IMPORTACION	23.38		2025-09-02 04:00:00	230	35.00	EFECTIVO_USD	\N	11.62	6	\N	\N	2026-01-02 15:23:48.263	2026-01-02 15:23:48.263
+2222	30	-296	VENDIDO	2024-09-30 03:00:00	IMPORTACION	23.38		2025-09-08 03:00:00	270	35.00	EFECTIVO_USD	\N	11.62	6	\N	\N	2026-01-02 15:23:48.264	2026-01-02 15:23:48.264
+2223	30	-297	VENDIDO	2024-09-30 03:00:00	IMPORTACION	23.38		2025-09-08 03:00:00	270	35.00	EFECTIVO_USD	\N	11.62	6	\N	\N	2026-01-02 15:23:48.266	2026-01-02 15:23:48.266
+2224	30	-298	VENDIDO	2024-09-30 03:00:00	IMPORTACION	23.38		2025-09-15 03:00:00	271	35.00	EFECTIVO_USD	\N	11.62	6	\N	\N	2026-01-02 15:23:48.269	2026-01-02 15:23:48.269
+2225	30	-299	VENDIDO	2024-09-30 03:00:00	IMPORTACION	23.38		2025-10-09 03:00:00	220	35.00	EFECTIVO_USD	\N	11.62	6	\N	\N	2026-01-02 15:23:48.272	2026-01-02 15:23:48.272
+2226	30	-300	VENDIDO	2024-09-30 03:00:00	IMPORTACION	23.38		2025-09-17 03:00:00	219	35.00	EFECTIVO_USD	\N	11.62	6	\N	\N	2026-01-02 15:23:48.275	2026-01-02 15:23:48.275
+2227	30	-301	VENDIDO	2024-09-30 03:00:00	IMPORTACION	23.38		2025-09-17 03:00:00	219	35.00	EFECTIVO_USD	\N	11.62	6	\N	\N	2026-01-02 15:23:48.282	2026-01-02 15:23:48.282
+2228	30	-302	VENDIDO	2024-09-30 03:00:00	IMPORTACION	23.38		2025-09-25 03:00:00	272	35.00	EFECTIVO_USD	\N	11.62	6	\N	\N	2026-01-02 15:23:48.284	2026-01-02 15:23:48.284
+2229	30	-303	VENDIDO	2024-09-30 03:00:00	IMPORTACION	23.38		2025-09-25 03:00:00	272	35.00	EFECTIVO_USD	\N	11.62	6	\N	\N	2026-01-02 15:23:48.288	2026-01-02 15:23:48.288
+2230	30	-304	VENDIDO	2024-09-30 03:00:00	IMPORTACION	23.38		2025-10-02 03:00:00	250	35.00	EFECTIVO_USD	\N	11.62	6	\N	\N	2026-01-02 15:23:48.292	2026-01-02 15:23:48.292
+2231	30	-305	VENDIDO	2024-09-30 03:00:00	IMPORTACION	23.38		2025-10-02 03:00:00	250	35.00	EFECTIVO_USD	\N	11.62	6	\N	\N	2026-01-02 15:23:48.296	2026-01-02 15:23:48.296
+2232	30	-306	VENDIDO	2024-09-30 03:00:00	IMPORTACION	23.38		2025-10-02 03:00:00	250	35.00	EFECTIVO_USD	\N	11.62	6	\N	\N	2026-01-02 15:23:48.306	2026-01-02 15:23:48.306
+2233	30	-307	VENDIDO	2024-09-30 03:00:00	IMPORTACION	23.38		2025-10-02 03:00:00	250	35.00	EFECTIVO_USD	\N	11.62	6	\N	\N	2026-01-02 15:23:48.31	2026-01-02 15:23:48.31
+2234	30	-308	VENDIDO	2024-09-30 03:00:00	IMPORTACION	23.38		2025-10-03 03:00:00	273	35.00	EFECTIVO_USD	\N	11.62	6	\N	\N	2026-01-02 15:23:48.313	2026-01-02 15:23:48.313
+2235	30	-309	VENDIDO	2024-09-30 03:00:00	IMPORTACION	23.38		2025-10-03 03:00:00	274	35.00	EFECTIVO_USD	\N	11.62	6	\N	\N	2026-01-02 15:23:48.316	2026-01-02 15:23:48.316
+2236	30	-310	VENDIDO	2024-09-30 03:00:00	IMPORTACION	23.38		2025-10-03 03:00:00	274	35.00	EFECTIVO_USD	\N	11.62	6	\N	\N	2026-01-02 15:23:48.319	2026-01-02 15:23:48.319
+2237	30	-311	VENDIDO	2024-09-30 03:00:00	IMPORTACION	23.38		2025-10-10 03:00:00	225	35.00	EFECTIVO_USD	\N	11.62	6	\N	\N	2026-01-02 15:23:48.323	2026-01-02 15:23:48.323
+2238	30	-312	VENDIDO	2024-09-30 03:00:00	IMPORTACION	23.38		2025-10-10 03:00:00	225	35.00	EFECTIVO_USD	\N	11.62	6	\N	\N	2026-01-02 15:23:48.326	2026-01-02 15:23:48.326
+2239	30	-313	VENDIDO	2024-09-30 03:00:00	IMPORTACION	23.38		2025-10-16 03:00:00	275	35.00	EFECTIVO_USD	\N	11.62	6	\N	\N	2026-01-02 15:23:48.335	2026-01-02 15:23:48.335
+2240	30	-314	VENDIDO	2024-09-30 03:00:00	IMPORTACION	23.38		2025-10-21 03:00:00	276	35.00	EFECTIVO_USD	\N	11.62	6	\N	\N	2026-01-02 15:23:48.339	2026-01-02 15:23:48.339
+2241	30	-315	VENDIDO	2024-09-30 03:00:00	IMPORTACION	23.38		2025-10-21 03:00:00	276	35.00	EFECTIVO_USD	\N	11.62	6	\N	\N	2026-01-02 15:23:48.343	2026-01-02 15:23:48.343
+2242	30	-316	VENDIDO	2024-09-30 03:00:00	IMPORTACION	23.38		2025-10-29 03:00:00	226	35.00	EFECTIVO_USD	\N	11.62	6	\N	\N	2026-01-02 15:23:48.346	2026-01-02 15:23:48.346
+2243	30	-317	VENDIDO	2024-09-30 03:00:00	IMPORTACION	23.38		2025-10-23 03:00:00	276	35.00	EFECTIVO_USD	\N	11.62	6	\N	\N	2026-01-02 15:23:48.347	2026-01-02 15:23:48.347
+2244	30	-318	VENDIDO	2024-09-30 03:00:00	IMPORTACION	23.38		2025-10-23 03:00:00	276	35.00	EFECTIVO_USD	\N	11.62	6	\N	\N	2026-01-02 15:23:48.35	2026-01-02 15:23:48.35
+2245	30	-319	VENDIDO	2024-09-30 03:00:00	IMPORTACION	23.38		2025-10-27 03:00:00	243	35.00	EFECTIVO_USD	\N	11.62	6	\N	\N	2026-01-02 15:23:48.355	2026-01-02 15:23:48.355
+2246	30	-320	VENDIDO	2024-09-30 03:00:00	IMPORTACION	23.38		2025-10-27 03:00:00	243	35.00	EFECTIVO_USD	\N	11.62	6	\N	\N	2026-01-02 15:23:48.364	2026-01-02 15:23:48.364
+2247	30	-321	VENDIDO	2025-05-21 04:00:00	IMPORTACION	23.38		2025-10-28 03:00:00	232	35.00	EFECTIVO_USD	\N	11.62	6	\N	\N	2026-01-02 15:23:48.368	2026-01-02 15:23:48.368
+2248	30	-322	VENDIDO	2025-05-21 04:00:00	IMPORTACION	23.38		2025-10-28 03:00:00	232	35.00	EFECTIVO_USD	\N	11.62	6	\N	\N	2026-01-02 15:23:48.37	2026-01-02 15:23:48.37
+2249	30	-323	VENDIDO	2025-05-21 04:00:00	IMPORTACION	23.38		2025-10-29 03:00:00	226	35.00	EFECTIVO_USD	\N	11.62	6	\N	\N	2026-01-02 15:23:48.371	2026-01-02 15:23:48.371
+2250	30	-324	VENDIDO	2025-05-21 04:00:00	IMPORTACION	23.38		2025-11-10 03:00:00	263	35.00	EFECTIVO_USD	\N	11.62	6	\N	\N	2026-01-02 15:23:48.373	2026-01-02 15:23:48.373
+2251	30	-325	VENDIDO	2025-05-21 04:00:00	IMPORTACION	23.38		2025-11-10 03:00:00	263	35.00	EFECTIVO_USD	\N	11.62	6	\N	\N	2026-01-02 15:23:48.375	2026-01-02 15:23:48.375
+2252	30	-326	VENDIDO	2025-05-21 04:00:00	IMPORTACION	23.38		2025-11-10 03:00:00	263	35.00	EFECTIVO_USD	\N	11.62	6	\N	\N	2026-01-02 15:23:48.378	2026-01-02 15:23:48.378
+2253	30	-327	VENDIDO	2025-05-21 04:00:00	IMPORTACION	23.38		2025-11-11 03:00:00	277	35.00	EFECTIVO_USD	\N	11.62	6	\N	\N	2026-01-02 15:23:48.38	2026-01-02 15:23:48.38
+2254	30	-328	VENDIDO	2025-05-21 04:00:00	IMPORTACION	23.38		2025-11-11 03:00:00	277	35.00	EFECTIVO_USD	\N	11.62	6	\N	\N	2026-01-02 15:23:48.383	2026-01-02 15:23:48.383
+2255	30	-329	VENDIDO	2025-05-21 04:00:00	IMPORTACION	23.38		2025-11-11 03:00:00	277	35.00	EFECTIVO_USD	\N	11.62	6	\N	\N	2026-01-02 15:23:48.385	2026-01-02 15:23:48.385
+2256	30	-330	VENDIDO	2025-05-21 04:00:00	IMPORTACION	23.38		2025-11-11 03:00:00	277	35.00	EFECTIVO_USD	\N	11.62	6	\N	\N	2026-01-02 15:23:48.387	2026-01-02 15:23:48.387
+2257	30	-331	VENDIDO	2025-05-21 04:00:00	IMPORTACION	23.38		2025-11-13 03:00:00	225	35.00	EFECTIVO_USD	\N	11.62	6	\N	\N	2026-01-02 15:23:48.389	2026-01-02 15:23:48.389
+2258	30	-332	VENDIDO	2025-05-21 04:00:00	IMPORTACION	23.38		2025-11-13 03:00:00	225	35.00	EFECTIVO_USD	\N	11.62	6	\N	\N	2026-01-02 15:23:48.393	2026-01-02 15:23:48.393
+2259	30	-333	VENDIDO	2025-05-21 04:00:00	IMPORTACION	23.38		2025-11-13 03:00:00	201	35.00	EFECTIVO_USD	\N	11.62	6	\N	\N	2026-01-02 15:23:48.394	2026-01-02 15:23:48.394
+2260	30	-334	VENDIDO	2025-05-21 04:00:00	IMPORTACION	23.38		2025-11-13 03:00:00	201	35.00	EFECTIVO_USD	\N	11.62	6	\N	\N	2026-01-02 15:23:48.398	2026-01-02 15:23:48.398
+2261	30	-335	VENDIDO	2025-05-21 04:00:00	IMPORTACION	23.38		2025-11-19 03:00:00	195	35.00	EFECTIVO_USD	\N	11.62	6	\N	\N	2026-01-02 15:23:48.401	2026-01-02 15:23:48.401
+2262	30	-336	VENDIDO	2025-05-21 04:00:00	IMPORTACION	23.38		2025-11-19 03:00:00	195	35.00	EFECTIVO_USD	\N	11.62	6	\N	\N	2026-01-02 15:23:48.404	2026-01-02 15:23:48.404
+2263	30	-337	VENDIDO	2025-05-21 04:00:00	IMPORTACION	23.38		2025-11-21 03:00:00	230	35.00	EFECTIVO_USD	\N	11.62	6	\N	\N	2026-01-02 15:23:48.407	2026-01-02 15:23:48.407
+2264	30	-338	VENDIDO	2025-05-21 04:00:00	IMPORTACION	23.38		2025-11-21 03:00:00	230	35.00	EFECTIVO_USD	\N	11.62	6	\N	\N	2026-01-02 15:23:48.409	2026-01-02 15:23:48.409
+2265	30	-339	VENDIDO	2025-05-21 04:00:00	IMPORTACION	23.38		2025-11-21 03:00:00	230	35.00	EFECTIVO_USD	\N	11.62	6	\N	\N	2026-01-02 15:23:48.413	2026-01-02 15:23:48.413
+2266	30	-340	VENDIDO	2025-05-21 04:00:00	IMPORTACION	23.38		2025-11-21 03:00:00	230	35.00	EFECTIVO_USD	\N	11.62	6	\N	\N	2026-01-02 15:23:48.416	2026-01-02 15:23:48.416
+2267	30	-341	VENDIDO	2025-05-21 04:00:00	IMPORTACION	23.38		2025-12-01 03:00:00	255	35.00	EFECTIVO_USD	\N	11.62	6	\N	\N	2026-01-02 15:23:48.419	2026-01-02 15:23:48.419
+2268	30	-342	VENDIDO	2025-05-21 04:00:00	IMPORTACION	23.38		2025-12-01 03:00:00	255	35.00	EFECTIVO_USD	\N	11.62	6	\N	\N	2026-01-02 15:23:48.422	2026-01-02 15:23:48.422
+2269	30	-343	DISPONIBLE	2025-05-21 04:00:00	IMPORTACION	23.38		\N	\N	\N	\N	\N	0.00	6	\N	\N	2026-01-02 15:23:48.427	2026-01-02 15:23:48.427
+2270	30	-344	DISPONIBLE	2025-05-21 04:00:00	IMPORTACION	23.38		\N	\N	\N	\N	\N	0.00	6	\N	\N	2026-01-02 15:23:48.43	2026-01-02 15:23:48.43
+2271	30	-345	DISPONIBLE	2025-05-21 04:00:00	IMPORTACION	23.38		\N	\N	\N	\N	\N	0.00	6	\N	\N	2026-01-02 15:23:48.432	2026-01-02 15:23:48.432
+2272	30	-346	DISPONIBLE	2025-05-21 04:00:00	IMPORTACION	23.38		\N	\N	\N	\N	\N	0.00	6	\N	\N	2026-01-02 15:23:48.436	2026-01-02 15:23:48.436
+2273	30	-347	DISPONIBLE	2025-05-21 04:00:00	IMPORTACION	23.38		\N	\N	\N	\N	\N	0.00	6	\N	\N	2026-01-02 15:23:48.439	2026-01-02 15:23:48.439
+2274	30	-348	DISPONIBLE	2025-05-21 04:00:00	IMPORTACION	23.38		\N	\N	\N	\N	\N	0.00	6	\N	\N	2026-01-02 15:23:48.443	2026-01-02 15:23:48.443
+2275	30	-349	DISPONIBLE	2025-05-21 04:00:00	IMPORTACION	23.38		\N	\N	\N	\N	\N	0.00	6	\N	\N	2026-01-02 15:23:48.446	2026-01-02 15:23:48.446
+2276	30	-350	DISPONIBLE	2025-05-21 04:00:00	IMPORTACION	23.38		\N	\N	\N	\N	\N	0.00	6	\N	\N	2026-01-02 15:23:48.449	2026-01-02 15:23:48.449
+2302	32	6789-192	VENDIDO	2023-03-07 03:00:00	IMPORTACION	124.07	6789	2023-03-29 03:00:00	280	160.00	EFECTIVO_USD	\N	35.93	6	\N	\N	2026-01-02 15:23:48.532	2026-01-02 15:23:48.532
+2303	32	6789-193	VENDIDO	2023-03-07 03:00:00	IMPORTACION	124.07	6789	2023-06-06 04:00:00	186	155.00	EFECTIVO_USD	\N	30.93	6	\N	\N	2026-01-02 15:23:48.535	2026-01-02 15:23:48.535
+2304	32	6789-194	VENDIDO	2023-03-07 03:00:00	IMPORTACION	124.07	6789	2023-06-06 04:00:00	186	155.00	EFECTIVO_USD	\N	30.93	6	\N	\N	2026-01-02 15:23:48.536	2026-01-02 15:23:48.536
+2305	32	6789-195	VENDIDO	2023-03-07 03:00:00	IMPORTACION	124.07	6789	2024-06-25 04:00:00	245	170.00	TRANSFERENCIA_BS	\N	45.93	6	\N	\N	2026-01-02 15:23:48.539	2026-01-02 15:23:48.539
+2306	32	7353-75	DISPONIBLE	2023-11-17 03:00:00	IMPORTACION	124.07	7353	\N	\N	\N	\N	\N	0.00	6	\N	\N	2026-01-02 15:23:48.541	2026-01-02 15:23:48.541
+2307	36	7304-001	VENDIDO	2023-03-07 03:00:00	IMPORTACION	164.67	7304	2023-03-10 03:00:00	193	270.00	EFECTIVO_USD	\N	105.33	6	\N	\N	2026-01-02 15:23:48.543	2026-01-02 15:23:48.543
+2308	36	7304-002	VENDIDO	2023-03-07 03:00:00	IMPORTACION	164.67	7304	2023-03-17 03:00:00	281	280.00	ZELLE	\N	115.33	6	\N	\N	2026-01-02 15:23:48.545	2026-01-02 15:23:48.545
+2309	36	7304-003	VENDIDO	2023-03-07 03:00:00	IMPORTACION	164.67	7304	2023-03-17 03:00:00	282	270.00	EFECTIVO_USD	\N	105.33	6	\N	\N	2026-01-02 15:23:48.547	2026-01-02 15:23:48.547
+2310	36	7304-004	VENDIDO	2023-03-07 03:00:00	IMPORTACION	164.67	7304	2023-03-20 03:00:00	193	270.00	EFECTIVO_USD	\N	105.33	6	\N	\N	2026-01-02 15:23:48.549	2026-01-02 15:23:48.549
+2311	36	7304-005	VENDIDO	2023-03-07 03:00:00	IMPORTACION	164.67	7304	2023-03-22 03:00:00	283	280.00	ZELLE	\N	115.33	6	\N	\N	2026-01-02 15:23:48.551	2026-01-02 15:23:48.551
+2312	36	7304-006	VENDIDO	2023-03-07 03:00:00	IMPORTACION	164.67	7304	2023-03-24 03:00:00	284	280.00	EFECTIVO_USD	\N	115.33	6	\N	\N	2026-01-02 15:23:48.555	2026-01-02 15:23:48.555
+2313	36	7304-007	VENDIDO	2023-03-07 03:00:00	IMPORTACION	164.67	7304	2023-03-27 03:00:00	193	265.00	EFECTIVO_USD	\N	100.33	6	\N	\N	2026-01-02 15:23:48.561	2026-01-02 15:23:48.561
+2314	36	7304-008	VENDIDO	2023-03-07 03:00:00	IMPORTACION	164.67	7304	2023-03-31 03:00:00	236	280.00	EFECTIVO_USD	\N	115.33	6	\N	\N	2026-01-02 15:23:48.564	2026-01-02 15:23:48.564
+2315	36	7304-009	VENDIDO	2023-03-07 03:00:00	IMPORTACION	164.67	7304	2023-04-17 04:00:00	196	280.00	EFECTIVO_USD	\N	115.33	6	\N	\N	2026-01-02 15:23:48.567	2026-01-02 15:23:48.567
+2316	36	7304-010	VENDIDO	2023-03-07 03:00:00	IMPORTACION	164.67	7304	2023-05-24 04:00:00	285	280.00	EFECTIVO_USD	\N	115.33	6	\N	\N	2026-01-02 15:23:48.571	2026-01-02 15:23:48.571
+2317	36	7301-025	VENDIDO	2023-06-09 04:00:00	IMPORTACION	164.67	7301	2023-06-15 04:00:00	193	265.00	EFECTIVO_USD	\N	100.33	6	\N	\N	2026-01-02 15:23:48.574	2026-01-02 15:23:48.574
+2318	36	7301-026	VENDIDO	2023-06-09 04:00:00	IMPORTACION	164.67	7301	2023-06-16 04:00:00	193	280.00	TRANSFERENCIA_BS	\N	115.33	6	\N	\N	2026-01-02 15:23:48.577	2026-01-02 15:23:48.577
+2319	36	7301-027	VENDIDO	2023-06-09 04:00:00	IMPORTACION	164.67	7301	2023-06-20 04:00:00	193	265.00	EFECTIVO_USD	\N	100.33	6	\N	\N	2026-01-02 15:23:48.581	2026-01-02 15:23:48.581
+2320	36	7301-028	VENDIDO	2023-06-09 04:00:00	IMPORTACION	164.67	7301	2023-06-22 04:00:00	226	280.00	EFECTIVO_USD	\N	115.33	6	\N	\N	2026-01-02 15:23:48.585	2026-01-02 15:23:48.585
+2321	36	7301-029	VENDIDO	2023-06-09 04:00:00	IMPORTACION	164.67	7301	2023-06-23 04:00:00	193	265.00	EFECTIVO_USD	\N	100.33	6	\N	\N	2026-01-02 15:23:48.588	2026-01-02 15:23:48.588
+2322	36	7301-030	VENDIDO	2023-06-09 04:00:00	IMPORTACION	164.67	7301	2023-06-27 04:00:00	286	280.00	EFECTIVO_USD	\N	115.33	6	\N	\N	2026-01-02 15:23:48.59	2026-01-02 15:23:48.59
+2323	36	7301-031	VENDIDO	2023-06-09 04:00:00	IMPORTACION	164.67	7301	2023-06-27 04:00:00	193	265.00	EFECTIVO_USD	\N	100.33	6	\N	\N	2026-01-02 15:23:48.592	2026-01-02 15:23:48.592
+2324	36	7301-032	VENDIDO	2023-06-09 04:00:00	IMPORTACION	164.67	7301	2023-07-17 04:00:00	283	280.00	EFECTIVO_USD	\N	115.33	6	\N	\N	2026-01-02 15:23:48.594	2026-01-02 15:23:48.594
+2325	36	7301-033	VENDIDO	2023-06-09 04:00:00	IMPORTACION	164.67	7301	2023-07-17 04:00:00	283	280.00	EFECTIVO_USD	\N	115.33	6	\N	\N	2026-01-02 15:23:48.596	2026-01-02 15:23:48.596
+2326	36	7301-034	VENDIDO	2023-06-09 04:00:00	IMPORTACION	164.67	7301	2023-07-17 04:00:00	283	280.00	EFECTIVO_USD	\N	115.33	6	\N	\N	2026-01-02 15:23:48.599	2026-01-02 15:23:48.599
+2327	36	7301-035	VENDIDO	2023-06-16 04:00:00	IMPORTACION	164.67	7301	2023-07-17 04:00:00	283	280.00	EFECTIVO_USD	\N	115.33	6	\N	\N	2026-01-02 15:23:48.601	2026-01-02 15:23:48.601
+2328	36	7301-036	VENDIDO	2023-06-16 04:00:00	IMPORTACION	164.67	7301	2023-07-19 04:00:00	287	265.00	EFECTIVO_USD	\N	100.33	6	\N	\N	2026-01-02 15:23:48.603	2026-01-02 15:23:48.603
+2329	36	7301-037	VENDIDO	2023-06-16 04:00:00	IMPORTACION	164.67	7301	2023-07-19 04:00:00	287	265.00	EFECTIVO_USD	\N	100.33	6	\N	\N	2026-01-02 15:23:48.605	2026-01-02 15:23:48.605
+2330	36	7301-038	VENDIDO	2023-06-16 04:00:00	IMPORTACION	164.67	7301	2023-08-09 04:00:00	236	280.00	EFECTIVO_USD	\N	115.33	6	\N	\N	2026-01-02 15:23:48.608	2026-01-02 15:23:48.608
+2331	36	7301-039	VENDIDO	2023-06-16 04:00:00	IMPORTACION	164.67	7301	2023-08-25 04:00:00	287	270.00	EFECTIVO_USD	\N	105.33	6	\N	\N	2026-01-02 15:23:48.611	2026-01-02 15:23:48.611
+2332	36	7301-040	VENDIDO	2023-06-16 04:00:00	IMPORTACION	164.67	7301	2023-09-25 03:00:00	283	280.00	EFECTIVO_USD	\N	115.33	6	\N	\N	2026-01-02 15:23:48.613	2026-01-02 15:23:48.613
+2333	36	7301-041	VENDIDO	2023-06-16 04:00:00	IMPORTACION	164.67	7301	2023-09-26 03:00:00	193	265.00	EFECTIVO_USD	\N	100.33	6	\N	\N	2026-01-02 15:23:48.616	2026-01-02 15:23:48.616
+2334	36	7301-042	VENDIDO	2023-06-16 04:00:00	IMPORTACION	164.67	7301	2023-10-05 03:00:00	193	280.00	TRANSFERENCIA_BS	\N	115.33	6	\N	\N	2026-01-02 15:23:48.623	2026-01-02 15:23:48.623
+2335	36	7301-043	VENDIDO	2023-06-16 04:00:00	IMPORTACION	164.67	7301	2023-10-09 03:00:00	193	265.00	EFECTIVO_USD	\N	100.33	6	\N	\N	2026-01-02 15:23:48.626	2026-01-02 15:23:48.626
+2336	36	7301-044	VENDIDO	2023-06-16 04:00:00	IMPORTACION	164.67	7301	2023-10-20 03:00:00	193	265.00	EFECTIVO_USD	\N	100.33	6	\N	\N	2026-01-02 15:23:48.628	2026-01-02 15:23:48.628
+2337	36	7423-035	VENDIDO	2023-11-17 03:00:00	IMPORTACION	164.67	7423	2023-11-24 03:00:00	226	280.00	EFECTIVO_USD	\N	115.33	6	\N	\N	2026-01-02 15:23:48.631	2026-01-02 15:23:48.631
+2338	36	7423-036	VENDIDO	2023-11-17 03:00:00	IMPORTACION	164.67	7423	2023-12-04 03:00:00	288	280.00	EFECTIVO_USD	\N	115.33	6	\N	\N	2026-01-02 15:23:48.634	2026-01-02 15:23:48.634
+2339	36	7423-037	VENDIDO	2023-11-17 03:00:00	IMPORTACION	164.67	7423	2023-11-27 03:00:00	283	280.00	EFECTIVO_USD	\N	115.33	6	\N	\N	2026-01-02 15:23:48.636	2026-01-02 15:23:48.636
+2340	36	7423-038	VENDIDO	2023-11-17 03:00:00	IMPORTACION	164.67	7423	2023-12-05 03:00:00	193	265.00	EFECTIVO_USD	\N	100.33	6	\N	\N	2026-01-02 15:23:48.641	2026-01-02 15:23:48.641
+2341	36	7423-039	VENDIDO	2023-11-17 03:00:00	IMPORTACION	164.67	7423	2023-12-05 03:00:00	289	280.00	EFECTIVO_USD	\N	115.33	6	\N	\N	2026-01-02 15:23:48.644	2026-01-02 15:23:48.644
+2342	36	7423-040	VENDIDO	2023-11-17 03:00:00	IMPORTACION	164.67	7423	2023-12-07 03:00:00	290	265.00	EFECTIVO_USD	\N	100.33	6	\N	\N	2026-01-02 15:23:48.646	2026-01-02 15:23:48.646
+2343	36	7423-041	VENDIDO	2023-11-17 03:00:00	IMPORTACION	164.67	7423	2023-12-08 03:00:00	261	280.00	EFECTIVO_USD	\N	115.33	6	\N	\N	2026-01-02 15:23:48.648	2026-01-02 15:23:48.648
+2344	36	7423-042	VENDIDO	2023-11-17 03:00:00	IMPORTACION	164.67	7423	2023-12-11 03:00:00	283	280.00	EFECTIVO_USD	\N	115.33	6	\N	\N	2026-01-02 15:23:48.65	2026-01-02 15:23:48.65
+2345	36	7423-043	VENDIDO	2023-11-17 03:00:00	IMPORTACION	164.67	7423	2023-12-20 03:00:00	193	265.00	EFECTIVO_USD	\N	100.33	6	\N	\N	2026-01-02 15:23:48.653	2026-01-02 15:23:48.653
+2346	36	7423-044	VENDIDO	2023-11-17 03:00:00	IMPORTACION	164.67	7423	2024-01-23 03:00:00	193	265.00	EFECTIVO_USD	\N	100.33	6	\N	\N	2026-01-02 15:23:48.655	2026-01-02 15:23:48.655
+2347	36	7423-045	VENDIDO	2023-11-17 03:00:00	IMPORTACION	164.67	7423	2024-02-20 03:00:00	291	280.00	EFECTIVO_USD	\N	115.33	6	\N	\N	2026-01-02 15:23:48.659	2026-01-02 15:23:48.659
+2348	36	7423-046	VENDIDO	2023-11-17 03:00:00	IMPORTACION	164.67	7423	2024-04-15 04:00:00	228	270.00	EFECTIVO_USD	\N	105.33	6	\N	\N	2026-01-02 15:23:48.662	2026-01-02 15:23:48.662
+2349	36	7423-047	VENDIDO	2023-11-17 03:00:00	IMPORTACION	164.67	7423	2024-05-02 04:00:00	226	280.00	EFECTIVO_USD	\N	115.33	6	\N	\N	2026-01-02 15:23:48.666	2026-01-02 15:23:48.666
+2350	36	7423-048	VENDIDO	2023-11-17 03:00:00	IMPORTACION	164.67	7423	2024-05-20 04:00:00	226	280.00	EFECTIVO_USD	\N	115.33	6	\N	\N	2026-01-02 15:23:48.67	2026-01-02 15:23:48.67
+2351	36	7423-049	VENDIDO	2023-11-17 03:00:00	IMPORTACION	164.67	7423	2024-06-06 04:00:00	261	280.00	EFECTIVO_USD	\N	115.33	6	\N	\N	2026-01-02 15:23:48.673	2026-01-02 15:23:48.673
+2352	36	7630-018	VENDIDO	2024-02-15 03:00:00	IMPORTACION	164.67	7630	2024-06-06 04:00:00	261	280.00	EFECTIVO_USD	\N	115.33	6	\N	\N	2026-01-02 15:23:48.676	2026-01-02 15:23:48.676
+2353	36	7630-019	VENDIDO	2024-02-15 03:00:00	IMPORTACION	164.67	7630	2024-06-06 04:00:00	261	280.00	EFECTIVO_USD	\N	115.33	6	\N	\N	2026-01-02 15:23:48.678	2026-01-02 15:23:48.678
+2354	36	7630-020	VENDIDO	2024-02-15 03:00:00	IMPORTACION	164.67	7630	2024-06-06 04:00:00	261	280.00	EFECTIVO_USD	\N	115.33	6	\N	\N	2026-01-02 15:23:48.681	2026-01-02 15:23:48.681
+2355	36	7630-021	VENDIDO	2024-02-15 03:00:00	IMPORTACION	164.67	7630	2024-06-14 04:00:00	292	280.00	TRANSFERENCIA_BS	\N	115.33	6	\N	\N	2026-01-02 15:23:48.684	2026-01-02 15:23:48.684
+2356	36	7630-022	VENDIDO	2024-02-15 03:00:00	IMPORTACION	164.67	7630	2024-06-06 04:00:00	220	265.00	EFECTIVO_USD	\N	100.33	6	\N	\N	2026-01-02 15:23:48.686	2026-01-02 15:23:48.686
+2357	36	7630-023	VENDIDO	2024-02-15 03:00:00	IMPORTACION	164.67	7630	2024-06-14 04:00:00	292	280.00	TRANSFERENCIA_BS	\N	115.33	6	\N	\N	2026-01-02 15:23:48.689	2026-01-02 15:23:48.689
+2358	36	7630-024	VENDIDO	2024-02-15 03:00:00	IMPORTACION	164.67	7630	2024-06-18 04:00:00	261	280.00	TRANSFERENCIA_BS	\N	115.33	6	\N	\N	2026-01-02 15:23:48.692	2026-01-02 15:23:48.692
+2359	36	7630-025	VENDIDO	2024-02-15 03:00:00	IMPORTACION	164.67	7630	2024-06-28 04:00:00	291	280.00	EFECTIVO_USD	\N	115.33	6	\N	\N	2026-01-02 15:23:48.694	2026-01-02 15:23:48.694
+2360	36	7630-026	VENDIDO	2024-02-15 03:00:00	IMPORTACION	164.67	7630	2024-06-28 04:00:00	291	280.00	EFECTIVO_USD	\N	115.33	6	\N	\N	2026-01-02 15:23:48.695	2026-01-02 15:23:48.695
+2361	36	7630-027	VENDIDO	2024-02-15 03:00:00	IMPORTACION	164.67	7630	2024-07-17 04:00:00	293	280.00	TRANSFERENCIA_BS	\N	115.33	6	\N	\N	2026-01-02 15:23:48.697	2026-01-02 15:23:48.697
+2362	36	7797-031	VENDIDO	2024-09-30 03:00:00	IMPORTACION	164.67	7797	2024-10-25 03:00:00	289	280.00	EFECTIVO_USD	\N	115.33	6	\N	\N	2026-01-02 15:23:48.698	2026-01-02 15:23:48.698
+2363	36	7797-032	VENDIDO	2024-09-30 03:00:00	IMPORTACION	164.67	7797	2024-11-01 03:00:00	226	280.00	EFECTIVO_USD	\N	115.33	6	\N	\N	2026-01-02 15:23:48.702	2026-01-02 15:23:48.702
+2364	36	7797-033	VENDIDO	2024-09-30 03:00:00	IMPORTACION	164.67	7797	2024-10-15 03:00:00	225	280.00	EFECTIVO_USD	\N	115.33	6	\N	\N	2026-01-02 15:23:48.703	2026-01-02 15:23:48.703
+2365	36	7797-034	VENDIDO	2024-09-30 03:00:00	IMPORTACION	164.67	7797	2024-11-01 03:00:00	261	280.00	EFECTIVO_USD	\N	115.33	6	\N	\N	2026-01-02 15:23:48.705	2026-01-02 15:23:48.705
+2366	36	7797-035	VENDIDO	2024-09-30 03:00:00	IMPORTACION	164.67	7797	2024-11-07 03:00:00	279	280.00	EFECTIVO_USD	\N	115.33	6	\N	\N	2026-01-02 15:23:48.707	2026-01-02 15:23:48.707
+2367	36	7797-036	VENDIDO	2024-09-30 03:00:00	IMPORTACION	164.67	7797	2024-11-21 03:00:00	226	280.00	EFECTIVO_USD	\N	115.33	6	\N	\N	2026-01-02 15:23:48.709	2026-01-02 15:23:48.709
+2368	36	7797-037	VENDIDO	2024-09-30 03:00:00	IMPORTACION	164.67	7797	2024-11-29 03:00:00	261	280.00	EFECTIVO_USD	\N	115.33	6	\N	\N	2026-01-02 15:23:48.713	2026-01-02 15:23:48.713
+2369	36	7797-038	VENDIDO	2024-09-30 03:00:00	IMPORTACION	164.67	7797	2024-12-11 03:00:00	261	280.00	EFECTIVO_USD	\N	115.33	6	\N	\N	2026-01-02 15:23:48.719	2026-01-02 15:23:48.719
+2370	36	7797-039	VENDIDO	2024-09-30 03:00:00	IMPORTACION	164.67	7797	2024-12-19 03:00:00	226	280.00	EFECTIVO_USD	\N	115.33	6	\N	\N	2026-01-02 15:23:48.722	2026-01-02 15:23:48.722
+2371	36	7797-040	VENDIDO	2024-09-30 03:00:00	IMPORTACION	164.67	7797	2025-02-25 03:00:00	212	285.00	\N	\N	120.33	6	\N	\N	2026-01-02 15:23:48.724	2026-01-02 15:23:48.724
+2372	36	7797-041	VENDIDO	2024-09-30 03:00:00	IMPORTACION	164.67	7797	2025-02-25 03:00:00	212	285.00	\N	\N	120.33	6	\N	\N	2026-01-02 15:23:48.725	2026-01-02 15:23:48.725
+2373	36	7797-042	VENDIDO	2024-09-30 03:00:00	IMPORTACION	164.67	7797	2025-04-08 04:00:00	294	270.00	EFECTIVO_USD	\N	105.33	6	\N	\N	2026-01-02 15:23:48.726	2026-01-02 15:23:48.726
+2374	36	7797-043	VENDIDO	2024-09-30 03:00:00	IMPORTACION	164.67	7797	2025-04-09 04:00:00	294	270.00	EFECTIVO_USD	\N	105.33	6	\N	\N	2026-01-02 15:23:48.728	2026-01-02 15:23:48.728
+2375	36	7797-044	VENDIDO	2024-09-30 03:00:00	IMPORTACION	164.67	7797	2025-01-08 03:00:00	295	280.00	EFECTIVO_USD	\N	115.33	6	\N	\N	2026-01-02 15:23:48.73	2026-01-02 15:23:48.73
+2376	36	7797-045	VENDIDO	2024-09-30 03:00:00	IMPORTACION	164.67	7797	2025-04-14 04:00:00	296	285.00	ZELLE	\N	120.33	6	\N	\N	2026-01-02 15:23:48.731	2026-01-02 15:23:48.731
+2377	36	7797-046	VENDIDO	2024-09-30 03:00:00	IMPORTACION	164.67	7797	2025-07-01 04:00:00	226	285.00	EFECTIVO_USD	\N	120.33	6	\N	\N	2026-01-02 15:23:48.734	2026-01-02 15:23:48.734
+2378	36	7797-047	VENDIDO	2024-09-30 03:00:00	IMPORTACION	164.67	7797	2025-08-08 04:00:00	279	280.00	EFECTIVO_USD	\N	115.33	6	\N	\N	2026-01-02 15:23:48.735	2026-01-02 15:23:48.735
+2379	36	7797-048	VENDIDO	2024-09-30 03:00:00	IMPORTACION	164.67	7797	2025-09-02 04:00:00	189	285.00	EFECTIVO_USD	\N	120.33	6	\N	\N	2026-01-02 15:23:48.737	2026-01-02 15:23:48.737
+2380	36	7797-049	VENDIDO	2024-09-30 03:00:00	IMPORTACION	164.67	7797	2025-09-26 03:00:00	289	285.00	EFECTIVO_USD	\N	120.33	6	\N	\N	2026-01-02 15:23:48.738	2026-01-02 15:23:48.738
+2381	36	7797-050	VENDIDO	2024-09-30 03:00:00	IMPORTACION	164.67	7797	2025-10-10 03:00:00	289	285.00	EFECTIVO_USD	\N	120.33	6	\N	\N	2026-01-02 15:23:48.74	2026-01-02 15:23:48.74
+2382	36	7929-001	VENDIDO	2024-09-30 03:00:00	IMPORTACION	164.67	7929	2025-10-13 03:00:00	297	280.00	EFECTIVO_USD	\N	115.33	6	\N	\N	2026-01-02 15:23:48.742	2026-01-02 15:23:48.742
+2383	36	7929-002	VENDIDO	2024-09-30 03:00:00	IMPORTACION	164.67	7929	2025-10-13 03:00:00	297	280.00	EFECTIVO_USD	\N	115.33	6	\N	\N	2026-01-02 15:23:48.743	2026-01-02 15:23:48.743
+2384	36	7929-003	VENDIDO	2024-09-30 03:00:00	IMPORTACION	164.67	7929	2025-11-17 03:00:00	297	270.00	EFECTIVO_USD	\N	105.33	6	\N	\N	2026-01-02 15:23:48.745	2026-01-02 15:23:48.745
+2385	36	7929-004	VENDIDO	2024-09-30 03:00:00	IMPORTACION	164.67	7929	2025-11-17 03:00:00	297	270.00	EFECTIVO_USD	\N	105.33	6	\N	\N	2026-01-02 15:23:48.747	2026-01-02 15:23:48.747
+2386	36	7929-005	DISPONIBLE	2024-09-30 03:00:00	IMPORTACION	164.67	7929	\N	\N	\N	\N	\N	0.00	6	\N	\N	2026-01-02 15:23:48.749	2026-01-02 15:23:48.749
+2387	36	7929-006	DISPONIBLE	2024-09-30 03:00:00	IMPORTACION	164.67	7929	\N	\N	\N	\N	\N	0.00	6	\N	\N	2026-01-02 15:23:48.751	2026-01-02 15:23:48.751
+2388	36	7929-007	DISPONIBLE	2024-09-30 03:00:00	IMPORTACION	164.67	7929	\N	\N	\N	\N	\N	0.00	6	\N	\N	2026-01-02 15:23:48.752	2026-01-02 15:23:48.752
+2389	36	7929-008	DISPONIBLE	2024-09-30 03:00:00	IMPORTACION	164.67	7929	\N	\N	\N	\N	\N	0.00	6	\N	\N	2026-01-02 15:23:48.754	2026-01-02 15:23:48.754
+2390	36	7929-009	DISPONIBLE	2024-09-30 03:00:00	IMPORTACION	164.67	7929	\N	\N	\N	\N	\N	0.00	6	\N	\N	2026-01-02 15:23:48.755	2026-01-02 15:23:48.755
+2391	36	7929-010	DISPONIBLE	2024-09-30 03:00:00	IMPORTACION	164.67	7929	\N	\N	\N	\N	\N	0.00	6	\N	\N	2026-01-02 15:23:48.757	2026-01-02 15:23:48.757
+2392	36	8129-016	DISPONIBLE	2025-05-21 04:00:00	IMPORTACION	164.67	8129	\N	\N	\N	\N	\N	0.00	6	\N	\N	2026-01-02 15:23:48.76	2026-01-02 15:23:48.76
+2393	36	8129-017	DISPONIBLE	2025-05-21 04:00:00	IMPORTACION	164.67	8129	\N	\N	\N	\N	\N	0.00	6	\N	\N	2026-01-02 15:23:48.762	2026-01-02 15:23:48.762
+2394	36	8129-018	DISPONIBLE	2025-05-21 04:00:00	IMPORTACION	164.67	8129	\N	\N	\N	\N	\N	0.00	6	\N	\N	2026-01-02 15:23:48.763	2026-01-02 15:23:48.763
+2395	36	8129-019	DISPONIBLE	2025-05-21 04:00:00	IMPORTACION	164.67	8129	\N	\N	\N	\N	\N	0.00	6	\N	\N	2026-01-02 15:23:48.765	2026-01-02 15:23:48.765
+2396	36	8129-020	DISPONIBLE	2025-05-21 04:00:00	IMPORTACION	164.67	8129	\N	\N	\N	\N	\N	0.00	6	\N	\N	2026-01-02 15:23:48.766	2026-01-02 15:23:48.766
+2397	36	8129-021	DISPONIBLE	2025-05-21 04:00:00	IMPORTACION	164.67	8129	\N	\N	\N	\N	\N	0.00	6	\N	\N	2026-01-02 15:23:48.768	2026-01-02 15:23:48.768
+2398	36	8129-022	DISPONIBLE	2025-05-21 04:00:00	IMPORTACION	164.67	8129	\N	\N	\N	\N	\N	0.00	6	\N	\N	2026-01-02 15:23:48.769	2026-01-02 15:23:48.769
+2399	36	8129-023	DISPONIBLE	2025-05-21 04:00:00	IMPORTACION	164.67	8129	\N	\N	\N	\N	\N	0.00	6	\N	\N	2026-01-02 15:23:48.771	2026-01-02 15:23:48.771
+2400	36	8129-024	DISPONIBLE	2025-05-21 04:00:00	IMPORTACION	164.67	8129	\N	\N	\N	\N	\N	0.00	6	\N	\N	2026-01-02 15:23:48.773	2026-01-02 15:23:48.773
+2401	36	8129-025	DISPONIBLE	2025-05-21 04:00:00	IMPORTACION	164.67	8129	\N	\N	\N	\N	\N	0.00	6	\N	\N	2026-01-02 15:23:48.775	2026-01-02 15:23:48.775
+2402	36	8129-026	DISPONIBLE	2025-05-21 04:00:00	IMPORTACION	164.67	8129	\N	\N	\N	\N	\N	0.00	6	\N	\N	2026-01-02 15:23:48.777	2026-01-02 15:23:48.777
+2403	36	8129-027	DISPONIBLE	2025-05-21 04:00:00	IMPORTACION	164.67	8129	\N	\N	\N	\N	\N	0.00	6	\N	\N	2026-01-02 15:23:48.779	2026-01-02 15:23:48.779
+2404	36	8129-028	DISPONIBLE	2025-05-21 04:00:00	IMPORTACION	164.67	8129	\N	\N	\N	\N	\N	0.00	6	\N	\N	2026-01-02 15:23:48.782	2026-01-02 15:23:48.782
+2405	36	8129-029	DISPONIBLE	2025-05-21 04:00:00	IMPORTACION	164.67	8129	\N	\N	\N	\N	\N	0.00	6	\N	\N	2026-01-02 15:23:48.784	2026-01-02 15:23:48.784
+2406	36	8129-030	DISPONIBLE	2025-05-21 04:00:00	IMPORTACION	164.67	8129	\N	\N	\N	\N	\N	0.00	6	\N	\N	2026-01-02 15:23:48.786	2026-01-02 15:23:48.786
+2407	35	7322-064	VENDIDO	2023-06-09 04:00:00	IMPORTACION	191.32	7322	2023-06-16 04:00:00	289	320.00	EFECTIVO_USD	\N	128.68	6	\N	\N	2026-01-02 15:23:48.788	2026-01-02 15:23:48.788
+2408	35	7322-065	VENDIDO	2023-06-09 04:00:00	IMPORTACION	191.32	7322	2023-06-27 04:00:00	193	300.00	EFECTIVO_USD	\N	108.68	6	\N	\N	2026-01-02 15:23:48.79	2026-01-02 15:23:48.79
+2409	35	7322-066	VENDIDO	2023-06-09 04:00:00	IMPORTACION	191.32	7322	2023-07-19 04:00:00	193	320.00	TRANSFERENCIA_BS	\N	128.68	6	\N	\N	2026-01-02 15:23:48.792	2026-01-02 15:23:48.792
+2410	35	7322-067	VENDIDO	2023-06-09 04:00:00	IMPORTACION	191.32	7322	2023-11-08 03:00:00	193	300.00	EFECTIVO_USD	\N	108.68	6	\N	\N	2026-01-02 15:23:48.793	2026-01-02 15:23:48.793
+2411	35	7322-068	VENDIDO	2023-06-09 04:00:00	IMPORTACION	191.32	7322	2023-11-08 03:00:00	193	300.00	EFECTIVO_USD	\N	108.68	6	\N	\N	2026-01-02 15:23:48.795	2026-01-02 15:23:48.795
+2412	35	7322-069	VENDIDO	2023-06-09 04:00:00	IMPORTACION	191.32	7322	2023-11-08 03:00:00	193	300.00	EFECTIVO_USD	\N	108.68	6	\N	\N	2026-01-02 15:23:48.798	2026-01-02 15:23:48.798
+2413	35	7629-43	VENDIDO	2023-11-17 03:00:00	IMPORTACION	191.32	7629	2024-04-04 03:00:00	193	320.00	TRANSFERENCIA_BS	\N	128.68	6	\N	\N	2026-01-02 15:23:48.8	2026-01-02 15:23:48.8
+2414	35	7629-44	VENDIDO	2023-11-17 03:00:00	IMPORTACION	191.32	7629	2024-04-04 03:00:00	193	320.00	TRANSFERENCIA_BS	\N	128.68	6	\N	\N	2026-01-02 15:23:48.802	2026-01-02 15:23:48.802
+2415	35	7629-45	DISPONIBLE	2023-11-17 03:00:00	IMPORTACION	191.32	7629	\N	\N	\N	\N	\N	0.00	6	\N	\N	2026-01-02 15:23:48.805	2026-01-02 15:23:48.805
+2416	35	7629-46	VENDIDO	2023-11-17 03:00:00	IMPORTACION	191.32	7629	2024-05-15 04:00:00	298	320.00	EFECTIVO_USD	\N	128.68	6	\N	\N	2026-01-02 15:23:48.808	2026-01-02 15:23:48.808
+2417	35	7629-47	VENDIDO	2023-11-17 03:00:00	IMPORTACION	191.32	7629	2024-05-20 04:00:00	289	320.00	TRANSFERENCIA_BS	\N	128.68	6	\N	\N	2026-01-02 15:23:48.815	2026-01-02 15:23:48.815
+2418	35	7629-48	VENDIDO	2023-11-17 03:00:00	IMPORTACION	191.32	7629	2023-12-05 03:00:00	279	320.00	EFECTIVO_USD	\N	128.68	6	\N	\N	2026-01-02 15:23:48.823	2026-01-02 15:23:48.823
+2419	35	7629-49	VENDIDO	2023-11-17 03:00:00	IMPORTACION	191.32	7629	2024-09-24 03:00:00	299	320.00	EFECTIVO_USD	\N	128.68	6	\N	\N	2026-01-02 15:23:48.825	2026-01-02 15:23:48.825
+2420	35	7793-032	VENDIDO	2024-09-30 03:00:00	IMPORTACION	191.32	7793	2025-02-25 03:00:00	212	325.00	\N	\N	133.68	6	\N	\N	2026-01-02 15:23:48.827	2026-01-02 15:23:48.827
+2421	35	7793-033	VENDIDO	2024-09-30 03:00:00	IMPORTACION	191.32	7793	2025-02-25 03:00:00	212	325.00	EFECTIVO_USD	\N	133.68	6	\N	\N	2026-01-02 15:23:48.829	2026-01-02 15:23:48.829
+2422	35	7793-034	VENDIDO	2024-09-30 03:00:00	IMPORTACION	191.32	7793	2025-05-19 04:00:00	216	325.00	ZELLE	\N	133.68	6	\N	\N	2026-01-02 15:23:48.831	2026-01-02 15:23:48.831
+2423	35	7793-035	DISPONIBLE	2024-09-30 03:00:00	IMPORTACION	191.32	7793	\N	\N	\N	\N	\N	0.00	6	\N	\N	2026-01-02 15:23:48.833	2026-01-02 15:23:48.833
+2424	35	7793-036	DISPONIBLE	2024-09-30 03:00:00	IMPORTACION	191.32	7793	\N	\N	\N	\N	\N	0.00	6	\N	\N	2026-01-02 15:23:48.835	2026-01-02 15:23:48.835
+2425	35	7793-047	DISPONIBLE	2024-09-30 03:00:00	IMPORTACION	191.32	7793	\N	\N	\N	\N	\N	0.00	6	\N	\N	2026-01-02 15:23:48.838	2026-01-02 15:23:48.838
+2426	35	7793-048	DISPONIBLE	2024-09-30 03:00:00	IMPORTACION	191.32	7793	\N	\N	\N	\N	\N	0.00	6	\N	\N	2026-01-02 15:23:48.84	2026-01-02 15:23:48.84
+2427	35	7793-049	DISPONIBLE	2024-09-30 03:00:00	IMPORTACION	191.32	7793	\N	\N	\N	\N	\N	0.00	6	\N	\N	2026-01-02 15:23:48.841	2026-01-02 15:23:48.841
+2428	35	7793-050	DISPONIBLE	2024-09-30 03:00:00	IMPORTACION	191.32	7793	\N	\N	\N	\N	\N	0.00	6	\N	\N	2026-01-02 15:23:48.843	2026-01-02 15:23:48.843
+2429	35	7793-051	DISPONIBLE	2024-09-30 03:00:00	IMPORTACION	191.32	7793	\N	\N	\N	\N	\N	0.00	6	\N	\N	2026-01-02 15:23:48.845	2026-01-02 15:23:48.845
+2430	37	7034-83	VENDIDO	2023-03-07 03:00:00	IMPORTACION	319.82	7034	2023-03-10 03:00:00	193	470.00	EFECTIVO_USD	\N	150.18	6	\N	\N	2026-01-02 15:23:48.847	2026-01-02 15:23:48.847
+2431	37	7034-85	VENDIDO	2023-03-07 03:00:00	IMPORTACION	319.82	7034	2023-03-10 03:00:00	254	480.00	EFECTIVO_USD	\N	160.18	6	\N	\N	2026-01-02 15:23:48.848	2026-01-02 15:23:48.848
+2432	37	7034-86	VENDIDO	2023-03-07 03:00:00	IMPORTACION	319.82	7034	2023-03-16 03:00:00	224	480.00	ZELLE	\N	160.18	6	\N	\N	2026-01-02 15:23:48.85	2026-01-02 15:23:48.85
+2433	37	7034-87	VENDIDO	2023-03-07 03:00:00	IMPORTACION	319.82	7034	2023-03-20 03:00:00	187	480.00	TRANSFERENCIA_USD	\N	160.18	6	\N	\N	2026-01-02 15:23:48.851	2026-01-02 15:23:48.851
+2434	37	7034-88	VENDIDO	2023-03-07 03:00:00	IMPORTACION	319.82	7034	2023-03-27 03:00:00	285	480.00	EFECTIVO_USD	\N	160.18	6	\N	\N	2026-01-02 15:23:48.853	2026-01-02 15:23:48.853
+2435	37	7034-89	VENDIDO	2023-03-07 03:00:00	IMPORTACION	319.82	7034	2023-03-29 03:00:00	280	465.00	ZELLE	\N	145.18	6	\N	\N	2026-01-02 15:23:48.855	2026-01-02 15:23:48.855
+2436	37	7034-90	VENDIDO	2023-03-07 03:00:00	IMPORTACION	319.82	7034	2023-03-29 03:00:00	280	465.00	EFECTIVO_USD	\N	145.18	6	\N	\N	2026-01-02 15:23:48.856	2026-01-02 15:23:48.856
+2437	37	7034-91	VENDIDO	2023-03-07 03:00:00	IMPORTACION	319.82	7034	2023-03-29 03:00:00	300	480.00	TRANSFERENCIA_BS	\N	160.18	6	\N	\N	2026-01-02 15:23:48.86	2026-01-02 15:23:48.86
+2438	37	7034-92	VENDIDO	2023-03-07 03:00:00	IMPORTACION	319.82	7034	2023-04-05 04:00:00	238	474.00	EFECTIVO_USD	\N	154.18	6	\N	\N	2026-01-02 15:23:48.862	2026-01-02 15:23:48.862
+2439	37	7034-93	VENDIDO	2023-03-07 03:00:00	IMPORTACION	319.82	7034	2023-04-11 04:00:00	238	480.00	EFECTIVO_USD	\N	160.18	6	\N	\N	2026-01-02 15:23:48.864	2026-01-02 15:23:48.864
+2440	37	7383-001	VENDIDO	2023-06-09 04:00:00	IMPORTACION	319.82	7383	2023-06-13 04:00:00	254	480.00	EFECTIVO_USD	\N	160.18	6	\N	\N	2026-01-02 15:23:48.866	2026-01-02 15:23:48.866
+2441	37	7383-002	VENDIDO	2023-06-09 04:00:00	IMPORTACION	319.82	7383	2023-06-19 04:00:00	232	480.00	EFECTIVO_USD	\N	160.18	6	\N	\N	2026-01-02 15:23:48.869	2026-01-02 15:23:48.869
+2442	37	7383-003	VENDIDO	2023-06-09 04:00:00	IMPORTACION	319.82	7383	2023-06-28 04:00:00	234	480.00	EFECTIVO_USD	\N	160.18	6	\N	\N	2026-01-02 15:23:48.873	2026-01-02 15:23:48.873
+2443	37	7383-004	VENDIDO	2023-06-09 04:00:00	IMPORTACION	319.82	7383	2023-07-03 04:00:00	254	480.00	EFECTIVO_USD	\N	160.18	6	\N	\N	2026-01-02 15:23:48.875	2026-01-02 15:23:48.875
+2444	37	7383-005	VENDIDO	2023-06-09 04:00:00	IMPORTACION	319.82	7383	2023-07-18 04:00:00	191	480.00	TRANSFERENCIA_BS	\N	160.18	6	\N	\N	2026-01-02 15:23:48.877	2026-01-02 15:23:48.877
+2445	37	7383-006	VENDIDO	2023-06-09 04:00:00	IMPORTACION	319.82	7383	2023-08-08 04:00:00	235	470.00	EFECTIVO_USD	\N	150.18	6	\N	\N	2026-01-02 15:23:48.882	2026-01-02 15:23:48.882
+2446	37	7383-007	VENDIDO	2023-06-09 04:00:00	IMPORTACION	319.82	7383	2023-08-08 04:00:00	235	470.00	EFECTIVO_USD	\N	150.18	6	\N	\N	2026-01-02 15:23:48.885	2026-01-02 15:23:48.885
+2447	37	7383-008	VENDIDO	2023-06-09 04:00:00	IMPORTACION	319.82	7383	2023-08-10 04:00:00	237	480.00	EFECTIVO_USD	\N	160.18	6	\N	\N	2026-01-02 15:23:48.887	2026-01-02 15:23:48.887
+2448	37	7383-009	VENDIDO	2023-06-09 04:00:00	IMPORTACION	319.82	7383	2023-10-19 03:00:00	301	480.00	TRANSFERENCIA_BS	\N	160.18	6	\N	\N	2026-01-02 15:23:48.891	2026-01-02 15:23:48.891
+2449	37	7383-010	VENDIDO	2023-06-09 04:00:00	IMPORTACION	319.82	7383	2023-12-06 03:00:00	219	460.00	EFECTIVO_USD	\N	140.18	6	\N	\N	2026-01-02 15:23:48.894	2026-01-02 15:23:48.894
+2450	37	7487-75	VENDIDO	2023-11-17 03:00:00	IMPORTACION	319.82	7487	2023-12-15 03:00:00	254	480.00	EFECTIVO_USD	\N	160.18	6	\N	\N	2026-01-02 15:23:48.895	2026-01-02 15:23:48.895
+2451	37	7487-76	VENDIDO	2023-11-17 03:00:00	IMPORTACION	319.82	7487	2023-12-18 03:00:00	302	480.00	EFECTIVO_USD	\N	160.18	6	\N	\N	2026-01-02 15:23:48.897	2026-01-02 15:23:48.897
+2452	37	7487-77	VENDIDO	2023-11-17 03:00:00	IMPORTACION	319.82	7487	2024-01-31 03:00:00	219	485.00	EFECTIVO_USD	\N	165.18	6	\N	\N	2026-01-02 15:23:48.903	2026-01-02 15:23:48.903
+2453	37	7487-78	VENDIDO	2023-11-17 03:00:00	IMPORTACION	319.82	7487	2024-02-22 03:00:00	303	490.00	EFECTIVO_USD	\N	170.18	6	\N	\N	2026-01-02 15:23:48.906	2026-01-02 15:23:48.906
+2454	37	7487-79	VENDIDO	2023-11-17 03:00:00	IMPORTACION	319.82	7487	2024-03-15 03:00:00	304	485.00	EFECTIVO_USD	\N	165.18	6	\N	\N	2026-01-02 15:23:48.909	2026-01-02 15:23:48.909
+2455	37	7487-80	VENDIDO	2023-11-17 03:00:00	IMPORTACION	319.82	7487	2024-02-06 03:00:00	294	475.00	EFECTIVO_USD	\N	155.18	6	\N	\N	2026-01-02 15:23:48.911	2026-01-02 15:23:48.911
+2456	37	7487-81	VENDIDO	2023-11-17 03:00:00	IMPORTACION	319.82	7487	2024-03-25 03:00:00	302	485.00	EFECTIVO_USD	\N	165.18	6	\N	\N	2026-01-02 15:23:48.913	2026-01-02 15:23:48.913
+2457	37	7487-82	VENDIDO	2023-11-17 03:00:00	IMPORTACION	319.82	7487	2024-04-24 04:00:00	304	485.00	EFECTIVO_USD	\N	165.18	6	\N	\N	2026-01-02 15:23:48.916	2026-01-02 15:23:48.916
+2458	37	7487-83	VENDIDO	2023-11-17 03:00:00	IMPORTACION	319.82	7487	2024-04-29 04:00:00	193	465.00	EFECTIVO_USD	\N	145.18	6	\N	\N	2026-01-02 15:23:48.919	2026-01-02 15:23:48.919
+2459	37	7487-94	VENDIDO	2023-11-17 03:00:00	IMPORTACION	319.82	7487	2024-05-29 04:00:00	193	465.00	EFECTIVO_USD	\N	145.18	6	\N	\N	2026-01-02 15:23:48.921	2026-01-02 15:23:48.921
+2460	37	7487-95	VENDIDO	2023-11-17 03:00:00	IMPORTACION	319.82	7487	2024-02-14 03:00:00	219	485.00	EFECTIVO_USD	\N	165.18	6	\N	\N	2026-01-02 15:23:48.923	2026-01-02 15:23:48.923
+2461	37	7487-96	VENDIDO	2023-11-17 03:00:00	IMPORTACION	319.82	7487	2024-06-06 04:00:00	254	485.00	EFECTIVO_USD	\N	165.18	6	\N	\N	2026-01-02 15:23:48.934	2026-01-02 15:23:48.934
+2462	37	7487-97	VENDIDO	2023-11-17 03:00:00	IMPORTACION	319.82	7487	2024-06-07 04:00:00	212	470.00	EFECTIVO_USD	\N	150.18	6	\N	\N	2026-01-02 15:23:48.937	2026-01-02 15:23:48.937
+2463	37	7487-98	VENDIDO	2023-11-17 03:00:00	IMPORTACION	319.82	7487	2024-06-07 04:00:00	212	470.00	EFECTIVO_USD	\N	150.18	6	\N	\N	2026-01-02 15:23:48.94	2026-01-02 15:23:48.94
+2464	37	7622-57	VENDIDO	2023-11-17 03:00:00	IMPORTACION	319.82	7622	2024-06-07 04:00:00	305	470.00	EFECTIVO_USD	\N	150.18	6	\N	\N	2026-01-02 15:23:48.942	2026-01-02 15:23:48.942
+2465	37	7622-58	VENDIDO	2023-11-17 03:00:00	IMPORTACION	319.82	7622	2024-06-06 04:00:00	193	465.00	MIXTO	\N	145.18	6	\N	\N	2026-01-02 15:23:48.945	2026-01-02 15:23:48.945
+2466	37	7622-59	VENDIDO	2023-11-17 03:00:00	IMPORTACION	319.82	7622	2024-06-10 04:00:00	191	485.00	TRANSFERENCIA_BS	\N	165.18	6	\N	\N	2026-01-02 15:23:48.947	2026-01-02 15:23:48.947
+2467	37	7622-60	VENDIDO	2023-11-17 03:00:00	IMPORTACION	319.82	7622	2024-06-20 04:00:00	193	465.00	EFECTIVO_USD	\N	145.18	6	\N	\N	2026-01-02 15:23:48.95	2026-01-02 15:23:48.95
+2468	37	7879-001	VENDIDO	2024-09-30 03:00:00	IMPORTACION	319.82	7879	2024-10-04 03:00:00	195	470.00	EFECTIVO_USD	\N	150.18	6	\N	\N	2026-01-02 15:23:48.952	2026-01-02 15:23:48.952
+2469	37	7879-002	VENDIDO	2024-09-30 03:00:00	IMPORTACION	319.82	7879	2024-10-04 03:00:00	250	480.00	EFECTIVO_USD	\N	160.18	6	\N	\N	2026-01-02 15:23:48.954	2026-01-02 15:23:48.954
+2470	37	7879-003	VENDIDO	2024-09-30 03:00:00	IMPORTACION	319.82	7879	2024-10-04 03:00:00	250	480.00	EFECTIVO_USD	\N	160.18	6	\N	\N	2026-01-02 15:23:48.956	2026-01-02 15:23:48.956
+2471	37	7879-004	VENDIDO	2024-09-30 03:00:00	IMPORTACION	319.82	7879	2024-10-29 03:00:00	302	490.00	ZELLE	\N	170.18	6	\N	\N	2026-01-02 15:23:48.958	2026-01-02 15:23:48.958
+2472	37	7879-005	VENDIDO	2024-09-30 03:00:00	IMPORTACION	319.82	7879	2024-12-06 03:00:00	195	470.00	EFECTIVO_USD	\N	150.18	6	\N	\N	2026-01-02 15:23:48.961	2026-01-02 15:23:48.961
+2473	37	7879-006	VENDIDO	2024-09-30 03:00:00	IMPORTACION	319.82	7879	2024-12-06 03:00:00	195	470.00	EFECTIVO_USD	\N	150.18	6	\N	\N	2026-01-02 15:23:48.962	2026-01-02 15:23:48.962
+2474	37	7879-007	VENDIDO	2024-09-30 03:00:00	IMPORTACION	319.82	7879	2024-12-10 03:00:00	254	485.00	EFECTIVO_USD	\N	165.18	6	\N	\N	2026-01-02 15:23:48.964	2026-01-02 15:23:48.964
+2475	37	7879-008	VENDIDO	2024-09-30 03:00:00	IMPORTACION	319.82	7879	2025-02-06 03:00:00	306	480.00	EFECTIVO_USD	\N	160.18	6	\N	\N	2026-01-02 15:23:48.966	2026-01-02 15:23:48.966
+2476	37	7879-009	VENDIDO	2024-09-30 03:00:00	IMPORTACION	319.82	7879	2025-02-07 03:00:00	243	485.00	EFECTIVO_USD	\N	165.18	6	\N	\N	2026-01-02 15:23:48.967	2026-01-02 15:23:48.967
+2477	37	7879-010	VENDIDO	2024-09-30 03:00:00	IMPORTACION	319.82	7879	2025-02-12 03:00:00	307	490.00	EFECTIVO_USD	\N	170.18	6	\N	\N	2026-01-02 15:23:48.969	2026-01-02 15:23:48.969
+2478	37	7879-011	VENDIDO	2024-09-30 03:00:00	IMPORTACION	319.82	7879	2025-02-07 03:00:00	195	470.00	EFECTIVO_USD	\N	150.18	6	\N	\N	2026-01-02 15:23:48.971	2026-01-02 15:23:48.971
+2479	37	7879-012	VENDIDO	2024-09-30 03:00:00	IMPORTACION	319.82	7879	2025-02-25 03:00:00	212	490.00	\N	\N	170.18	6	\N	\N	2026-01-02 15:23:48.974	2026-01-02 15:23:48.974
+2480	37	7879-013	VENDIDO	2024-09-30 03:00:00	IMPORTACION	319.82	7879	2025-02-25 03:00:00	212	490.00	\N	\N	170.18	6	\N	\N	2026-01-02 15:23:48.977	2026-01-02 15:23:48.977
+2481	37	7879-014	VENDIDO	2024-09-30 03:00:00	IMPORTACION	319.82	7879	2025-03-05 03:00:00	306	485.00	ZELLE	\N	165.18	6	\N	\N	2026-01-02 15:23:48.979	2026-01-02 15:23:48.979
+2482	37	7879-015	VENDIDO	2024-09-30 03:00:00	IMPORTACION	319.82	7879	2025-04-08 04:00:00	306	485.00	EFECTIVO_USD	\N	165.18	6	\N	\N	2026-01-02 15:23:48.981	2026-01-02 15:23:48.981
+2483	37	7879-016	VENDIDO	2024-09-30 03:00:00	IMPORTACION	319.82	7879	2025-04-10 04:00:00	306	485.00	EFECTIVO_USD	\N	165.18	6	\N	\N	2026-01-02 15:23:48.983	2026-01-02 15:23:48.983
+2484	37	7879-017	VENDIDO	2024-09-30 03:00:00	IMPORTACION	319.82	7879	2025-05-06 04:00:00	195	475.00	EFECTIVO_USD	\N	155.18	6	\N	\N	2026-01-02 15:23:48.985	2026-01-02 15:23:48.985
+2485	37	7879-018	VENDIDO	2024-09-30 03:00:00	IMPORTACION	319.82	7879	2025-05-06 04:00:00	195	475.00	EFECTIVO_USD	\N	155.18	6	\N	\N	2026-01-02 15:23:48.986	2026-01-02 15:23:48.986
+2486	37	7879-019	VENDIDO	2024-09-30 03:00:00	IMPORTACION	319.82	7879	2025-05-12 04:00:00	270	485.00	EFECTIVO_USD	\N	165.18	6	\N	\N	2026-01-02 15:23:48.988	2026-01-02 15:23:48.988
+2487	37	7879-020	VENDIDO	2024-09-30 03:00:00	IMPORTACION	319.82	7879	2025-05-22 04:00:00	232	490.00	EFECTIVO_USD	\N	170.18	6	\N	\N	2026-01-02 15:23:48.991	2026-01-02 15:23:48.991
+2488	37	8060-056	VENDIDO	2025-05-21 04:00:00	IMPORTACION	319.82	8060	2025-06-25 04:00:00	195	480.00	\N	\N	160.18	6	\N	\N	2026-01-02 15:23:48.992	2026-01-02 15:23:48.992
+2489	37	8060-057	VENDIDO	2025-05-21 04:00:00	IMPORTACION	319.82	8060	2025-06-25 04:00:00	195	480.00	\N	\N	160.18	6	\N	\N	2026-01-02 15:23:48.994	2026-01-02 15:23:48.994
+2490	37	8060-058	VENDIDO	2025-05-21 04:00:00	IMPORTACION	319.82	8060	2025-07-03 04:00:00	268	490.00	EFECTIVO_USD	\N	170.18	6	\N	\N	2026-01-02 15:23:48.996	2026-01-02 15:23:48.996
+2491	37	8060-059	DISPONIBLE	2025-05-21 04:00:00	IMPORTACION	319.82	8060	\N	\N	\N	\N	\N	0.00	6	\N	\N	2026-01-02 15:23:48.998	2026-01-02 15:23:48.998
+2492	37	8060-060	VENDIDO	2025-05-21 04:00:00	IMPORTACION	319.82	8060	2025-09-23 03:00:00	232	490.00	EFECTIVO_USD	\N	170.18	6	\N	\N	2026-01-02 15:23:49	2026-01-02 15:23:49
+2493	37	8060-061	VENDIDO	2025-05-21 04:00:00	IMPORTACION	319.82	8060	2025-10-15 03:00:00	308	480.00	EFECTIVO_USD	\N	160.18	6	\N	\N	2026-01-02 15:23:49.002	2026-01-02 15:23:49.002
+2494	37	8060-062	VENDIDO	2025-05-21 04:00:00	IMPORTACION	319.82	8060	2025-10-15 03:00:00	308	480.00	EFECTIVO_USD	\N	160.18	6	\N	\N	2026-01-02 15:23:49.004	2026-01-02 15:23:49.004
+2495	37	8060-063	DISPONIBLE	2025-05-21 04:00:00	IMPORTACION	319.82	8060	\N	\N	\N	\N	\N	0.00	6	\N	\N	2026-01-02 15:23:49.005	2026-01-02 15:23:49.005
+2496	37	8060-064	DISPONIBLE	2025-05-21 04:00:00	IMPORTACION	319.82	8060	\N	\N	\N	\N	\N	0.00	6	\N	\N	2026-01-02 15:23:49.007	2026-01-02 15:23:49.007
+2497	37	8060-065	DISPONIBLE	2025-05-21 04:00:00	IMPORTACION	319.82	8060	\N	\N	\N	\N	\N	0.00	6	\N	\N	2026-01-02 15:23:49.008	2026-01-02 15:23:49.008
+2498	37	8060-066	DISPONIBLE	2025-05-21 04:00:00	IMPORTACION	319.82	8060	\N	\N	\N	\N	\N	0.00	6	\N	\N	2026-01-02 15:23:49.01	2026-01-02 15:23:49.01
+2499	37	8060-067	DISPONIBLE	2025-05-21 04:00:00	IMPORTACION	319.82	8060	\N	\N	\N	\N	\N	0.00	6	\N	\N	2026-01-02 15:23:49.011	2026-01-02 15:23:49.011
+2500	37	8060-068	DISPONIBLE	2025-05-21 04:00:00	IMPORTACION	319.82	8060	\N	\N	\N	\N	\N	0.00	6	\N	\N	2026-01-02 15:23:49.014	2026-01-02 15:23:49.014
+2501	37	8060-073	DISPONIBLE	2025-05-21 04:00:00	IMPORTACION	319.82	8060	\N	\N	\N	\N	\N	0.00	6	\N	\N	2026-01-02 15:23:49.017	2026-01-02 15:23:49.017
+2502	37	8060-074	DISPONIBLE	2025-05-21 04:00:00	IMPORTACION	319.82	8060	\N	\N	\N	\N	\N	0.00	6	\N	\N	2026-01-02 15:23:49.019	2026-01-02 15:23:49.019
+2503	38	7305-2	VENDIDO	2023-03-07 03:00:00	IMPORTACION	267.47	7305	2023-03-09 03:00:00	309	440.00	EFECTIVO_USD	\N	172.53	6	\N	\N	2026-01-02 15:23:49.022	2026-01-02 15:23:49.022
+2504	38	7305-3	VENDIDO	2023-03-07 03:00:00	IMPORTACION	267.47	7305	2023-03-09 03:00:00	310	440.00	EFECTIVO_USD	\N	172.53	6	\N	\N	2026-01-02 15:23:49.025	2026-01-02 15:23:49.025
+2505	38	7305-4	VENDIDO	2023-03-07 03:00:00	IMPORTACION	267.47	7305	2023-03-10 03:00:00	193	430.00	EFECTIVO_USD	\N	162.53	6	\N	\N	2026-01-02 15:23:49.03	2026-01-02 15:23:49.03
+2506	38	7305-5	VENDIDO	2023-03-07 03:00:00	IMPORTACION	267.47	7305	2023-03-13 03:00:00	208	410.00	EFECTIVO_USD	\N	142.53	6	\N	\N	2026-01-02 15:23:49.033	2026-01-02 15:23:49.033
+2507	38	7305-6	VENDIDO	2023-03-07 03:00:00	IMPORTACION	267.47	7305	2023-03-17 03:00:00	193	430.00	EFECTIVO_USD	\N	162.53	6	\N	\N	2026-01-02 15:23:49.035	2026-01-02 15:23:49.035
+2508	38	7305-7	VENDIDO	2023-03-07 03:00:00	IMPORTACION	267.47	7305	2023-03-17 03:00:00	193	430.00	EFECTIVO_USD	\N	162.53	6	\N	\N	2026-01-02 15:23:49.037	2026-01-02 15:23:49.037
+2509	38	7305-8	VENDIDO	2023-03-07 03:00:00	IMPORTACION	267.47	7305	2023-03-17 03:00:00	193	430.00	EFECTIVO_USD	\N	162.53	6	\N	\N	2026-01-02 15:23:49.039	2026-01-02 15:23:49.039
+2510	38	7305-9	VENDIDO	2023-03-07 03:00:00	IMPORTACION	267.47	7305	2023-03-20 03:00:00	193	430.00	EFECTIVO_USD	\N	162.53	6	\N	\N	2026-01-02 15:23:49.044	2026-01-02 15:23:49.044
+2511	38	7305-10	VENDIDO	2023-03-07 03:00:00	IMPORTACION	267.47	7305	2023-03-20 03:00:00	193	430.00	EFECTIVO_USD	\N	162.53	6	\N	\N	2026-01-02 15:23:49.046	2026-01-02 15:23:49.046
+2512	38	7305-11	VENDIDO	2023-03-07 03:00:00	IMPORTACION	267.47	7305	2023-03-20 03:00:00	193	430.00	EFECTIVO_USD	\N	162.53	6	\N	\N	2026-01-02 15:23:49.05	2026-01-02 15:23:49.05
+2513	38	7305-12	VENDIDO	2023-03-07 03:00:00	IMPORTACION	267.47	7305	2023-03-20 03:00:00	283	430.00	MIXTO	\N	162.53	6	\N	\N	2026-01-02 15:23:49.051	2026-01-02 15:23:49.051
+2514	38	7305-13	VENDIDO	2023-03-07 03:00:00	IMPORTACION	267.47	7305	2023-03-22 03:00:00	193	430.00	MIXTO	\N	162.53	6	\N	\N	2026-01-02 15:23:49.053	2026-01-02 15:23:49.053
+2515	38	7305-14	VENDIDO	2023-03-07 03:00:00	IMPORTACION	267.47	7305	2023-03-27 03:00:00	193	425.00	EFECTIVO_USD	\N	157.53	6	\N	\N	2026-01-02 15:23:49.055	2026-01-02 15:23:49.055
+2516	38	7305-15	VENDIDO	2023-03-07 03:00:00	IMPORTACION	267.47	7305	2023-04-11 04:00:00	208	415.00	EFECTIVO_USD	\N	147.53	6	\N	\N	2026-01-02 15:23:49.056	2026-01-02 15:23:49.056
+2517	38	7305-16	VENDIDO	2023-03-07 03:00:00	IMPORTACION	267.47	7305	2023-04-11 04:00:00	208	415.00	EFECTIVO_USD	\N	147.53	6	\N	\N	2026-01-02 15:23:49.061	2026-01-02 15:23:49.061
+2518	38	7305-17	VENDIDO	2023-03-07 03:00:00	IMPORTACION	267.47	7305	2023-05-09 04:00:00	188	425.00	TRANSFERENCIA_BS	\N	157.53	6	\N	\N	2026-01-02 15:23:49.063	2026-01-02 15:23:49.063
+2519	38	7305-18	VENDIDO	2023-03-07 03:00:00	IMPORTACION	267.47	7305	2023-05-11 04:00:00	261	430.00	EFECTIVO_USD	\N	162.53	6	\N	\N	2026-01-02 15:23:49.065	2026-01-02 15:23:49.065
+2520	38	7305-19	VENDIDO	2023-03-07 03:00:00	IMPORTACION	267.47	7305	2023-05-24 04:00:00	193	425.00	EFECTIVO_USD	\N	157.53	6	\N	\N	2026-01-02 15:23:49.067	2026-01-02 15:23:49.067
+2521	38	7305-20	VENDIDO	2023-03-07 03:00:00	IMPORTACION	267.47	7305	2023-06-01 04:00:00	193	440.00	TRANSFERENCIA_BS	\N	172.53	6	\N	\N	2026-01-02 15:23:49.068	2026-01-02 15:23:49.068
+2522	38	7305-21	VENDIDO	2023-03-07 03:00:00	IMPORTACION	267.47	7305	2023-06-13 04:00:00	310	440.00	TRANSFERENCIA_BS	\N	172.53	6	\N	\N	2026-01-02 15:23:49.07	2026-01-02 15:23:49.07
+2523	38	7330-0026	VENDIDO	2023-06-09 04:00:00	IMPORTACION	267.47	7330	2023-06-19 04:00:00	193	420.00	EFECTIVO_USD	\N	152.53	6	\N	\N	2026-01-02 15:23:49.072	2026-01-02 15:23:49.072
+2524	38	7330-0027	VENDIDO	2023-06-09 04:00:00	IMPORTACION	267.47	7330	2023-06-22 04:00:00	226	440.00	EFECTIVO_USD	\N	172.53	6	\N	\N	2026-01-02 15:23:49.075	2026-01-02 15:23:49.075
+2525	38	7330-0028	VENDIDO	2023-06-09 04:00:00	IMPORTACION	267.47	7330	2023-07-19 04:00:00	193	420.00	EFECTIVO_USD	\N	152.53	6	\N	\N	2026-01-02 15:23:49.079	2026-01-02 15:23:49.079
+2526	38	7330-0029	VENDIDO	2023-06-09 04:00:00	IMPORTACION	267.47	7330	2023-07-28 04:00:00	193	400.00	EFECTIVO_USD	\N	132.53	6	\N	\N	2026-01-02 15:23:49.081	2026-01-02 15:23:49.081
+2527	38	7330-0030	VENDIDO	2023-06-09 04:00:00	IMPORTACION	267.47	7330	2023-09-01 04:00:00	226	440.00	EFECTIVO_USD	\N	172.53	6	\N	\N	2026-01-02 15:23:49.083	2026-01-02 15:23:49.083
+2528	38	7330-0031	VENDIDO	2023-06-09 04:00:00	IMPORTACION	267.47	7330	2023-09-01 04:00:00	226	440.00	EFECTIVO_USD	\N	172.53	6	\N	\N	2026-01-02 15:23:49.085	2026-01-02 15:23:49.085
+2529	38	7330-0032	VENDIDO	2023-06-09 04:00:00	IMPORTACION	267.47	7330	2023-09-06 03:00:00	189	440.00	EFECTIVO_USD	\N	172.53	6	\N	\N	2026-01-02 15:23:49.089	2026-01-02 15:23:49.089
+2530	38	7330-0033	VENDIDO	2023-06-09 04:00:00	IMPORTACION	267.47	7330	2023-10-05 03:00:00	193	440.00	EFECTIVO_USD	\N	172.53	6	\N	\N	2026-01-02 15:23:49.091	2026-01-02 15:23:49.091
+2531	38	7330-0034	VENDIDO	2023-06-09 04:00:00	IMPORTACION	267.47	7330	2023-10-23 03:00:00	193	440.00	EFECTIVO_USD	\N	172.53	6	\N	\N	2026-01-02 15:23:49.093	2026-01-02 15:23:49.093
+2532	38	7330-0035	VENDIDO	2023-06-09 04:00:00	IMPORTACION	267.47	7330	2023-10-26 03:00:00	193	420.00	EFECTIVO_USD	\N	152.53	6	\N	\N	2026-01-02 15:23:49.096	2026-01-02 15:23:49.096
+2533	38	7330-0036	VENDIDO	2023-06-09 04:00:00	IMPORTACION	267.47	7330	2023-11-08 03:00:00	311	440.00	EFECTIVO_USD	\N	172.53	6	\N	\N	2026-01-02 15:23:49.099	2026-01-02 15:23:49.099
+2534	38	7330-0037	VENDIDO	2023-06-09 04:00:00	IMPORTACION	267.47	7330	2023-11-14 03:00:00	193	420.00	EFECTIVO_USD	\N	152.53	6	\N	\N	2026-01-02 15:23:49.102	2026-01-02 15:23:49.102
+2535	38	7330-0038	VENDIDO	2023-06-09 04:00:00	IMPORTACION	267.47	7330	2023-12-04 03:00:00	193	420.00	EFECTIVO_USD	\N	152.53	6	\N	\N	2026-01-02 15:23:49.105	2026-01-02 15:23:49.105
+2536	38	7330-0039	VENDIDO	2023-06-09 04:00:00	IMPORTACION	267.47	7330	2023-12-06 03:00:00	193	420.00	EFECTIVO_USD	\N	152.53	6	\N	\N	2026-01-02 15:23:49.107	2026-01-02 15:23:49.107
+2537	38	7330-0040	VENDIDO	2023-06-09 04:00:00	IMPORTACION	267.47	7330	2023-12-06 03:00:00	193	420.00	EFECTIVO_USD	\N	152.53	6	\N	\N	2026-01-02 15:23:49.109	2026-01-02 15:23:49.109
+2538	38	7330-0041	VENDIDO	2023-06-09 04:00:00	IMPORTACION	267.47	7330	2023-12-07 03:00:00	312	420.00	EFECTIVO_USD	\N	152.53	6	\N	\N	2026-01-02 15:23:49.111	2026-01-02 15:23:49.111
+2539	38	7330-0042	VENDIDO	2023-06-09 04:00:00	IMPORTACION	267.47	7330	2023-12-08 03:00:00	261	440.00	EFECTIVO_USD	\N	172.53	6	\N	\N	2026-01-02 15:23:49.113	2026-01-02 15:23:49.113
+2540	38	7330-0043	VENDIDO	2023-06-09 04:00:00	IMPORTACION	267.47	7330	2023-12-15 03:00:00	193	420.00	EFECTIVO_USD	\N	152.53	6	\N	\N	2026-01-02 15:23:49.116	2026-01-02 15:23:49.116
+2541	38	7330-0044	VENDIDO	2023-06-09 04:00:00	IMPORTACION	267.47	7330	2023-12-15 03:00:00	193	420.00	EFECTIVO_USD	\N	152.53	6	\N	\N	2026-01-02 15:23:49.118	2026-01-02 15:23:49.118
+2542	38	7330-0045	VENDIDO	2023-06-09 04:00:00	IMPORTACION	267.47	7330	2023-12-15 03:00:00	313	440.00	EFECTIVO_USD	\N	172.53	6	\N	\N	2026-01-02 15:23:49.121	2026-01-02 15:23:49.121
+2543	38	7330-0046	VENDIDO	2023-06-09 04:00:00	IMPORTACION	267.47	7330	2023-12-15 03:00:00	302	440.00	EFECTIVO_USD	\N	172.53	6	\N	\N	2026-01-02 15:23:49.124	2026-01-02 15:23:49.124
+2544	38	7330-0047	VENDIDO	2023-06-09 04:00:00	IMPORTACION	267.47	7330	2024-01-23 03:00:00	193	420.00	EFECTIVO_USD	\N	152.53	6	\N	\N	2026-01-02 15:23:49.127	2026-01-02 15:23:49.127
+2545	38	7330-0048	VENDIDO	2023-06-09 04:00:00	IMPORTACION	267.47	7330	2023-12-18 03:00:00	224	440.00	EFECTIVO_USD	\N	172.53	6	\N	\N	2026-01-02 15:23:49.129	2026-01-02 15:23:49.129
+2546	38	7330-0049	VENDIDO	2023-06-09 04:00:00	IMPORTACION	267.47	7330	2023-12-20 03:00:00	291	440.00	EFECTIVO_USD	\N	172.53	6	\N	\N	2026-01-02 15:23:49.131	2026-01-02 15:23:49.131
+2547	38	7330-0050	VENDIDO	2023-06-09 04:00:00	IMPORTACION	267.47	7330	2024-02-02 03:00:00	193	425.00	EFECTIVO_USD	\N	157.53	6	\N	\N	2026-01-02 15:23:49.133	2026-01-02 15:23:49.133
+2548	38	7330-0051	VENDIDO	2023-06-09 04:00:00	IMPORTACION	267.47	7330	2024-02-02 03:00:00	226	445.00	EFECTIVO_USD	\N	177.53	6	\N	\N	2026-01-02 15:23:49.135	2026-01-02 15:23:49.135
+2549	38	7330-0052	VENDIDO	2023-06-09 04:00:00	IMPORTACION	267.47	7330	2024-03-08 03:00:00	193	425.00	EFECTIVO_USD	\N	157.53	6	\N	\N	2026-01-02 15:23:49.136	2026-01-02 15:23:49.136
+2550	38	7330-0053	VENDIDO	2023-06-09 04:00:00	IMPORTACION	267.47	7330	2024-02-14 03:00:00	314	450.00	EFECTIVO_USD	\N	182.53	6	\N	\N	2026-01-02 15:23:49.138	2026-01-02 15:23:49.138
+2551	38	7330-0054	VENDIDO	2023-06-09 04:00:00	IMPORTACION	267.47	7330	2024-02-20 03:00:00	314	450.00	EFECTIVO_USD	\N	182.53	6	\N	\N	2026-01-02 15:23:49.141	2026-01-02 15:23:49.141
+2552	38	7330-0055	VENDIDO	2023-06-09 04:00:00	IMPORTACION	267.47	7330	2024-02-22 03:00:00	225	450.00	EFECTIVO_USD	\N	182.53	6	\N	\N	2026-01-02 15:23:49.144	2026-01-02 15:23:49.144
+2553	38	7382-001	VENDIDO	2023-06-16 04:00:00	IMPORTACION	267.47	7382	2024-03-04 03:00:00	212	430.00	EFECTIVO_USD	\N	162.53	6	\N	\N	2026-01-02 15:23:49.146	2026-01-02 15:23:49.146
+2554	38	7382-002	VENDIDO	2023-06-16 04:00:00	IMPORTACION	267.47	7382	2024-03-08 03:00:00	193	425.00	EFECTIVO_USD	\N	157.53	6	\N	\N	2026-01-02 15:23:49.151	2026-01-02 15:23:49.151
+2555	38	7382-003	VENDIDO	2023-06-16 04:00:00	IMPORTACION	267.47	7382	2024-02-21 03:00:00	315	400.00	TRANSFERENCIA_USD	\N	132.53	6	\N	\N	2026-01-02 15:23:49.153	2026-01-02 15:23:49.153
+2556	38	7382-004	VENDIDO	2023-06-16 04:00:00	IMPORTACION	267.47	7382	2024-02-21 03:00:00	315	400.00	TRANSFERENCIA_USD	\N	132.53	6	\N	\N	2026-01-02 15:23:49.155	2026-01-02 15:23:49.155
+2557	38	7382-005	VENDIDO	2023-06-16 04:00:00	IMPORTACION	267.47	7382	2024-02-21 03:00:00	315	400.00	TRANSFERENCIA_USD	\N	132.53	6	\N	\N	2026-01-02 15:23:49.158	2026-01-02 15:23:49.158
+2558	38	7382-006	VENDIDO	2023-06-16 04:00:00	IMPORTACION	267.47	7382	2024-02-21 03:00:00	315	400.00	TRANSFERENCIA_USD	\N	132.53	6	\N	\N	2026-01-02 15:23:49.162	2026-01-02 15:23:49.162
+2559	38	7382-007	VENDIDO	2023-06-16 04:00:00	IMPORTACION	267.47	7382	2024-02-21 03:00:00	315	400.00	TRANSFERENCIA_USD	\N	132.53	6	\N	\N	2026-01-02 15:23:49.165	2026-01-02 15:23:49.165
+2560	38	7382-008	VENDIDO	2023-06-16 04:00:00	IMPORTACION	267.47	7382	2024-02-21 03:00:00	315	400.00	TRANSFERENCIA_USD	\N	132.53	6	\N	\N	2026-01-02 15:23:49.167	2026-01-02 15:23:49.167
+2561	38	7382-009	VENDIDO	2023-06-16 04:00:00	IMPORTACION	267.47	7382	2024-02-21 03:00:00	315	400.00	TRANSFERENCIA_USD	\N	132.53	6	\N	\N	2026-01-02 15:23:49.169	2026-01-02 15:23:49.169
+2562	38	7382-010	VENDIDO	2023-06-16 04:00:00	IMPORTACION	267.47	7382	2024-02-21 03:00:00	315	400.00	TRANSFERENCIA_USD	\N	132.53	6	\N	\N	2026-01-02 15:23:49.171	2026-01-02 15:23:49.171
+2563	38	7382-011	VENDIDO	2023-06-16 04:00:00	IMPORTACION	267.47	7382	2024-02-21 03:00:00	315	400.00	TRANSFERENCIA_USD	\N	132.53	6	\N	\N	2026-01-02 15:23:49.172	2026-01-02 15:23:49.172
+2564	38	7382-012	VENDIDO	2023-06-16 04:00:00	IMPORTACION	267.47	7382	2024-02-21 03:00:00	315	400.00	TRANSFERENCIA_USD	\N	132.53	6	\N	\N	2026-01-02 15:23:49.175	2026-01-02 15:23:49.175
+2565	38	7382-013	VENDIDO	2023-06-16 04:00:00	IMPORTACION	267.47	7382	2024-03-14 03:00:00	193	425.00	EFECTIVO_USD	\N	157.53	6	\N	\N	2026-01-02 15:23:49.177	2026-01-02 15:23:49.177
+2566	38	7382-014	VENDIDO	2023-06-16 04:00:00	IMPORTACION	267.47	7382	2024-03-14 03:00:00	193	425.00	EFECTIVO_USD	\N	157.53	6	\N	\N	2026-01-02 15:23:49.179	2026-01-02 15:23:49.179
+2567	38	7382-015	VENDIDO	2023-06-16 04:00:00	IMPORTACION	267.47	7382	2024-03-15 03:00:00	193	425.00	EFECTIVO_USD	\N	157.53	6	\N	\N	2026-01-02 15:23:49.181	2026-01-02 15:23:49.181
+2568	38	7382-016	VENDIDO	2023-06-16 04:00:00	IMPORTACION	267.47	7382	2024-03-20 03:00:00	193	425.00	EFECTIVO_USD	\N	157.53	6	\N	\N	2026-01-02 15:23:49.183	2026-01-02 15:23:49.183
+2569	38	7382-017	VENDIDO	2023-06-16 04:00:00	IMPORTACION	267.47	7382	2024-03-20 03:00:00	193	425.00	EFECTIVO_USD	\N	157.53	6	\N	\N	2026-01-02 15:23:49.186	2026-01-02 15:23:49.186
+2570	38	7382-018	VENDIDO	2023-06-16 04:00:00	IMPORTACION	267.47	7382	2024-04-03 03:00:00	193	440.00	TRANSFERENCIA_BS	\N	172.53	6	\N	\N	2026-01-02 15:23:49.187	2026-01-02 15:23:49.187
+2571	38	7382-019	DISPONIBLE	2023-06-16 04:00:00	IMPORTACION	267.47	7382	\N	\N	\N	\N	\N	0.00	6	\N	\N	2026-01-02 15:23:49.189	2026-01-02 15:23:49.189
+2572	38	7382-020	VENDIDO	2023-06-16 04:00:00	IMPORTACION	267.47	7382	2024-05-08 04:00:00	193	425.00	EFECTIVO_USD	\N	157.53	6	\N	\N	2026-01-02 15:23:49.191	2026-01-02 15:23:49.191
+2573	38	7438-22	VENDIDO	2023-11-17 03:00:00	IMPORTACION	267.47	7438	2024-05-13 04:00:00	316	440.00	EFECTIVO_USD	\N	172.53	6	\N	\N	2026-01-02 15:23:49.192	2026-01-02 15:23:49.192
+2574	38	7438-23	VENDIDO	2023-11-17 03:00:00	IMPORTACION	267.47	7438	2024-05-16 04:00:00	193	425.00	EFECTIVO_USD	\N	157.53	6	\N	\N	2026-01-02 15:23:49.195	2026-01-02 15:23:49.195
+2575	38	7438-24	VENDIDO	2023-11-17 03:00:00	IMPORTACION	267.47	7438	2024-05-22 04:00:00	193	425.00	EFECTIVO_USD	\N	157.53	6	\N	\N	2026-01-02 15:23:49.202	2026-01-02 15:23:49.202
+2576	38	7438-25	VENDIDO	2023-11-17 03:00:00	IMPORTACION	267.47	7438	2024-05-22 04:00:00	193	425.00	EFECTIVO_USD	\N	157.53	6	\N	\N	2026-01-02 15:23:49.205	2026-01-02 15:23:49.205
+2577	38	7438-26	VENDIDO	2023-11-17 03:00:00	IMPORTACION	267.47	7438	2024-05-24 04:00:00	193	425.00	MIXTO	\N	157.53	6	\N	\N	2026-01-02 15:23:49.208	2026-01-02 15:23:49.208
+2578	38	7438-27	VENDIDO	2023-11-17 03:00:00	IMPORTACION	267.47	7438	2024-05-29 04:00:00	193	425.00	EFECTIVO_USD	\N	157.53	6	\N	\N	2026-01-02 15:23:49.21	2026-01-02 15:23:49.21
+2579	38	7438-28	VENDIDO	2023-11-17 03:00:00	IMPORTACION	267.47	7438	2024-05-31 04:00:00	304	445.00	EFECTIVO_USD	\N	177.53	6	\N	\N	2026-01-02 15:23:49.213	2026-01-02 15:23:49.213
+2580	38	7880-001	VENDIDO	2024-09-30 03:00:00	IMPORTACION	267.47	7880	2024-10-03 03:00:00	191	460.00	EFECTIVO_USD	\N	192.53	6	\N	\N	2026-01-02 15:23:49.215	2026-01-02 15:23:49.215
+2581	38	7880-002	VENDIDO	2024-09-30 03:00:00	IMPORTACION	267.47	7880	2024-10-04 03:00:00	195	430.00	EFECTIVO_USD	\N	162.53	6	\N	\N	2026-01-02 15:23:49.216	2026-01-02 15:23:49.216
+2582	38	7880-003	VENDIDO	2024-09-30 03:00:00	IMPORTACION	267.47	7880	2024-10-16 03:00:00	212	430.00	EFECTIVO_USD	\N	162.53	6	\N	\N	2026-01-02 15:23:49.219	2026-01-02 15:23:49.219
+2583	38	7880-004	VENDIDO	2024-09-30 03:00:00	IMPORTACION	267.47	7880	2024-10-17 03:00:00	306	440.00	ZELLE	\N	172.53	6	\N	\N	2026-01-02 15:23:49.221	2026-01-02 15:23:49.221
+2584	38	7880-005	VENDIDO	2024-09-30 03:00:00	IMPORTACION	267.47	7880	2024-10-22 03:00:00	317	450.00	EFECTIVO_USD	\N	182.53	6	\N	\N	2026-01-02 15:23:49.223	2026-01-02 15:23:49.223
+2585	38	7880-006	VENDIDO	2024-09-30 03:00:00	IMPORTACION	267.47	7880	2024-10-22 03:00:00	226	450.00	MIXTO	\N	182.53	6	\N	\N	2026-01-02 15:23:49.225	2026-01-02 15:23:49.225
+2586	38	7880-007	VENDIDO	2024-09-30 03:00:00	IMPORTACION	267.47	7880	2024-10-23 03:00:00	216	445.00	MIXTO	\N	177.53	6	\N	\N	2026-01-02 15:23:49.228	2026-01-02 15:23:49.228
+2587	38	7880-008	VENDIDO	2024-09-30 03:00:00	IMPORTACION	267.47	7880	2024-10-28 03:00:00	318	450.00	EFECTIVO_USD	\N	182.53	6	\N	\N	2026-01-02 15:23:49.241	2026-01-02 15:23:49.241
+2588	38	7880-009	VENDIDO	2024-09-30 03:00:00	IMPORTACION	267.47	7880	2024-10-29 03:00:00	265	445.00	ZELLE	\N	177.53	6	\N	\N	2026-01-02 15:23:49.244	2026-01-02 15:23:49.244
+2589	38	7880-010	VENDIDO	2024-09-30 03:00:00	IMPORTACION	267.47	7880	2024-11-01 03:00:00	195	430.00	EFECTIVO_USD	\N	162.53	6	\N	\N	2026-01-02 15:23:49.246	2026-01-02 15:23:49.246
+2590	38	7880-011	VENDIDO	2024-09-30 03:00:00	IMPORTACION	267.47	7880	2024-11-01 03:00:00	195	430.00	EFECTIVO_USD	\N	162.53	6	\N	\N	2026-01-02 15:23:49.247	2026-01-02 15:23:49.247
+2591	38	7880-012	VENDIDO	2024-09-30 03:00:00	IMPORTACION	267.47	7880	2024-11-15 03:00:00	212	430.00	EFECTIVO_USD	\N	162.53	6	\N	\N	2026-01-02 15:23:49.249	2026-01-02 15:23:49.249
+2592	38	7880-013	VENDIDO	2024-09-30 03:00:00	IMPORTACION	267.47	7880	2024-12-18 03:00:00	255	445.00	EFECTIVO_USD	\N	177.53	6	\N	\N	2026-01-02 15:23:49.25	2026-01-02 15:23:49.25
+2593	38	7880-014	VENDIDO	2024-09-30 03:00:00	IMPORTACION	267.47	7880	2025-01-27 03:00:00	261	445.00	EFECTIVO_USD	\N	177.53	6	\N	\N	2026-01-02 15:23:49.252	2026-01-02 15:23:49.252
+2594	38	7880-015	VENDIDO	2024-09-30 03:00:00	IMPORTACION	267.47	7880	2024-12-06 03:00:00	195	430.00	EFECTIVO_USD	\N	162.53	6	\N	\N	2026-01-02 15:23:49.254	2026-01-02 15:23:49.254
+2595	38	7880-016	VENDIDO	2024-09-30 03:00:00	IMPORTACION	267.47	7880	2024-12-06 03:00:00	195	430.00	EFECTIVO_USD	\N	162.53	6	\N	\N	2026-01-02 15:23:49.255	2026-01-02 15:23:49.255
+2596	38	7880-017	VENDIDO	2024-09-30 03:00:00	IMPORTACION	267.47	7880	2024-12-06 03:00:00	195	430.00	EFECTIVO_USD	\N	162.53	6	\N	\N	2026-01-02 15:23:49.257	2026-01-02 15:23:49.257
+2597	38	7880-018	VENDIDO	2024-09-30 03:00:00	IMPORTACION	267.47	7880	2025-02-25 03:00:00	212	450.00	EFECTIVO_USD	\N	182.53	6	\N	\N	2026-01-02 15:23:49.258	2026-01-02 15:23:49.258
+2598	38	7880-019	VENDIDO	2024-09-30 03:00:00	IMPORTACION	267.47	7880	2025-02-25 03:00:00	212	450.00	EFECTIVO_USD	\N	182.53	6	\N	\N	2026-01-02 15:23:49.259	2026-01-02 15:23:49.259
+2599	38	7880-020	VENDIDO	2024-09-30 03:00:00	IMPORTACION	267.47	7880	2025-03-06 03:00:00	215	450.00	EFECTIVO_USD	\N	182.53	6	\N	\N	2026-01-02 15:23:49.261	2026-01-02 15:23:49.261
+2600	38	7880-021	VENDIDO	2024-09-30 03:00:00	IMPORTACION	267.47	7880	2025-03-03 03:00:00	214	450.00	TRANSFERENCIA_BS	\N	182.53	6	\N	\N	2026-01-02 15:23:49.264	2026-01-02 15:23:49.264
+2601	38	7880-022	VENDIDO	2024-09-30 03:00:00	IMPORTACION	267.47	7880	2025-03-13 03:00:00	312	450.00	EFECTIVO_USD	\N	182.53	6	\N	\N	2026-01-02 15:23:49.266	2026-01-02 15:23:49.266
+2602	38	7880-023	VENDIDO	2024-09-30 03:00:00	IMPORTACION	267.47	7880	2024-12-27 03:00:00	319	445.00	EFECTIVO_USD	\N	177.53	6	\N	\N	2026-01-02 15:23:49.268	2026-01-02 15:23:49.268
+2603	38	7880-024	VENDIDO	2024-09-30 03:00:00	IMPORTACION	267.47	7880	2025-04-02 03:00:00	208	430.00	EFECTIVO_USD	\N	162.53	6	\N	\N	2026-01-02 15:23:49.269	2026-01-02 15:23:49.269
+2604	38	7880-025	VENDIDO	2024-09-30 03:00:00	IMPORTACION	267.47	7880	2025-02-07 03:00:00	195	430.00	EFECTIVO_USD	\N	162.53	6	\N	\N	2026-01-02 15:23:49.271	2026-01-02 15:23:49.271
+2605	38	7880-026	VENDIDO	2024-09-30 03:00:00	IMPORTACION	267.47	7880	2025-04-02 03:00:00	208	430.00	EFECTIVO_USD	\N	162.53	6	\N	\N	2026-01-02 15:23:49.273	2026-01-02 15:23:49.273
+2606	38	7880-027	VENDIDO	2024-09-30 03:00:00	IMPORTACION	267.47	7880	2025-03-20 03:00:00	224	450.00	ZELLE	\N	182.53	6	\N	\N	2026-01-02 15:23:49.274	2026-01-02 15:23:49.274
+2607	38	7880-028	VENDIDO	2024-09-30 03:00:00	IMPORTACION	267.47	7880	2025-04-10 04:00:00	193	440.00	EFECTIVO_USD	\N	172.53	6	\N	\N	2026-01-02 15:23:49.276	2026-01-02 15:23:49.276
+2608	38	7880-029	VENDIDO	2024-09-30 03:00:00	IMPORTACION	267.47	7880	2025-04-21 04:00:00	264	450.00	EFECTIVO_USD	\N	182.53	6	\N	\N	2026-01-02 15:23:49.277	2026-01-02 15:23:49.277
+2609	38	7880-030	VENDIDO	2024-09-30 03:00:00	IMPORTACION	267.47	7880	2025-05-06 04:00:00	195	435.00	EFECTIVO_USD	\N	167.53	6	\N	\N	2026-01-02 15:23:49.279	2026-01-02 15:23:49.279
+2610	38	7880-031	VENDIDO	2024-09-30 03:00:00	IMPORTACION	267.47	7880	2025-05-21 04:00:00	265	450.00	EFECTIVO_USD	\N	182.53	6	\N	\N	2026-01-02 15:23:49.28	2026-01-02 15:23:49.28
+2611	38	7880-032	VENDIDO	2024-09-30 03:00:00	IMPORTACION	267.47	7880	2025-05-29 04:00:00	226	440.00	EFECTIVO_USD	\N	172.53	6	\N	\N	2026-01-02 15:23:49.282	2026-01-02 15:23:49.282
+2612	38	7880-033	VENDIDO	2024-09-30 03:00:00	IMPORTACION	267.47	7880	2025-06-19 04:00:00	193	445.00	EFECTIVO_USD	\N	177.53	6	\N	\N	2026-01-02 15:23:49.283	2026-01-02 15:23:49.283
+2613	38	7880-034	VENDIDO	2024-09-30 03:00:00	IMPORTACION	267.47	7880	2025-06-25 04:00:00	195	440.00	EFECTIVO_USD	\N	172.53	6	\N	\N	2026-01-02 15:23:49.287	2026-01-02 15:23:49.287
+2614	38	7880-035	VENDIDO	2024-09-30 03:00:00	IMPORTACION	267.47	7880	2025-06-18 04:00:00	195	440.00	EFECTIVO_USD	\N	172.53	6	\N	\N	2026-01-02 15:23:49.29	2026-01-02 15:23:49.29
+2615	38	7880-036	VENDIDO	2024-09-30 03:00:00	IMPORTACION	267.47	7880	2025-07-23 04:00:00	320	450.00	EFECTIVO_USD	\N	182.53	6	\N	\N	2026-01-02 15:23:49.291	2026-01-02 15:23:49.291
+2616	38	7880-037	VENDIDO	2024-09-30 03:00:00	IMPORTACION	267.47	7880	2025-08-06 04:00:00	195	440.00	EFECTIVO_USD	\N	172.53	6	\N	\N	2026-01-02 15:23:49.294	2026-01-02 15:23:49.294
+2617	38	7880-038	VENDIDO	2024-09-30 03:00:00	IMPORTACION	267.47	7880	2025-08-06 04:00:00	195	440.00	EFECTIVO_USD	\N	172.53	6	\N	\N	2026-01-02 15:23:49.297	2026-01-02 15:23:49.297
+2618	38	7880-039	VENDIDO	2024-09-30 03:00:00	IMPORTACION	267.47	7880	2025-08-06 04:00:00	195	440.00	\N	\N	172.53	6	\N	\N	2026-01-02 15:23:49.299	2026-01-02 15:23:49.299
+2619	38	7880-040	VENDIDO	2024-09-30 03:00:00	IMPORTACION	267.47	7880	2025-08-06 04:00:00	195	440.00	\N	\N	172.53	6	\N	\N	2026-01-02 15:23:49.301	2026-01-02 15:23:49.301
+2620	38	7880-041	VENDIDO	2024-09-30 03:00:00	IMPORTACION	267.47	7880	2025-09-25 03:00:00	272	450.00	EFECTIVO_USD	\N	182.53	6	\N	\N	2026-01-02 15:23:49.303	2026-01-02 15:23:49.303
+2621	38	7880-042	VENDIDO	2024-09-30 03:00:00	IMPORTACION	267.47	7880	2025-09-10 03:00:00	252	450.00	EFECTIVO_USD	\N	182.53	6	\N	\N	2026-01-02 15:23:49.305	2026-01-02 15:23:49.305
+2622	38	7880-043	VENDIDO	2024-09-30 03:00:00	IMPORTACION	267.47	7880	2025-09-30 03:00:00	274	450.00	EFECTIVO_USD	\N	182.53	6	\N	\N	2026-01-02 15:23:49.308	2026-01-02 15:23:49.308
+2623	38	7880-044	VENDIDO	2024-09-30 03:00:00	IMPORTACION	267.47	7880	2025-10-08 03:00:00	315	440.00	EFECTIVO_USD	\N	172.53	6	\N	\N	2026-01-02 15:23:49.31	2026-01-02 15:23:49.31
+2624	38	7880-045	VENDIDO	2024-09-30 03:00:00	IMPORTACION	267.47	7880	2025-10-09 03:00:00	228	450.00	EFECTIVO_USD	\N	182.53	6	\N	\N	2026-01-02 15:23:49.319	2026-01-02 15:23:49.319
+2625	38	7880-046	VENDIDO	2024-09-30 03:00:00	IMPORTACION	267.47	7880	2025-10-10 03:00:00	225	450.00	EFECTIVO_USD	\N	182.53	6	\N	\N	2026-01-02 15:23:49.322	2026-01-02 15:23:49.322
+2626	38	7880-047	VENDIDO	2024-09-30 03:00:00	IMPORTACION	267.47	7880	2025-10-16 03:00:00	321	440.00	EFECTIVO_USD	\N	172.53	6	\N	\N	2026-01-02 15:23:49.324	2026-01-02 15:23:49.324
+2627	38	7880-048	VENDIDO	2024-09-30 03:00:00	IMPORTACION	267.47	7880	2025-10-16 03:00:00	321	440.00	EFECTIVO_USD	\N	172.53	6	\N	\N	2026-01-02 15:23:49.326	2026-01-02 15:23:49.326
+2628	38	7880-049	VENDIDO	2024-09-30 03:00:00	IMPORTACION	267.47	7880	2025-10-23 03:00:00	321	440.00	EFECTIVO_USD	\N	172.53	6	\N	\N	2026-01-02 15:23:49.328	2026-01-02 15:23:49.328
+2629	38	7880-050	VENDIDO	2024-09-30 03:00:00	IMPORTACION	267.47	7880	2025-10-23 03:00:00	321	440.00	EFECTIVO_USD	\N	172.53	6	\N	\N	2026-01-02 15:23:49.329	2026-01-02 15:23:49.329
+2630	38	7880-051	VENDIDO	2024-09-30 03:00:00	IMPORTACION	267.47	7880	2025-10-23 03:00:00	219	450.00	EFECTIVO_USD	\N	182.53	6	\N	\N	2026-01-02 15:23:49.332	2026-01-02 15:23:49.332
+2631	38	7880-052	VENDIDO	2024-09-30 03:00:00	IMPORTACION	267.47	7880	2025-10-23 03:00:00	228	450.00	EFECTIVO_USD	\N	182.53	6	\N	\N	2026-01-02 15:23:49.334	2026-01-02 15:23:49.334
+2632	38	7880-053	VENDIDO	2024-09-30 03:00:00	IMPORTACION	267.47	7880	2025-10-28 03:00:00	294	450.00	EFECTIVO_USD	\N	182.53	6	\N	\N	2026-01-02 15:23:49.336	2026-01-02 15:23:49.336
+2633	38	7880-054	VENDIDO	2024-09-30 03:00:00	IMPORTACION	267.47	7880	2025-10-28 03:00:00	232	440.00	EFECTIVO_USD	\N	172.53	6	\N	\N	2026-01-02 15:23:49.339	2026-01-02 15:23:49.339
+2634	38	7880-055	VENDIDO	2024-09-30 03:00:00	IMPORTACION	267.47	7880	2025-11-04 03:00:00	321	440.00	EFECTIVO_USD	\N	172.53	6	\N	\N	2026-01-02 15:23:49.342	2026-01-02 15:23:49.342
+2635	38	7880-056	VENDIDO	2024-09-30 03:00:00	IMPORTACION	267.47	7880	2025-11-04 03:00:00	321	440.00	EFECTIVO_USD	\N	172.53	6	\N	\N	2026-01-02 15:23:49.344	2026-01-02 15:23:49.344
+2636	38	7880-057	VENDIDO	2024-09-30 03:00:00	IMPORTACION	267.47	7880	2025-11-12 03:00:00	319	450.00	EFECTIVO_USD	\N	182.53	6	\N	\N	2026-01-02 15:23:49.346	2026-01-02 15:23:49.346
+2637	38	7880-058	DISPONIBLE	2024-09-30 03:00:00	IMPORTACION	267.47	7880	\N	\N	\N	\N	\N	0.00	6	\N	\N	2026-01-02 15:23:49.348	2026-01-02 15:23:49.348
+2638	38	7880-059	VENDIDO	2024-09-30 03:00:00	IMPORTACION	267.47	7880	2025-11-07 03:00:00	228	450.00	EFECTIVO_USD	\N	182.53	6	\N	\N	2026-01-02 15:23:49.351	2026-01-02 15:23:49.351
+2639	38	7880-060	DISPONIBLE	2024-09-30 03:00:00	IMPORTACION	267.47	7880	\N	\N	\N	\N	\N	0.00	6	\N	\N	2026-01-02 15:23:49.353	2026-01-02 15:23:49.353
+2640	38	7880-061	DISPONIBLE	2024-09-30 03:00:00	IMPORTACION	267.47	7880	\N	\N	\N	\N	\N	0.00	6	\N	\N	2026-01-02 15:23:49.355	2026-01-02 15:23:49.355
+2641	38	7880-062	DISPONIBLE	2024-09-30 03:00:00	IMPORTACION	267.47	7880	\N	\N	\N	\N	\N	0.00	6	\N	\N	2026-01-02 15:23:49.357	2026-01-02 15:23:49.357
+2642	38	7880-063	DISPONIBLE	2024-09-30 03:00:00	IMPORTACION	267.47	7880	\N	\N	\N	\N	\N	0.00	6	\N	\N	2026-01-02 15:23:49.359	2026-01-02 15:23:49.359
+2643	38	7880-064	DISPONIBLE	2024-09-30 03:00:00	IMPORTACION	267.47	7880	\N	\N	\N	\N	\N	0.00	6	\N	\N	2026-01-02 15:23:49.361	2026-01-02 15:23:49.361
+2644	38	7880-065	DISPONIBLE	2024-09-30 03:00:00	IMPORTACION	267.47	7880	\N	\N	\N	\N	\N	0.00	6	\N	\N	2026-01-02 15:23:49.364	2026-01-02 15:23:49.364
+2645	38	7880-066	DISPONIBLE	2024-09-30 03:00:00	IMPORTACION	267.47	7880	\N	\N	\N	\N	\N	0.00	6	\N	\N	2026-01-02 15:23:49.368	2026-01-02 15:23:49.368
+2646	38	7880-067	DISPONIBLE	2024-09-30 03:00:00	IMPORTACION	267.47	7880	\N	\N	\N	\N	\N	0.00	6	\N	\N	2026-01-02 15:23:49.37	2026-01-02 15:23:49.37
+2647	38	7880-068	DISPONIBLE	2024-09-30 03:00:00	IMPORTACION	267.47	7880	\N	\N	\N	\N	\N	0.00	6	\N	\N	2026-01-02 15:23:49.371	2026-01-02 15:23:49.371
+2648	38	7880-069	DISPONIBLE	2024-09-30 03:00:00	IMPORTACION	267.47	7880	\N	\N	\N	\N	\N	0.00	6	\N	\N	2026-01-02 15:23:49.374	2026-01-02 15:23:49.374
+2649	38	7880-070	DISPONIBLE	2024-09-30 03:00:00	IMPORTACION	267.47	7880	\N	\N	\N	\N	\N	0.00	6	\N	\N	2026-01-02 15:23:49.376	2026-01-02 15:23:49.376
+2650	38	7880-071	DISPONIBLE	2024-09-30 03:00:00	IMPORTACION	267.47	7880	\N	\N	\N	\N	\N	0.00	6	\N	\N	2026-01-02 15:23:49.378	2026-01-02 15:23:49.378
+2651	38	7880-072	DISPONIBLE	2024-09-30 03:00:00	IMPORTACION	267.47	7880	\N	\N	\N	\N	\N	0.00	6	\N	\N	2026-01-02 15:23:49.38	2026-01-02 15:23:49.38
+2652	38	7880-073	DISPONIBLE	2024-09-30 03:00:00	IMPORTACION	267.47	7880	\N	\N	\N	\N	\N	0.00	6	\N	\N	2026-01-02 15:23:49.382	2026-01-02 15:23:49.382
+2653	38	7880-074	DISPONIBLE	2024-09-30 03:00:00	IMPORTACION	267.47	7880	\N	\N	\N	\N	\N	0.00	6	\N	\N	2026-01-02 15:23:49.384	2026-01-02 15:23:49.384
+2654	38	7880-075	DISPONIBLE	2024-09-30 03:00:00	IMPORTACION	267.47	7880	\N	\N	\N	\N	\N	0.00	6	\N	\N	2026-01-02 15:23:49.386	2026-01-02 15:23:49.386
+2655	38	7880-076	DISPONIBLE	2024-09-30 03:00:00	IMPORTACION	267.47	7880	\N	\N	\N	\N	\N	0.00	6	\N	\N	2026-01-02 15:23:49.388	2026-01-02 15:23:49.388
+2656	38	7880-077	DISPONIBLE	2024-09-30 03:00:00	IMPORTACION	267.47	7880	\N	\N	\N	\N	\N	0.00	6	\N	\N	2026-01-02 15:23:49.391	2026-01-02 15:23:49.391
+2657	38	7880-078	DISPONIBLE	2024-09-30 03:00:00	IMPORTACION	267.47	7880	\N	\N	\N	\N	\N	0.00	6	\N	\N	2026-01-02 15:23:49.394	2026-01-02 15:23:49.394
+2658	38	7880-079	DISPONIBLE	2024-09-30 03:00:00	IMPORTACION	267.47	7880	\N	\N	\N	\N	\N	0.00	6	\N	\N	2026-01-02 15:23:49.396	2026-01-02 15:23:49.396
+2659	38	7880-080	DISPONIBLE	2024-09-30 03:00:00	IMPORTACION	267.47	7880	\N	\N	\N	\N	\N	0.00	6	\N	\N	2026-01-02 15:23:49.4	2026-01-02 15:23:49.4
+2660	39	7241-24	VENDIDO	2023-03-07 03:00:00	IMPORTACION	365.51	7241	2023-03-15 03:00:00	312	535.00	EFECTIVO_USD	\N	169.49	6	\N	\N	2026-01-02 15:23:49.409	2026-01-02 15:23:49.409
+2661	39	7241-25	VENDIDO	2023-03-07 03:00:00	IMPORTACION	365.51	7241	2023-03-16 03:00:00	312	535.00	MIXTO	\N	169.49	6	\N	\N	2026-01-02 15:23:49.414	2026-01-02 15:23:49.414
+2662	39	7241-26	VENDIDO	2023-03-07 03:00:00	IMPORTACION	365.51	7241	2023-03-21 03:00:00	193	540.00	EFECTIVO_USD	\N	174.49	6	\N	\N	2026-01-02 15:23:49.418	2026-01-02 15:23:49.418
+2663	39	7241-27	VENDIDO	2023-03-07 03:00:00	IMPORTACION	365.51	7241	2023-03-23 03:00:00	322	616.00	MIXTO	\N	250.49	6	\N	\N	2026-01-02 15:23:49.422	2026-01-02 15:23:49.422
+2664	39	7241-28	VENDIDO	2023-03-07 03:00:00	IMPORTACION	365.51	7241	2023-03-24 03:00:00	193	540.00	EFECTIVO_USD	\N	174.49	6	\N	\N	2026-01-02 15:23:49.426	2026-01-02 15:23:49.426
+2665	39	7241-29	VENDIDO	2023-03-07 03:00:00	IMPORTACION	365.51	7241	2023-03-24 03:00:00	312	540.00	EFECTIVO_USD	\N	174.49	6	\N	\N	2026-01-02 15:23:49.43	2026-01-02 15:23:49.43
+2666	39	7241-30	VENDIDO	2023-03-07 03:00:00	IMPORTACION	365.51	7241	2023-05-17 04:00:00	196	560.00	MIXTO	\N	194.49	6	\N	\N	2026-01-02 15:23:49.434	2026-01-02 15:23:49.434
+2667	39	7281-1	VENDIDO	2023-03-07 03:00:00	IMPORTACION	365.51	7281	2023-05-24 04:00:00	323	560.00	EFECTIVO_USD	\N	194.49	6	\N	\N	2026-01-02 15:23:49.438	2026-01-02 15:23:49.438
+2668	39	7281-2	VENDIDO	2023-03-07 03:00:00	IMPORTACION	365.51	7281	2023-05-26 04:00:00	193	540.00	MIXTO	\N	174.49	6	\N	\N	2026-01-02 15:23:49.441	2026-01-02 15:23:49.441
+2669	39	7281-3	VENDIDO	2023-03-07 03:00:00	IMPORTACION	365.51	7281	2023-06-01 04:00:00	193	560.00	TRANSFERENCIA_BS	\N	194.49	6	\N	\N	2026-01-02 15:23:49.444	2026-01-02 15:23:49.444
+2670	39	7281-4	VENDIDO	2023-03-07 03:00:00	IMPORTACION	365.51	7281	2023-05-04 04:00:00	186	560.00	TRANSFERENCIA_BS	\N	194.49	6	\N	\N	2026-01-02 15:23:49.451	2026-01-02 15:23:49.451
+2671	39	7281-5	VENDIDO	2023-03-07 03:00:00	IMPORTACION	365.51	7281	2023-05-04 04:00:00	186	560.00	TRANSFERENCIA_BS	\N	194.49	6	\N	\N	2026-01-02 15:23:49.461	2026-01-02 15:23:49.461
+2672	39	7281-6	VENDIDO	2023-03-07 03:00:00	IMPORTACION	365.51	7281	2023-08-10 04:00:00	193	540.00	EFECTIVO_USD	\N	174.49	6	\N	\N	2026-01-02 15:23:49.465	2026-01-02 15:23:49.465
+2673	39	7281-7	VENDIDO	2023-03-07 03:00:00	IMPORTACION	365.51	7281	2023-09-08 03:00:00	193	540.00	EFECTIVO_USD	\N	174.49	6	\N	\N	2026-01-02 15:23:49.468	2026-01-02 15:23:49.468
+2674	39	7281-8	VENDIDO	2023-03-07 03:00:00	IMPORTACION	365.51	7281	2023-09-11 03:00:00	283	560.00	EFECTIVO_USD	\N	194.49	6	\N	\N	2026-01-02 15:23:49.471	2026-01-02 15:23:49.471
+2675	39	7281-9	VENDIDO	2023-03-07 03:00:00	IMPORTACION	365.51	7281	2023-09-11 03:00:00	283	560.00	EFECTIVO_USD	\N	194.49	6	\N	\N	2026-01-02 15:23:49.474	2026-01-02 15:23:49.474
+2676	39	7281-10	VENDIDO	2023-03-07 03:00:00	IMPORTACION	365.51	7281	2023-09-21 03:00:00	188	540.00	EFECTIVO_USD	\N	174.49	6	\N	\N	2026-01-02 15:23:49.476	2026-01-02 15:23:49.476
+2677	39	7281-11	VENDIDO	2023-03-07 03:00:00	IMPORTACION	365.51	7281	2023-11-01 03:00:00	193	530.00	EFECTIVO_USD	\N	164.49	6	\N	\N	2026-01-02 15:23:49.479	2026-01-02 15:23:49.479
+2678	39	7281-12	VENDIDO	2023-03-07 03:00:00	IMPORTACION	365.51	7281	2023-10-23 03:00:00	193	530.00	EFECTIVO_USD	\N	164.49	6	\N	\N	2026-01-02 15:23:49.481	2026-01-02 15:23:49.481
+2679	39	7281-13	VENDIDO	2023-03-07 03:00:00	IMPORTACION	365.51	7281	2023-11-07 03:00:00	219	530.00	EFECTIVO_USD	\N	164.49	6	\N	\N	2026-01-02 15:23:49.482	2026-01-02 15:23:49.482
+2680	39	7345-066	VENDIDO	2023-06-09 04:00:00	IMPORTACION	365.51	7345	2023-11-08 03:00:00	193	530.00	EFECTIVO_USD	\N	164.49	6	\N	\N	2026-01-02 15:23:49.484	2026-01-02 15:23:49.484
+2681	39	7345-067	VENDIDO	2023-06-09 04:00:00	IMPORTACION	365.51	7345	2023-11-10 03:00:00	291	540.00	EFECTIVO_USD	\N	174.49	6	\N	\N	2026-01-02 15:23:49.486	2026-01-02 15:23:49.486
+2682	39	7345-068	VENDIDO	2023-06-09 04:00:00	IMPORTACION	365.51	7345	2023-11-10 03:00:00	291	540.00	EFECTIVO_USD	\N	174.49	6	\N	\N	2026-01-02 15:23:49.487	2026-01-02 15:23:49.487
+2683	39	7345-069	VENDIDO	2023-06-09 04:00:00	IMPORTACION	365.51	7345	2023-11-28 03:00:00	193	530.00	EFECTIVO_USD	\N	164.49	6	\N	\N	2026-01-02 15:23:49.489	2026-01-02 15:23:49.489
+2684	39	7345-070	VENDIDO	2023-06-09 04:00:00	IMPORTACION	365.51	7345	2023-12-06 03:00:00	302	560.00	EFECTIVO_USD	\N	194.49	6	\N	\N	2026-01-02 15:23:49.49	2026-01-02 15:23:49.49
+2685	39	7345-071	VENDIDO	2023-06-09 04:00:00	IMPORTACION	365.51	7345	2023-11-17 03:00:00	193	530.00	EFECTIVO_USD	\N	164.49	6	\N	\N	2026-01-02 15:23:49.492	2026-01-02 15:23:49.492
+2686	39	7345-072	VENDIDO	2023-06-09 04:00:00	IMPORTACION	365.51	7345	2023-12-13 03:00:00	193	530.00	EFECTIVO_USD	\N	164.49	6	\N	\N	2026-01-02 15:23:49.494	2026-01-02 15:23:49.494
+2687	39	7345-073	VENDIDO	2023-06-09 04:00:00	IMPORTACION	365.51	7345	2023-12-14 03:00:00	324	560.00	EFECTIVO_USD	\N	194.49	6	\N	\N	2026-01-02 15:23:49.496	2026-01-02 15:23:49.496
+2688	39	7345-074	VENDIDO	2023-06-09 04:00:00	IMPORTACION	365.51	7345	2023-12-15 03:00:00	223	560.00	EFECTIVO_USD	\N	194.49	6	\N	\N	2026-01-02 15:23:49.498	2026-01-02 15:23:49.498
+2689	39	7345-075	VENDIDO	2023-06-09 04:00:00	IMPORTACION	365.51	7345	2023-12-11 03:00:00	208	530.00	EFECTIVO_USD	\N	164.49	6	\N	\N	2026-01-02 15:23:49.499	2026-01-02 15:23:49.499
+2690	39	7412-001	VENDIDO	2023-06-16 04:00:00	IMPORTACION	365.51	7412	2023-12-11 03:00:00	208	530.00	EFECTIVO_USD	\N	164.49	6	\N	\N	2026-01-02 15:23:49.501	2026-01-02 15:23:49.501
+2691	39	7412-002	VENDIDO	2023-06-16 04:00:00	IMPORTACION	365.51	7412	2023-12-15 03:00:00	223	560.00	EFECTIVO_USD	\N	194.49	6	\N	\N	2026-01-02 15:23:49.502	2026-01-02 15:23:49.502
+2692	39	7412-003	VENDIDO	2023-06-16 04:00:00	IMPORTACION	365.51	7412	2023-12-20 03:00:00	193	530.00	EFECTIVO_USD	\N	164.49	6	\N	\N	2026-01-02 15:23:49.504	2026-01-02 15:23:49.504
+2693	39	7412-004	VENDIDO	2023-06-16 04:00:00	IMPORTACION	365.51	7412	2024-02-07 03:00:00	189	560.00	EFECTIVO_USD	\N	194.49	6	\N	\N	2026-01-02 15:23:49.507	2026-01-02 15:23:49.507
+2694	39	7412-005	VENDIDO	2023-06-16 04:00:00	IMPORTACION	365.51	7412	2024-01-10 03:00:00	212	560.00	TRANSFERENCIA_BS	\N	194.49	6	\N	\N	2026-01-02 15:23:49.511	2026-01-02 15:23:49.511
+2695	39	7412-006	VENDIDO	2023-06-16 04:00:00	IMPORTACION	365.51	7412	2024-01-10 03:00:00	212	560.00	TRANSFERENCIA_BS	\N	194.49	6	\N	\N	2026-01-02 15:23:49.513	2026-01-02 15:23:49.513
+2696	39	7412-007	VENDIDO	2023-06-16 04:00:00	IMPORTACION	365.51	7412	2024-01-10 03:00:00	212	560.00	TRANSFERENCIA_BS	\N	194.49	6	\N	\N	2026-01-02 15:23:49.515	2026-01-02 15:23:49.515
+2697	39	7412-008	VENDIDO	2023-06-16 04:00:00	IMPORTACION	365.51	7412	2024-01-10 03:00:00	212	560.00	TRANSFERENCIA_BS	\N	194.49	6	\N	\N	2026-01-02 15:23:49.517	2026-01-02 15:23:49.517
+2698	39	7412-009	VENDIDO	2023-06-16 04:00:00	IMPORTACION	365.51	7412	2024-01-10 03:00:00	212	560.00	EFECTIVO_USD	\N	194.49	6	\N	\N	2026-01-02 15:23:49.519	2026-01-02 15:23:49.519
+2699	39	7412-010	VENDIDO	2023-06-16 04:00:00	IMPORTACION	365.51	7412	2024-02-07 03:00:00	324	560.00	EFECTIVO_USD	\N	194.49	6	\N	\N	2026-01-02 15:23:49.523	2026-01-02 15:23:49.523
+2700	39	7523-066	VENDIDO	2024-02-15 03:00:00	IMPORTACION	365.51	7523	2024-05-28 04:00:00	195	545.00	EFECTIVO_USD	\N	179.49	6	\N	\N	2026-01-02 15:23:49.526	2026-01-02 15:23:49.526
+2701	39	7523-067	VENDIDO	2024-02-15 03:00:00	IMPORTACION	365.51	7523	2024-05-27 04:00:00	283	560.00	TRANSFERENCIA_USD	\N	194.49	6	\N	\N	2026-01-02 15:23:49.529	2026-01-02 15:23:49.529
+2702	39	7523-068	VENDIDO	2024-02-15 03:00:00	IMPORTACION	365.51	7523	2024-06-05 04:00:00	212	545.00	EFECTIVO_USD	\N	179.49	6	\N	\N	2026-01-02 15:23:49.531	2026-01-02 15:23:49.531
+2703	39	7523-069	VENDIDO	2024-02-15 03:00:00	IMPORTACION	365.51	7523	2024-06-06 04:00:00	193	545.00	EFECTIVO_USD	\N	179.49	6	\N	\N	2026-01-02 15:23:49.535	2026-01-02 15:23:49.535
+2704	39	7523-070	VENDIDO	2024-02-15 03:00:00	IMPORTACION	365.51	7523	2024-06-11 04:00:00	193	545.00	EFECTIVO_USD	\N	179.49	6	\N	\N	2026-01-02 15:23:49.537	2026-01-02 15:23:49.537
+2705	39	7523-071	VENDIDO	2024-02-15 03:00:00	IMPORTACION	365.51	7523	2024-06-11 04:00:00	193	545.00	EFECTIVO_USD	\N	179.49	6	\N	\N	2026-01-02 15:23:49.54	2026-01-02 15:23:49.54
+2706	39	7523-072	VENDIDO	2024-02-15 03:00:00	IMPORTACION	365.51	7523	2024-06-13 04:00:00	193	545.00	EFECTIVO_USD	\N	179.49	6	\N	\N	2026-01-02 15:23:49.543	2026-01-02 15:23:49.543
+2707	39	7523-073	VENDIDO	2024-02-15 03:00:00	IMPORTACION	365.51	7523	2024-06-21 04:00:00	195	545.00	EFECTIVO_USD	\N	179.49	6	\N	\N	2026-01-02 15:23:49.545	2026-01-02 15:23:49.545
+2708	39	7523-074	VENDIDO	2024-02-15 03:00:00	IMPORTACION	365.51	7523	2024-06-21 04:00:00	195	545.00	EFECTIVO_USD	\N	179.49	6	\N	\N	2026-01-02 15:23:49.547	2026-01-02 15:23:49.547
+2709	39	7523-075	VENDIDO	2024-02-15 03:00:00	IMPORTACION	365.51	7523	2024-06-27 04:00:00	193	545.00	MIXTO	\N	179.49	6	\N	\N	2026-01-02 15:23:49.552	2026-01-02 15:23:49.552
+2710	39	7523-076	VENDIDO	2024-02-15 03:00:00	IMPORTACION	365.51	7523	2024-07-01 04:00:00	291	560.00	EFECTIVO_USD	\N	194.49	6	\N	\N	2026-01-02 15:23:49.554	2026-01-02 15:23:49.554
+2711	39	7523-077	VENDIDO	2024-02-15 03:00:00	IMPORTACION	365.51	7523	2024-07-01 04:00:00	283	560.00	TRANSFERENCIA_USD	\N	194.49	6	\N	\N	2026-01-02 15:23:49.557	2026-01-02 15:23:49.557
+2712	39	7523-078	VENDIDO	2024-02-15 03:00:00	IMPORTACION	365.51	7523	2024-07-03 04:00:00	230	560.00	EFECTIVO_USD	\N	194.49	6	\N	\N	2026-01-02 15:23:49.559	2026-01-02 15:23:49.559
+2713	39	7523-079	VENDIDO	2024-02-15 03:00:00	IMPORTACION	365.51	7523	2024-07-03 04:00:00	230	560.00	EFECTIVO_USD	\N	194.49	6	\N	\N	2026-01-02 15:23:49.561	2026-01-02 15:23:49.561
+2714	39	7523-080	VENDIDO	2024-02-15 03:00:00	IMPORTACION	365.51	7523	2024-07-03 04:00:00	258	545.00	EFECTIVO_USD	\N	179.49	6	\N	\N	2026-01-02 15:23:49.563	2026-01-02 15:23:49.563
+2715	39	7523-081	VENDIDO	2024-02-15 03:00:00	IMPORTACION	365.51	7523	2024-07-08 04:00:00	198	560.00	ZELLE	\N	194.49	6	\N	\N	2026-01-02 15:23:49.565	2026-01-02 15:23:49.565
+2716	39	7523-082	VENDIDO	2024-02-15 03:00:00	IMPORTACION	365.51	7523	2024-08-08 04:00:00	261	560.00	EFECTIVO_USD	\N	194.49	6	\N	\N	2026-01-02 15:23:49.567	2026-01-02 15:23:49.567
+2717	39	7523-083	VENDIDO	2024-02-15 03:00:00	IMPORTACION	365.51	7523	2024-09-20 03:00:00	190	560.00	MIXTO	\N	194.49	6	\N	\N	2026-01-02 15:23:49.569	2026-01-02 15:23:49.569
+2718	39	7523-084	VENDIDO	2024-02-15 03:00:00	IMPORTACION	365.51	7523	2024-08-23 04:00:00	193	545.00	EFECTIVO_USD	\N	179.49	6	\N	\N	2026-01-02 15:23:49.571	2026-01-02 15:23:49.571
+2719	39	7523-085	VENDIDO	2024-02-15 03:00:00	IMPORTACION	365.51	7523	2024-10-10 03:00:00	250	550.00	EFECTIVO_USD	\N	184.49	6	\N	\N	2026-01-02 15:23:49.572	2026-01-02 15:23:49.572
+2720	39	7785-101	VENDIDO	2024-09-30 03:00:00	IMPORTACION	365.51	7785	2025-07-30 04:00:00	325	535.00	EFECTIVO_USD	\N	169.49	6	\N	\N	2026-01-02 15:23:49.575	2026-01-02 15:23:49.575
+2721	39	7785-102	VENDIDO	2024-09-30 03:00:00	IMPORTACION	365.51	7785	2024-10-17 03:00:00	195	545.00	EFECTIVO_USD	\N	179.49	6	\N	\N	2026-01-02 15:23:49.577	2026-01-02 15:23:49.577
+2722	39	7785-103	VENDIDO	2024-09-30 03:00:00	IMPORTACION	365.51	7785	2024-10-21 03:00:00	206	560.00	EFECTIVO_USD	\N	194.49	6	\N	\N	2026-01-02 15:23:49.58	2026-01-02 15:23:49.58
+2723	39	7785-104	VENDIDO	2024-09-30 03:00:00	IMPORTACION	365.51	7785	2024-12-20 03:00:00	282	550.00	EFECTIVO_USD	\N	184.49	6	\N	\N	2026-01-02 15:23:49.582	2026-01-02 15:23:49.582
+2724	39	7785-105	VENDIDO	2024-09-30 03:00:00	IMPORTACION	365.51	7785	2025-01-27 03:00:00	212	545.00	EFECTIVO_USD	\N	179.49	6	\N	\N	2026-01-02 15:23:49.584	2026-01-02 15:23:49.584
+2725	39	7785-106	VENDIDO	2024-09-30 03:00:00	IMPORTACION	365.51	7785	2024-11-20 03:00:00	198	560.00	ZELLE	\N	194.49	6	\N	\N	2026-01-02 15:23:49.589	2026-01-02 15:23:49.589
+2726	39	7785-107	VENDIDO	2024-09-30 03:00:00	IMPORTACION	365.51	7785	2024-11-19 03:00:00	212	545.00	EFECTIVO_USD	\N	179.49	6	\N	\N	2026-01-02 15:23:49.591	2026-01-02 15:23:49.591
+2727	39	7785-108	VENDIDO	2024-09-30 03:00:00	IMPORTACION	365.51	7785	2024-11-20 03:00:00	212	545.00	EFECTIVO_USD	\N	179.49	6	\N	\N	2026-01-02 15:23:49.593	2026-01-02 15:23:49.593
+2728	39	7785-128	VENDIDO	2024-09-30 03:00:00	IMPORTACION	365.51	7785	2025-02-07 03:00:00	250	550.00	EFECTIVO_USD	\N	184.49	6	\N	\N	2026-01-02 15:23:49.595	2026-01-02 15:23:49.595
+2729	39	7785-129	VENDIDO	2024-09-30 03:00:00	IMPORTACION	365.51	7785	2025-03-12 03:00:00	189	565.00	EFECTIVO_USD	\N	199.49	6	\N	\N	2026-01-02 15:23:49.598	2026-01-02 15:23:49.598
+2730	39	7785-130	VENDIDO	2024-09-30 03:00:00	IMPORTACION	365.51	7785	2025-02-19 03:00:00	326	570.00	EFECTIVO_USD	\N	204.49	6	\N	\N	2026-01-02 15:23:49.599	2026-01-02 15:23:49.599
+2731	39	7785-131	VENDIDO	2024-09-30 03:00:00	IMPORTACION	365.51	7785	2025-02-07 03:00:00	195	545.00	EFECTIVO_USD	\N	179.49	6	\N	\N	2026-01-02 15:23:49.601	2026-01-02 15:23:49.601
+2732	39	7785-132	VENDIDO	2024-09-30 03:00:00	IMPORTACION	365.51	7785	2025-02-07 03:00:00	195	545.00	EFECTIVO_USD	\N	179.49	6	\N	\N	2026-01-02 15:23:49.604	2026-01-02 15:23:49.604
+2733	39	7785-133	VENDIDO	2024-09-30 03:00:00	IMPORTACION	365.51	7785	2025-02-07 03:00:00	289	560.00	MIXTO	\N	194.49	6	\N	\N	2026-01-02 15:23:49.611	2026-01-02 15:23:49.611
+2734	39	7785-134	VENDIDO	2024-09-30 03:00:00	IMPORTACION	365.51	7785	2025-03-18 03:00:00	195	550.00	\N	\N	184.49	6	\N	\N	2026-01-02 15:23:49.614	2026-01-02 15:23:49.614
+2735	39	7785-135	VENDIDO	2024-09-30 03:00:00	IMPORTACION	365.51	7785	2025-03-18 03:00:00	195	550.00	\N	\N	184.49	6	\N	\N	2026-01-02 15:23:49.616	2026-01-02 15:23:49.616
+2736	39	7785-136	VENDIDO	2024-09-30 03:00:00	IMPORTACION	365.51	7785	2025-05-12 04:00:00	277	565.00	EFECTIVO_USD	\N	199.49	6	\N	\N	2026-01-02 15:23:49.619	2026-01-02 15:23:49.619
+2737	39	7785-137	VENDIDO	2024-09-30 03:00:00	IMPORTACION	365.51	7785	2025-05-22 04:00:00	289	565.00	EFECTIVO_USD	\N	199.49	6	\N	\N	2026-01-02 15:23:49.621	2026-01-02 15:23:49.621
+2738	39	7785-138	VENDIDO	2024-09-30 03:00:00	IMPORTACION	365.51	7785	2025-06-17 04:00:00	302	565.00	ZELLE	\N	199.49	6	\N	\N	2026-01-02 15:23:49.624	2026-01-02 15:23:49.624
+2739	39	7785-139	VENDIDO	2024-09-30 03:00:00	IMPORTACION	365.51	7785	2025-06-03 04:00:00	230	560.00	EFECTIVO_USD	\N	194.49	6	\N	\N	2026-01-02 15:23:49.627	2026-01-02 15:23:49.627
+2740	39	8063-062	VENDIDO	2025-05-21 04:00:00	IMPORTACION	365.51	8063	2025-06-12 04:00:00	327	565.00	EFECTIVO_USD	\N	199.49	6	\N	\N	2026-01-02 15:23:49.631	2026-01-02 15:23:49.631
+2741	39	8063-063	VENDIDO	2025-05-21 04:00:00	IMPORTACION	365.51	8063	2025-06-12 04:00:00	327	565.00	EFECTIVO_USD	\N	199.49	6	\N	\N	2026-01-02 15:23:49.633	2026-01-02 15:23:49.633
+2742	39	8063-064	VENDIDO	2025-05-21 04:00:00	IMPORTACION	365.51	8063	2025-07-21 04:00:00	230	550.00	EFECTIVO_USD	\N	184.49	6	\N	\N	2026-01-02 15:23:49.635	2026-01-02 15:23:49.635
+2743	39	8063-065	VENDIDO	2025-05-21 04:00:00	IMPORTACION	365.51	8063	2025-08-25 04:00:00	279	555.00	EFECTIVO_USD	\N	189.49	6	\N	\N	2026-01-02 15:23:49.637	2026-01-02 15:23:49.637
+2744	39	8063-066	VENDIDO	2025-05-21 04:00:00	IMPORTACION	365.51	8063	2025-09-04 04:00:00	279	555.00	EFECTIVO_USD	\N	189.49	6	\N	\N	2026-01-02 15:23:49.638	2026-01-02 15:23:49.638
+2745	39	8063-067	VENDIDO	2025-05-21 04:00:00	IMPORTACION	365.51	8063	2025-10-17 03:00:00	277	570.00	EFECTIVO_USD	\N	204.49	6	\N	\N	2026-01-02 15:23:49.64	2026-01-02 15:23:49.64
+2746	39	8063-068	VENDIDO	2025-05-21 04:00:00	IMPORTACION	365.51	8063	2025-10-23 03:00:00	207	560.00	EFECTIVO_USD	\N	194.49	6	\N	\N	2026-01-02 15:23:49.642	2026-01-02 15:23:49.642
+2747	39	8063-069	VENDIDO	2025-05-21 04:00:00	IMPORTACION	365.51	8063	2025-12-15 03:00:00	207	560.00	EFECTIVO_USD	\N	194.49	6	\N	\N	2026-01-02 15:23:49.644	2026-01-02 15:23:49.644
+2748	39	8063-070	VENDIDO	2025-05-21 04:00:00	IMPORTACION	365.51	8063	2025-12-15 03:00:00	207	560.00	EFECTIVO_USD	\N	194.49	6	\N	\N	2026-01-02 15:23:49.646	2026-01-02 15:23:49.646
+2749	39	8063-071	DISPONIBLE	2025-05-21 04:00:00	IMPORTACION	365.51	8063	\N	\N	\N	\N	\N	0.00	6	\N	\N	2026-01-02 15:23:49.648	2026-01-02 15:23:49.648
+2750	39	8063-072	DISPONIBLE	2025-05-21 04:00:00	IMPORTACION	365.51	8063	\N	\N	\N	\N	\N	0.00	6	\N	\N	2026-01-02 15:23:49.649	2026-01-02 15:23:49.649
+2751	39	8063-073	DISPONIBLE	2025-05-21 04:00:00	IMPORTACION	365.51	8063	\N	\N	\N	\N	\N	0.00	6	\N	\N	2026-01-02 15:23:49.651	2026-01-02 15:23:49.651
+2752	39	8063-074	DISPONIBLE	2025-05-21 04:00:00	IMPORTACION	365.51	8063	\N	\N	\N	\N	\N	0.00	6	\N	\N	2026-01-02 15:23:49.652	2026-01-02 15:23:49.652
+2753	39	8063-075	DISPONIBLE	2025-05-21 04:00:00	IMPORTACION	365.51	8063	\N	\N	\N	\N	\N	0.00	6	\N	\N	2026-01-02 15:23:49.654	2026-01-02 15:23:49.654
+2754	39	8063-076	DISPONIBLE	2025-05-21 04:00:00	IMPORTACION	365.51	8063	\N	\N	\N	\N	\N	0.00	6	\N	\N	2026-01-02 15:23:49.658	2026-01-02 15:23:49.658
+2755	40	7019-183	VENDIDO	2023-03-07 03:00:00	IMPORTACION	333.15	7019	2023-03-08 03:00:00	230	500.00	EFECTIVO_USD	\N	166.85	6	\N	\N	2026-01-02 15:23:49.663	2026-01-02 15:23:49.663
+2756	40	7019-184	VENDIDO	2023-03-07 03:00:00	IMPORTACION	333.15	7019	2023-03-09 03:00:00	186	495.00	EFECTIVO_USD	\N	161.85	6	\N	\N	2026-01-02 15:23:49.667	2026-01-02 15:23:49.667
+2757	40	7019-185	VENDIDO	2023-03-07 03:00:00	IMPORTACION	333.15	7019	2023-03-09 03:00:00	186	495.00	EFECTIVO_USD	\N	161.85	6	\N	\N	2026-01-02 15:23:49.67	2026-01-02 15:23:49.67
+2758	40	7019-186	VENDIDO	2023-03-07 03:00:00	IMPORTACION	333.15	7019	2023-03-10 03:00:00	193	500.00	EFECTIVO_USD	\N	166.85	6	\N	\N	2026-01-02 15:23:49.672	2026-01-02 15:23:49.672
+2759	40	7019-187	VENDIDO	2023-03-07 03:00:00	IMPORTACION	333.15	7019	2023-03-20 03:00:00	283	510.00	MIXTO	\N	176.85	6	\N	\N	2026-01-02 15:23:49.673	2026-01-02 15:23:49.673
+2760	40	7019-188	VENDIDO	2023-03-07 03:00:00	IMPORTACION	333.15	7019	2023-03-22 03:00:00	193	500.00	EFECTIVO_USD	\N	166.85	6	\N	\N	2026-01-02 15:23:49.675	2026-01-02 15:23:49.675
+2761	40	7019-189	VENDIDO	2023-03-07 03:00:00	IMPORTACION	333.15	7019	2023-03-22 03:00:00	193	500.00	EFECTIVO_USD	\N	166.85	6	\N	\N	2026-01-02 15:23:49.677	2026-01-02 15:23:49.677
+2762	40	7019-190	VENDIDO	2023-03-07 03:00:00	IMPORTACION	333.15	7019	2023-03-29 03:00:00	193	500.00	EFECTIVO_USD	\N	166.85	6	\N	\N	2026-01-02 15:23:49.678	2026-01-02 15:23:49.678
+2763	40	7019-191	VENDIDO	2023-03-07 03:00:00	IMPORTACION	333.15	7019	2023-04-21 04:00:00	230	500.00	EFECTIVO_USD	\N	166.85	6	\N	\N	2026-01-02 15:23:49.681	2026-01-02 15:23:49.681
+2764	40	7019-192	VENDIDO	2023-03-07 03:00:00	IMPORTACION	333.15	7019	2023-04-24 04:00:00	186	495.00	EFECTIVO_USD	\N	161.85	6	\N	\N	2026-01-02 15:23:49.683	2026-01-02 15:23:49.683
+2765	40	7019-193	VENDIDO	2023-03-07 03:00:00	IMPORTACION	333.15	7019	2023-04-24 04:00:00	186	495.00	EFECTIVO_USD	\N	161.85	6	\N	\N	2026-01-02 15:23:49.684	2026-01-02 15:23:49.684
+2766	40	7019-194	VENDIDO	2023-03-07 03:00:00	IMPORTACION	333.15	7019	2023-04-26 04:00:00	193	500.00	EFECTIVO_USD	\N	166.85	6	\N	\N	2026-01-02 15:23:49.686	2026-01-02 15:23:49.686
+2767	40	7019-195	VENDIDO	2023-03-07 03:00:00	IMPORTACION	333.15	7019	2023-05-05 04:00:00	193	520.00	TRANSFERENCIA_BS	\N	186.85	6	\N	\N	2026-01-02 15:23:49.687	2026-01-02 15:23:49.687
+2768	40	7019-196	VENDIDO	2023-03-07 03:00:00	IMPORTACION	333.15	7019	2023-05-16 04:00:00	193	520.00	TRANSFERENCIA_BS	\N	186.85	6	\N	\N	2026-01-02 15:23:49.689	2026-01-02 15:23:49.689
+2769	40	7019-197	VENDIDO	2023-03-07 03:00:00	IMPORTACION	333.15	7019	2023-05-16 04:00:00	186	495.00	EFECTIVO_USD	\N	161.85	6	\N	\N	2026-01-02 15:23:49.69	2026-01-02 15:23:49.69
+2770	40	7019-198	VENDIDO	2023-03-07 03:00:00	IMPORTACION	333.15	7019	2023-05-31 04:00:00	192	520.00	EFECTIVO_USD	\N	186.85	6	\N	\N	2026-01-02 15:23:49.692	2026-01-02 15:23:49.692
+2771	40	7019-199	VENDIDO	2023-03-07 03:00:00	IMPORTACION	333.15	7019	2023-06-01 04:00:00	193	520.00	TRANSFERENCIA_BS	\N	186.85	6	\N	\N	2026-01-02 15:23:49.693	2026-01-02 15:23:49.693
+2772	40	7019-200	VENDIDO	2023-03-07 03:00:00	IMPORTACION	333.15	7019	2023-06-15 04:00:00	230	500.00	EFECTIVO_USD	\N	166.85	6	\N	\N	2026-01-02 15:23:49.695	2026-01-02 15:23:49.695
+2773	40	7282-0001	VENDIDO	2023-03-07 03:00:00	IMPORTACION	333.15	7282	2023-06-16 04:00:00	231	520.00	TRANSFERENCIA_BS	\N	186.85	6	\N	\N	2026-01-02 15:23:49.697	2026-01-02 15:23:49.697
+2774	40	7282-0002	VENDIDO	2023-03-07 03:00:00	IMPORTACION	333.15	7282	2023-06-21 04:00:00	285	520.00	EFECTIVO_USD	\N	186.85	6	\N	\N	2026-01-02 15:23:49.699	2026-01-02 15:23:49.699
+2775	40	7282-0003	VENDIDO	2023-03-07 03:00:00	IMPORTACION	333.15	7282	2023-06-23 04:00:00	193	510.00	EFECTIVO_USD	\N	176.85	6	\N	\N	2026-01-02 15:23:49.701	2026-01-02 15:23:49.701
+2776	40	7282-0004	VENDIDO	2023-03-07 03:00:00	IMPORTACION	333.15	7282	2023-06-27 04:00:00	186	495.00	EFECTIVO_USD	\N	161.85	6	\N	\N	2026-01-02 15:23:49.703	2026-01-02 15:23:49.703
+2777	40	7282-0005	VENDIDO	2023-03-07 03:00:00	IMPORTACION	333.15	7282	2023-07-06 04:00:00	193	510.00	EFECTIVO_USD	\N	176.85	6	\N	\N	2026-01-02 15:23:49.705	2026-01-02 15:23:49.705
+2778	40	7282-0006	VENDIDO	2023-03-07 03:00:00	IMPORTACION	333.15	7282	2023-07-06 04:00:00	193	500.00	EFECTIVO_USD	\N	166.85	6	\N	\N	2026-01-02 15:23:49.707	2026-01-02 15:23:49.707
+2779	40	7282-0007	VENDIDO	2023-03-07 03:00:00	IMPORTACION	333.15	7282	2023-08-01 04:00:00	186	480.00	EFECTIVO_USD	\N	146.85	6	\N	\N	2026-01-02 15:23:49.708	2026-01-02 15:23:49.708
+2780	40	7282-0008	VENDIDO	2023-03-07 03:00:00	IMPORTACION	333.15	7282	2023-09-08 03:00:00	193	520.00	EFECTIVO_USD	\N	186.85	6	\N	\N	2026-01-02 15:23:49.711	2026-01-02 15:23:49.711
+2781	40	7282-0009	VENDIDO	2023-03-07 03:00:00	IMPORTACION	333.15	7282	2023-08-15 04:00:00	192	500.00	EFECTIVO_USD	\N	166.85	6	\N	\N	2026-01-02 15:23:49.712	2026-01-02 15:23:49.712
+2782	40	7282-0010	VENDIDO	2023-03-07 03:00:00	IMPORTACION	333.15	7282	2023-08-21 04:00:00	328	500.00	EFECTIVO_USD	\N	166.85	6	\N	\N	2026-01-02 15:23:49.714	2026-01-02 15:23:49.714
+2783	40	7282-0011	VENDIDO	2023-03-07 03:00:00	IMPORTACION	333.15	7282	2023-09-18 03:00:00	249	520.00	EFECTIVO_USD	\N	186.85	6	\N	\N	2026-01-02 15:23:49.715	2026-01-02 15:23:49.715
+2784	40	7282-0012	VENDIDO	2023-03-07 03:00:00	IMPORTACION	333.15	7282	2023-09-20 03:00:00	329	520.00	EFECTIVO_USD	\N	186.85	6	\N	\N	2026-01-02 15:23:49.717	2026-01-02 15:23:49.717
+2785	40	7282-094	VENDIDO	2023-06-09 04:00:00	IMPORTACION	333.15	7282	2023-09-27 03:00:00	239	520.00	EFECTIVO_USD	\N	186.85	6	\N	\N	2026-01-02 15:23:49.719	2026-01-02 15:23:49.719
+2786	40	7282-095	VENDIDO	2023-06-09 04:00:00	IMPORTACION	333.15	7282	2023-10-09 03:00:00	249	520.00	EFECTIVO_USD	\N	186.85	6	\N	\N	2026-01-02 15:23:49.72	2026-01-02 15:23:49.72
+2787	40	7282-096	VENDIDO	2023-06-09 04:00:00	IMPORTACION	333.15	7282	2023-10-13 03:00:00	193	490.00	EFECTIVO_USD	\N	156.85	6	\N	\N	2026-01-02 15:23:49.722	2026-01-02 15:23:49.722
+2788	40	7282-097	VENDIDO	2023-06-09 04:00:00	IMPORTACION	333.15	7282	2023-10-13 03:00:00	193	490.00	EFECTIVO_USD	\N	156.85	6	\N	\N	2026-01-02 15:23:49.724	2026-01-02 15:23:49.724
+2789	40	7282-098	VENDIDO	2023-06-09 04:00:00	IMPORTACION	333.15	7282	2023-10-17 03:00:00	330	520.00	EFECTIVO_USD	\N	186.85	6	\N	\N	2026-01-02 15:23:49.725	2026-01-02 15:23:49.725
+2790	40	7346-021	VENDIDO	2023-06-09 04:00:00	IMPORTACION	333.15	7346	2023-10-18 03:00:00	193	490.00	EFECTIVO_USD	\N	156.85	6	\N	\N	2026-01-02 15:23:49.727	2026-01-02 15:23:49.727
+2791	40	7346-022	VENDIDO	2023-06-09 04:00:00	IMPORTACION	333.15	7346	2023-10-18 03:00:00	186	520.00	TRANSFERENCIA_BS	\N	186.85	6	\N	\N	2026-01-02 15:23:49.728	2026-01-02 15:23:49.728
+2792	40	7346-023	VENDIDO	2023-06-09 04:00:00	IMPORTACION	333.15	7346	2023-10-23 03:00:00	230	500.00	EFECTIVO_USD	\N	166.85	6	\N	\N	2026-01-02 15:23:49.73	2026-01-02 15:23:49.73
+2793	40	7346-024	VENDIDO	2023-06-09 04:00:00	IMPORTACION	333.15	7346	2023-10-23 03:00:00	230	500.00	EFECTIVO_USD	\N	166.85	6	\N	\N	2026-01-02 15:23:49.731	2026-01-02 15:23:49.731
+2794	40	7346-025	VENDIDO	2023-06-09 04:00:00	IMPORTACION	333.15	7346	2023-10-31 03:00:00	193	490.00	EFECTIVO_USD	\N	156.85	6	\N	\N	2026-01-02 15:23:49.733	2026-01-02 15:23:49.733
+2795	40	7346-026	VENDIDO	2023-06-09 04:00:00	IMPORTACION	333.15	7346	2023-10-26 03:00:00	230	500.00	EFECTIVO_USD	\N	166.85	6	\N	\N	2026-01-02 15:23:49.734	2026-01-02 15:23:49.734
+2796	40	7346-027	VENDIDO	2023-06-09 04:00:00	IMPORTACION	333.15	7346	2023-11-01 03:00:00	240	510.00	EFECTIVO_USD	\N	176.85	6	\N	\N	2026-01-02 15:23:49.736	2026-01-02 15:23:49.736
+2797	40	7346-028	VENDIDO	2023-06-09 04:00:00	IMPORTACION	333.15	7346	2023-11-08 03:00:00	193	490.00	EFECTIVO_USD	\N	156.85	6	\N	\N	2026-01-02 15:23:49.739	2026-01-02 15:23:49.739
+2798	40	7346-029	VENDIDO	2023-06-09 04:00:00	IMPORTACION	333.15	7346	2023-11-03 03:00:00	193	490.00	EFECTIVO_USD	\N	156.85	6	\N	\N	2026-01-02 15:23:49.741	2026-01-02 15:23:49.741
+2799	40	7346-030	VENDIDO	2023-06-09 04:00:00	IMPORTACION	333.15	7346	2023-11-03 03:00:00	193	490.00	EFECTIVO_USD	\N	156.85	6	\N	\N	2026-01-02 15:23:49.742	2026-01-02 15:23:49.742
+2800	40	7346-031	VENDIDO	2023-06-09 04:00:00	IMPORTACION	333.15	7346	2023-11-14 03:00:00	256	520.00	EFECTIVO_USD	\N	186.85	6	\N	\N	2026-01-02 15:23:49.744	2026-01-02 15:23:49.744
+2801	40	7346-032	VENDIDO	2023-06-09 04:00:00	IMPORTACION	333.15	7346	2023-11-14 03:00:00	193	490.00	EFECTIVO_USD	\N	156.85	6	\N	\N	2026-01-02 15:23:49.745	2026-01-02 15:23:49.745
+2802	40	7346-033	VENDIDO	2023-06-09 04:00:00	IMPORTACION	333.15	7346	2023-11-16 03:00:00	293	520.00	EFECTIVO_USD	\N	186.85	6	\N	\N	2026-01-02 15:23:49.748	2026-01-02 15:23:49.748
+2803	40	7346-034	VENDIDO	2023-06-09 04:00:00	IMPORTACION	333.15	7346	2023-11-16 03:00:00	193	490.00	EFECTIVO_USD	\N	156.85	6	\N	\N	2026-01-02 15:23:49.75	2026-01-02 15:23:49.75
+2804	40	7346-035	VENDIDO	2023-06-09 04:00:00	IMPORTACION	333.15	7346	2023-11-21 03:00:00	196	520.00	EFECTIVO_USD	\N	186.85	6	\N	\N	2026-01-02 15:23:49.751	2026-01-02 15:23:49.751
+2805	40	7346-036	VENDIDO	2023-06-16 04:00:00	IMPORTACION	333.15	7346	2023-11-20 03:00:00	193	490.00	EFECTIVO_USD	\N	156.85	6	\N	\N	2026-01-02 15:23:49.753	2026-01-02 15:23:49.753
+2806	40	7346-037	VENDIDO	2023-06-16 04:00:00	IMPORTACION	333.15	7346	2023-11-21 03:00:00	196	520.00	EFECTIVO_USD	\N	186.85	6	\N	\N	2026-01-02 15:23:49.754	2026-01-02 15:23:49.754
+2807	40	7346-038	VENDIDO	2023-06-16 04:00:00	IMPORTACION	333.15	7346	2023-11-24 03:00:00	302	520.00	EFECTIVO_USD	\N	186.85	6	\N	\N	2026-01-02 15:23:49.755	2026-01-02 15:23:49.755
+2808	40	7346-039	VENDIDO	2023-06-16 04:00:00	IMPORTACION	333.15	7346	2023-11-27 03:00:00	193	490.00	EFECTIVO_USD	\N	156.85	6	\N	\N	2026-01-02 15:23:49.757	2026-01-02 15:23:49.757
+2809	40	7346-040	VENDIDO	2023-06-16 04:00:00	IMPORTACION	333.15	7346	2023-11-27 03:00:00	193	490.00	EFECTIVO_USD	\N	156.85	6	\N	\N	2026-01-02 15:23:49.758	2026-01-02 15:23:49.758
+2810	40	7346-041	VENDIDO	2023-06-16 04:00:00	IMPORTACION	333.15	7346	2023-11-27 03:00:00	194	520.00	EFECTIVO_USD	\N	186.85	6	\N	\N	2026-01-02 15:23:49.759	2026-01-02 15:23:49.759
+2811	40	7346-042	VENDIDO	2023-06-16 04:00:00	IMPORTACION	333.15	7346	2023-12-07 03:00:00	195	500.00	EFECTIVO_USD	\N	166.85	6	\N	\N	2026-01-02 15:23:49.764	2026-01-02 15:23:49.764
+2812	40	7346-043	VENDIDO	2023-06-16 04:00:00	IMPORTACION	333.15	7346	2023-11-28 03:00:00	193	490.00	EFECTIVO_USD	\N	156.85	6	\N	\N	2026-01-02 15:23:49.766	2026-01-02 15:23:49.766
+2813	40	7346-044	VENDIDO	2023-06-16 04:00:00	IMPORTACION	333.15	7346	2023-12-04 03:00:00	193	490.00	EFECTIVO_USD	\N	156.85	6	\N	\N	2026-01-02 15:23:49.768	2026-01-02 15:23:49.768
+2814	40	7346-045	VENDIDO	2023-06-16 04:00:00	IMPORTACION	333.15	7346	2023-12-05 03:00:00	194	520.00	EFECTIVO_USD	\N	186.85	6	\N	\N	2026-01-02 15:23:49.77	2026-01-02 15:23:49.77
+2815	40	7346-046	VENDIDO	2023-06-16 04:00:00	IMPORTACION	333.15	7346	2023-12-07 03:00:00	195	490.00	EFECTIVO_USD	\N	156.85	6	\N	\N	2026-01-02 15:23:49.772	2026-01-02 15:23:49.772
+2816	40	7346-047	VENDIDO	2023-06-16 04:00:00	IMPORTACION	333.15	7346	2023-12-07 03:00:00	195	490.00	EFECTIVO_USD	\N	156.85	6	\N	\N	2026-01-02 15:23:49.773	2026-01-02 15:23:49.773
+2817	40	7346-048	VENDIDO	2023-06-16 04:00:00	IMPORTACION	333.15	7346	2023-12-07 03:00:00	195	490.00	EFECTIVO_USD	\N	156.85	6	\N	\N	2026-01-02 15:23:49.774	2026-01-02 15:23:49.774
+2818	40	7346-049	VENDIDO	2023-06-16 04:00:00	IMPORTACION	333.15	7346	2024-01-23 03:00:00	195	500.00	EFECTIVO_USD	\N	166.85	6	\N	\N	2026-01-02 15:23:49.776	2026-01-02 15:23:49.776
+2819	40	7346-050	VENDIDO	2023-06-16 04:00:00	IMPORTACION	333.15	7346	2024-01-23 03:00:00	195	500.00	EFECTIVO_USD	\N	166.85	6	\N	\N	2026-01-02 15:23:49.778	2026-01-02 15:23:49.778
+2820	40	7346-051	VENDIDO	2023-06-16 04:00:00	IMPORTACION	333.15	7346	2023-12-07 03:00:00	288	520.00	EFECTIVO_USD	\N	186.85	6	\N	\N	2026-01-02 15:23:49.779	2026-01-02 15:23:49.779
+2821	40	7346-052	VENDIDO	2023-06-16 04:00:00	IMPORTACION	333.15	7346	2023-12-07 03:00:00	223	520.00	EFECTIVO_USD	\N	186.85	6	\N	\N	2026-01-02 15:23:49.78	2026-01-02 15:23:49.78
+2822	40	7346-053	VENDIDO	2023-06-16 04:00:00	IMPORTACION	333.15	7346	2023-12-15 03:00:00	292	520.00	EFECTIVO_USD	\N	186.85	6	\N	\N	2026-01-02 15:23:49.782	2026-01-02 15:23:49.782
+2823	40	7346-054	VENDIDO	2023-06-16 04:00:00	IMPORTACION	333.15	7346	2024-01-23 03:00:00	245	520.00	EFECTIVO_USD	\N	186.85	6	\N	\N	2026-01-02 15:23:49.784	2026-01-02 15:23:49.784
+2824	40	7346-055	VENDIDO	2023-06-16 04:00:00	IMPORTACION	333.15	7346	2024-01-23 03:00:00	195	510.00	EFECTIVO_USD	\N	176.85	6	\N	\N	2026-01-02 15:23:49.786	2026-01-02 15:23:49.786
+2825	40	7633-011	VENDIDO	2024-02-15 03:00:00	IMPORTACION	333.15	7633	2024-02-16 03:00:00	331	525.00	EFECTIVO_USD	\N	191.85	6	\N	\N	2026-01-02 15:23:49.788	2026-01-02 15:23:49.788
+2826	40	7633-012	VENDIDO	2024-02-15 03:00:00	IMPORTACION	333.15	7633	2024-02-20 03:00:00	262	525.00	EFECTIVO_USD	\N	191.85	6	\N	\N	2026-01-02 15:23:49.79	2026-01-02 15:23:49.79
+2827	40	7633-013	VENDIDO	2024-02-15 03:00:00	IMPORTACION	333.15	7633	2024-03-08 03:00:00	193	510.00	EFECTIVO_USD	\N	176.85	6	\N	\N	2026-01-02 15:23:49.792	2026-01-02 15:23:49.792
+2828	40	7633-014	VENDIDO	2024-02-15 03:00:00	IMPORTACION	333.15	7633	2024-03-11 03:00:00	332	525.00	EFECTIVO_USD	\N	191.85	6	\N	\N	2026-01-02 15:23:49.794	2026-01-02 15:23:49.794
+2829	40	7633-015	VENDIDO	2024-02-15 03:00:00	IMPORTACION	333.15	7633	2024-04-03 03:00:00	193	515.00	TRANSFERENCIA_BS	\N	181.85	6	\N	\N	2026-01-02 15:23:49.795	2026-01-02 15:23:49.795
+2830	40	7633-016	VENDIDO	2024-02-15 03:00:00	IMPORTACION	333.15	7633	2024-03-19 03:00:00	230	510.00	EFECTIVO_USD	\N	176.85	6	\N	\N	2026-01-02 15:23:49.797	2026-01-02 15:23:49.797
+2831	40	7633-017	VENDIDO	2024-02-15 03:00:00	IMPORTACION	333.15	7633	2024-03-20 03:00:00	270	525.00	EFECTIVO_USD	\N	191.85	6	\N	\N	2026-01-02 15:23:49.798	2026-01-02 15:23:49.798
+2832	40	7633-018	VENDIDO	2024-02-15 03:00:00	IMPORTACION	333.15	7633	2024-04-01 03:00:00	333	520.00	EFECTIVO_USD	\N	186.85	6	\N	\N	2026-01-02 15:23:49.8	2026-01-02 15:23:49.8
+2833	40	7633-019	DISPONIBLE	2024-02-15 03:00:00	IMPORTACION	333.15	7633	\N	\N	\N	\N	\N	0.00	6	\N	\N	2026-01-02 15:23:49.801	2026-01-02 15:23:49.801
+2834	40	7633-020	VENDIDO	2024-02-15 03:00:00	IMPORTACION	333.15	7633	2024-04-05 03:00:00	246	525.00	EFECTIVO_USD	\N	191.85	6	\N	\N	2026-01-02 15:23:49.803	2026-01-02 15:23:49.803
+2835	40	7633-021	VENDIDO	2024-02-15 03:00:00	IMPORTACION	333.15	7633	2024-04-10 04:00:00	230	510.00	EFECTIVO_USD	\N	176.85	6	\N	\N	2026-01-02 15:23:49.804	2026-01-02 15:23:49.804
+2836	40	7633-022	VENDIDO	2024-02-15 03:00:00	IMPORTACION	333.15	7633	2024-04-11 04:00:00	195	510.00	EFECTIVO_USD	\N	176.85	6	\N	\N	2026-01-02 15:23:49.806	2026-01-02 15:23:49.806
+2837	40	7633-023	VENDIDO	2024-02-15 03:00:00	IMPORTACION	333.15	7633	2024-04-11 04:00:00	195	510.00	EFECTIVO_USD	\N	176.85	6	\N	\N	2026-01-02 15:23:49.81	2026-01-02 15:23:49.81
+2838	40	7633-024	VENDIDO	2024-02-15 03:00:00	IMPORTACION	333.15	7633	2024-04-11 04:00:00	195	510.00	EFECTIVO_USD	\N	176.85	6	\N	\N	2026-01-02 15:23:49.813	2026-01-02 15:23:49.813
+2839	40	7633-025	VENDIDO	2024-02-15 03:00:00	IMPORTACION	333.15	7633	2024-04-15 04:00:00	228	515.00	EFECTIVO_USD	\N	181.85	6	\N	\N	2026-01-02 15:23:49.815	2026-01-02 15:23:49.815
+2840	40	7633-026	VENDIDO	2024-02-15 03:00:00	IMPORTACION	333.15	7633	2024-04-15 04:00:00	228	515.00	EFECTIVO_USD	\N	181.85	6	\N	\N	2026-01-02 15:23:49.817	2026-01-02 15:23:49.817
+2841	40	7633-027	VENDIDO	2024-02-15 03:00:00	IMPORTACION	333.15	7633	2024-05-03 04:00:00	271	525.00	EFECTIVO_USD	\N	191.85	6	\N	\N	2026-01-02 15:23:49.819	2026-01-02 15:23:49.819
+2842	40	7633-028	VENDIDO	2024-02-15 03:00:00	IMPORTACION	333.15	7633	2024-05-07 04:00:00	305	525.00	EFECTIVO_USD	\N	191.85	6	\N	\N	2026-01-02 15:23:49.82	2026-01-02 15:23:49.82
+2843	40	7633-029	VENDIDO	2024-02-15 03:00:00	IMPORTACION	333.15	7633	2024-05-14 04:00:00	193	510.00	EFECTIVO_USD	\N	176.85	6	\N	\N	2026-01-02 15:23:49.822	2026-01-02 15:23:49.822
+2844	40	7633-030	VENDIDO	2024-02-15 03:00:00	IMPORTACION	333.15	7633	2024-05-16 04:00:00	239	525.00	EFECTIVO_USD	\N	191.85	6	\N	\N	2026-01-02 15:23:49.823	2026-01-02 15:23:49.823
+2845	40	7633-031	VENDIDO	2024-02-15 03:00:00	IMPORTACION	333.15	7633	2024-05-20 04:00:00	195	510.00	EFECTIVO_USD	\N	176.85	6	\N	\N	2026-01-02 15:23:49.825	2026-01-02 15:23:49.825
+2846	40	7633-032	VENDIDO	2024-02-15 03:00:00	IMPORTACION	333.15	7633	2024-05-20 04:00:00	195	510.00	EFECTIVO_USD	\N	176.85	6	\N	\N	2026-01-02 15:23:49.827	2026-01-02 15:23:49.827
+2847	40	7633-033	VENDIDO	2024-02-15 03:00:00	IMPORTACION	333.15	7633	2024-08-06 04:00:00	196	525.00	EFECTIVO_USD	\N	191.85	6	\N	\N	2026-01-02 15:23:49.828	2026-01-02 15:23:49.828
+2848	40	7633-034	VENDIDO	2024-02-15 03:00:00	IMPORTACION	333.15	7633	2024-07-31 04:00:00	196	525.00	EFECTIVO_USD	\N	191.85	6	\N	\N	2026-01-02 15:23:49.831	2026-01-02 15:23:49.831
+2849	40	7633-035	VENDIDO	2024-02-15 03:00:00	IMPORTACION	333.15	7633	2024-05-21 04:00:00	298	525.00	EFECTIVO_USD	\N	191.85	6	\N	\N	2026-01-02 15:23:49.832	2026-01-02 15:23:49.832
+2850	40	7633-036	VENDIDO	2024-02-15 03:00:00	IMPORTACION	333.15	7633	2024-06-14 04:00:00	227	520.00	EFECTIVO_USD	\N	186.85	6	\N	\N	2026-01-02 15:23:49.834	2026-01-02 15:23:49.834
+2851	40	7633-037	VENDIDO	2024-02-15 03:00:00	IMPORTACION	333.15	7633	2024-06-18 04:00:00	334	525.00	EFECTIVO_USD	\N	191.85	6	\N	\N	2026-01-02 15:23:49.835	2026-01-02 15:23:49.835
+2852	40	7633-038	VENDIDO	2024-02-15 03:00:00	IMPORTACION	333.15	7633	2024-06-19 04:00:00	212	525.00	EFECTIVO_USD	\N	191.85	6	\N	\N	2026-01-02 15:23:49.844	2026-01-02 15:23:49.844
+2853	40	7633-039	VENDIDO	2024-02-15 03:00:00	IMPORTACION	333.15	7633	2024-06-20 04:00:00	196	525.00	EFECTIVO_USD	\N	191.85	6	\N	\N	2026-01-02 15:23:49.846	2026-01-02 15:23:49.846
+2854	40	7633-040	VENDIDO	2024-02-15 03:00:00	IMPORTACION	333.15	7633	2024-06-21 04:00:00	195	510.00	EFECTIVO_USD	\N	176.85	6	\N	\N	2026-01-02 15:23:49.848	2026-01-02 15:23:49.848
+2855	40	7633-041	VENDIDO	2024-02-15 03:00:00	IMPORTACION	333.15	7633	2024-06-21 04:00:00	195	510.00	EFECTIVO_USD	\N	176.85	6	\N	\N	2026-01-02 15:23:49.85	2026-01-02 15:23:49.85
+2856	40	7633-042	VENDIDO	2024-02-15 03:00:00	IMPORTACION	333.15	7633	2024-06-21 04:00:00	195	510.00	EFECTIVO_USD	\N	176.85	6	\N	\N	2026-01-02 15:23:49.852	2026-01-02 15:23:49.852
+2857	40	7633-043	VENDIDO	2024-02-15 03:00:00	IMPORTACION	333.15	7633	2024-06-25 04:00:00	245	525.00	ZELLE	\N	191.85	6	\N	\N	2026-01-02 15:23:49.854	2026-01-02 15:23:49.854
+2858	40	7633-044	VENDIDO	2024-02-15 03:00:00	IMPORTACION	333.15	7633	2024-06-26 04:00:00	286	525.00	EFECTIVO_USD	\N	191.85	6	\N	\N	2026-01-02 15:23:49.856	2026-01-02 15:23:49.856
+2859	40	7633-045	VENDIDO	2024-02-15 03:00:00	IMPORTACION	333.15	7633	2024-06-26 04:00:00	201	525.00	EFECTIVO_USD	\N	191.85	6	\N	\N	2026-01-02 15:23:49.865	2026-01-02 15:23:49.865
+2860	40	7633-046	VENDIDO	2024-02-15 03:00:00	IMPORTACION	333.15	7633	2024-06-27 04:00:00	197	515.00	EFECTIVO_USD	\N	181.85	6	\N	\N	2026-01-02 15:23:49.869	2026-01-02 15:23:49.869
+2861	40	7633-047	VENDIDO	2024-02-15 03:00:00	IMPORTACION	333.15	7633	2024-06-27 04:00:00	197	515.00	EFECTIVO_USD	\N	181.85	6	\N	\N	2026-01-02 15:23:49.872	2026-01-02 15:23:49.872
+2862	40	7633-048	VENDIDO	2024-02-15 03:00:00	IMPORTACION	333.15	7633	2024-07-01 04:00:00	247	525.00	EFECTIVO_USD	\N	191.85	6	\N	\N	2026-01-02 15:23:49.874	2026-01-02 15:23:49.874
+2863	40	7633-049	VENDIDO	2024-02-15 03:00:00	IMPORTACION	333.15	7633	2024-07-02 04:00:00	212	525.00	MIXTO	\N	191.85	6	\N	\N	2026-01-02 15:23:49.877	2026-01-02 15:23:49.877
+2864	40	7633-050	VENDIDO	2024-02-15 03:00:00	IMPORTACION	333.15	7633	2024-07-03 04:00:00	286	525.00	EFECTIVO_USD	\N	191.85	6	\N	\N	2026-01-02 15:23:49.878	2026-01-02 15:23:49.878
+2865	40	7633-051	VENDIDO	2024-02-15 03:00:00	IMPORTACION	333.15	7633	2024-08-02 04:00:00	193	515.00	MIXTO	\N	181.85	6	\N	\N	2026-01-02 15:23:49.881	2026-01-02 15:23:49.881
+2866	40	7633-052	VENDIDO	2024-02-15 03:00:00	IMPORTACION	333.15	7633	2024-08-08 04:00:00	193	515.00	EFECTIVO_USD	\N	181.85	6	\N	\N	2026-01-02 15:23:49.884	2026-01-02 15:23:49.884
+2867	40	7633-053	VENDIDO	2024-02-15 03:00:00	IMPORTACION	333.15	7633	2024-08-08 04:00:00	333	525.00	EFECTIVO_USD	\N	191.85	6	\N	\N	2026-01-02 15:23:49.885	2026-01-02 15:23:49.885
+2868	40	7633-054	VENDIDO	2024-02-15 03:00:00	IMPORTACION	333.15	7633	2024-08-12 04:00:00	197	525.00	MIXTO	\N	191.85	6	\N	\N	2026-01-02 15:23:49.887	2026-01-02 15:23:49.887
+2869	40	7633-055	VENDIDO	2024-02-15 03:00:00	IMPORTACION	333.15	7633	2024-08-12 04:00:00	195	510.00	EFECTIVO_USD	\N	176.85	6	\N	\N	2026-01-02 15:23:49.889	2026-01-02 15:23:49.889
+2870	40	7633-056	VENDIDO	2024-02-15 03:00:00	IMPORTACION	333.15	7633	2024-08-12 04:00:00	195	510.00	EFECTIVO_USD	\N	176.85	6	\N	\N	2026-01-02 15:23:49.892	2026-01-02 15:23:49.892
+2871	40	7633-057	VENDIDO	2024-02-15 03:00:00	IMPORTACION	333.15	7633	2024-08-20 04:00:00	212	525.00	MIXTO	\N	191.85	6	\N	\N	2026-01-02 15:23:49.894	2026-01-02 15:23:49.894
+2872	40	7633-058	VENDIDO	2024-02-15 03:00:00	IMPORTACION	333.15	7633	2024-08-26 04:00:00	335	525.00	EFECTIVO_USD	\N	191.85	6	\N	\N	2026-01-02 15:23:49.897	2026-01-02 15:23:49.897
+2873	40	7633-059	VENDIDO	2024-02-15 03:00:00	IMPORTACION	333.15	7633	2024-08-23 04:00:00	261	525.00	EFECTIVO_USD	\N	191.85	6	\N	\N	2026-01-02 15:23:49.898	2026-01-02 15:23:49.898
+2874	40	7633-060	VENDIDO	2024-02-15 03:00:00	IMPORTACION	333.15	7633	2024-08-23 04:00:00	261	525.00	MIXTO	\N	191.85	6	\N	\N	2026-01-02 15:23:49.901	2026-01-02 15:23:49.901
+2875	40	7633-061	VENDIDO	2024-02-15 03:00:00	IMPORTACION	333.15	7633	2024-08-26 04:00:00	195	510.00	EFECTIVO_USD	\N	176.85	6	\N	\N	2026-01-02 15:23:49.904	2026-01-02 15:23:49.904
+2876	40	7633-062	VENDIDO	2024-02-15 03:00:00	IMPORTACION	333.15	7633	2024-08-06 04:00:00	249	525.00	EFECTIVO_USD	\N	191.85	6	\N	\N	2026-01-02 15:23:49.907	2026-01-02 15:23:49.907
+2877	40	7633-063	VENDIDO	2024-02-15 03:00:00	IMPORTACION	333.15	7633	2024-09-19 03:00:00	195	510.00	EFECTIVO_USD	\N	176.85	6	\N	\N	2026-01-02 15:23:49.909	2026-01-02 15:23:49.909
+2878	40	7633-064	VENDIDO	2024-02-15 03:00:00	IMPORTACION	333.15	7633	2024-09-03 04:00:00	238	525.00	EFECTIVO_USD	\N	191.85	6	\N	\N	2026-01-02 15:23:49.912	2026-01-02 15:23:49.912
+2879	40	7633-065	VENDIDO	2024-02-15 03:00:00	IMPORTACION	333.15	7633	2024-09-05 04:00:00	336	525.00	EFECTIVO_USD	\N	191.85	6	\N	\N	2026-01-02 15:23:49.914	2026-01-02 15:23:49.914
+2880	40	7633-066	VENDIDO	2024-02-15 03:00:00	IMPORTACION	333.15	7633	2024-09-20 03:00:00	285	525.00	TRANSFERENCIA_BS	\N	191.85	6	\N	\N	2026-01-02 15:23:49.915	2026-01-02 15:23:49.915
+2881	40	7633-067	VENDIDO	2024-02-15 03:00:00	IMPORTACION	333.15	7633	2024-09-24 03:00:00	337	525.00	EFECTIVO_USD	\N	191.85	6	\N	\N	2026-01-02 15:23:49.917	2026-01-02 15:23:49.917
+2882	40	7633-068	VENDIDO	2024-02-15 03:00:00	IMPORTACION	333.15	7633	2024-09-24 03:00:00	227	525.00	MIXTO	\N	191.85	6	\N	\N	2026-01-02 15:23:49.919	2026-01-02 15:23:49.919
+2883	40	7633-069	VENDIDO	2024-02-15 03:00:00	IMPORTACION	333.15	7633	2024-09-27 03:00:00	230	515.00	EFECTIVO_USD	\N	181.85	6	\N	\N	2026-01-02 15:23:49.921	2026-01-02 15:23:49.921
+2884	40	7633-070	VENDIDO	2024-02-15 03:00:00	IMPORTACION	333.15	7633	2024-09-26 03:00:00	212	525.00	MIXTO	\N	191.85	6	\N	\N	2026-01-02 15:23:49.924	2026-01-02 15:23:49.924
+2885	40	7633-071	VENDIDO	2024-02-15 03:00:00	IMPORTACION	333.15	7633	2024-10-21 03:00:00	220	510.00	EFECTIVO_USD	\N	176.85	6	\N	\N	2026-01-02 15:23:49.926	2026-01-02 15:23:49.926
+2886	40	7633-072	VENDIDO	2024-02-15 03:00:00	IMPORTACION	333.15	7633	2024-10-17 03:00:00	195	510.00	EFECTIVO_USD	\N	176.85	6	\N	\N	2026-01-02 15:23:49.928	2026-01-02 15:23:49.928
+2887	40	7633-073	VENDIDO	2024-02-15 03:00:00	IMPORTACION	333.15	7633	2024-10-17 03:00:00	195	510.00	EFECTIVO_USD	\N	176.85	6	\N	\N	2026-01-02 15:23:49.93	2026-01-02 15:23:49.93
+2888	40	7633-074	VENDIDO	2024-02-15 03:00:00	IMPORTACION	333.15	7633	2024-10-17 03:00:00	195	510.00	EFECTIVO_USD	\N	176.85	6	\N	\N	2026-01-02 15:23:49.932	2026-01-02 15:23:49.932
+2889	40	7633-075	VENDIDO	2024-02-15 03:00:00	IMPORTACION	333.15	7633	2024-10-21 03:00:00	338	525.00	EFECTIVO_USD	\N	191.85	6	\N	\N	2026-01-02 15:23:49.933	2026-01-02 15:23:49.933
+2890	40	7633-076	VENDIDO	2024-02-15 03:00:00	IMPORTACION	333.15	7633	2024-10-30 03:00:00	336	525.00	EFECTIVO_USD	\N	191.85	6	\N	\N	2026-01-02 15:23:49.935	2026-01-02 15:23:49.935
+2891	40	7633-077	VENDIDO	2024-02-15 03:00:00	IMPORTACION	333.15	7633	2024-10-31 03:00:00	289	525.00	EFECTIVO_USD	\N	191.85	6	\N	\N	2026-01-02 15:23:49.942	2026-01-02 15:23:49.942
+2892	40	7633-078	VENDIDO	2024-02-15 03:00:00	IMPORTACION	333.15	7633	2024-11-01 03:00:00	339	525.00	EFECTIVO_USD	\N	191.85	6	\N	\N	2026-01-02 15:23:49.945	2026-01-02 15:23:49.945
+2893	40	7633-079	VENDIDO	2024-02-15 03:00:00	IMPORTACION	333.15	7633	2024-11-06 03:00:00	288	525.00	EFECTIVO_USD	\N	191.85	6	\N	\N	2026-01-02 15:23:49.947	2026-01-02 15:23:49.947
+2894	40	7633-080	VENDIDO	2024-02-15 03:00:00	IMPORTACION	333.15	7633	2024-11-13 03:00:00	279	510.00	EFECTIVO_USD	\N	176.85	6	\N	\N	2026-01-02 15:23:49.949	2026-01-02 15:23:49.949
+2895	40	7633-081	VENDIDO	2024-02-15 03:00:00	IMPORTACION	333.15	7633	2024-11-14 03:00:00	279	510.00	EFECTIVO_USD	\N	176.85	6	\N	\N	2026-01-02 15:23:49.952	2026-01-02 15:23:49.952
+2896	40	7633-082	VENDIDO	2024-02-15 03:00:00	IMPORTACION	333.15	7633	2024-11-14 03:00:00	279	510.00	EFECTIVO_USD	\N	176.85	6	\N	\N	2026-01-02 15:23:49.953	2026-01-02 15:23:49.953
+2897	40	7633-083	VENDIDO	2024-02-15 03:00:00	IMPORTACION	333.15	7633	2024-11-14 03:00:00	271	525.00	EFECTIVO_USD	\N	191.85	6	\N	\N	2026-01-02 15:23:49.955	2026-01-02 15:23:49.955
+2898	40	7633-084	VENDIDO	2024-02-15 03:00:00	IMPORTACION	333.15	7633	2024-11-18 03:00:00	224	525.00	ZELLE	\N	191.85	6	\N	\N	2026-01-02 15:23:49.956	2026-01-02 15:23:49.956
+2899	40	7633-085	VENDIDO	2024-02-15 03:00:00	IMPORTACION	333.15	7633	2024-11-28 03:00:00	340	525.00	EFECTIVO_USD	\N	191.85	6	\N	\N	2026-01-02 15:23:49.958	2026-01-02 15:23:49.958
+2900	40	7633-086	VENDIDO	2024-02-15 03:00:00	IMPORTACION	333.15	7633	2024-11-29 03:00:00	252	525.00	EFECTIVO_USD	\N	191.85	6	\N	\N	2026-01-02 15:23:49.96	2026-01-02 15:23:49.96
+2901	40	7633-087	VENDIDO	2024-02-15 03:00:00	IMPORTACION	333.15	7633	2024-12-05 03:00:00	341	525.00	EFECTIVO_USD	\N	191.85	6	\N	\N	2026-01-02 15:23:49.961	2026-01-02 15:23:49.961
+2902	40	7633-088	VENDIDO	2024-02-15 03:00:00	IMPORTACION	333.15	7633	2024-12-18 03:00:00	207	525.00	EFECTIVO_USD	\N	191.85	6	\N	\N	2026-01-02 15:23:49.963	2026-01-02 15:23:49.963
+2903	40	7633-089	VENDIDO	2024-02-15 03:00:00	IMPORTACION	333.15	7633	2024-12-16 03:00:00	224	525.00	ZELLE	\N	191.85	6	\N	\N	2026-01-02 15:23:49.964	2026-01-02 15:23:49.964
+2904	40	7633-090	VENDIDO	2024-02-15 03:00:00	IMPORTACION	333.15	7633	2024-12-19 03:00:00	210	525.00	EFECTIVO_USD	\N	191.85	6	\N	\N	2026-01-02 15:23:49.966	2026-01-02 15:23:49.966
+2905	40	7719-078	VENDIDO	2024-09-30 03:00:00	IMPORTACION	333.15	7719	2025-01-06 03:00:00	192	525.00	EFECTIVO_USD	\N	191.85	6	\N	\N	2026-01-02 15:23:49.967	2026-01-02 15:23:49.967
+2906	40	7719-079	VENDIDO	2024-09-30 03:00:00	IMPORTACION	333.15	7719	2025-01-17 03:00:00	342	525.00	EFECTIVO_USD	\N	191.85	6	\N	\N	2026-01-02 15:23:49.969	2026-01-02 15:23:49.969
+2907	40	7719-080	VENDIDO	2024-09-30 03:00:00	IMPORTACION	333.15	7719	2025-01-23 03:00:00	211	515.00	EFECTIVO_USD	\N	181.85	6	\N	\N	2026-01-02 15:23:49.97	2026-01-02 15:23:49.97
+2908	40	7719-081	VENDIDO	2024-09-30 03:00:00	IMPORTACION	333.15	7719	2025-01-23 03:00:00	211	515.00	EFECTIVO_USD	\N	181.85	6	\N	\N	2026-01-02 15:23:49.972	2026-01-02 15:23:49.972
+2909	40	7719-082	VENDIDO	2024-09-30 03:00:00	IMPORTACION	333.15	7719	2025-01-27 03:00:00	193	515.00	EFECTIVO_USD	\N	181.85	6	\N	\N	2026-01-02 15:23:49.973	2026-01-02 15:23:49.973
+2910	40	7719-083	VENDIDO	2024-09-30 03:00:00	IMPORTACION	333.15	7719	2025-02-06 03:00:00	279	515.00	EFECTIVO_USD	\N	181.85	6	\N	\N	2026-01-02 15:23:49.974	2026-01-02 15:23:49.974
+2911	40	7719-084	VENDIDO	2024-09-30 03:00:00	IMPORTACION	333.15	7719	2025-02-06 03:00:00	279	515.00	EFECTIVO_USD	\N	181.85	6	\N	\N	2026-01-02 15:23:49.976	2026-01-02 15:23:49.976
+2912	40	7719-085	VENDIDO	2024-09-30 03:00:00	IMPORTACION	333.15	7719	2025-02-06 03:00:00	212	515.00	EFECTIVO_USD	\N	181.85	6	\N	\N	2026-01-02 15:23:49.978	2026-01-02 15:23:49.978
+2913	40	7719-086	VENDIDO	2024-09-30 03:00:00	IMPORTACION	333.15	7719	2025-02-06 03:00:00	343	525.00	EFECTIVO_USD	\N	191.85	6	\N	\N	2026-01-02 15:23:49.979	2026-01-02 15:23:49.979
+2914	40	7719-087	VENDIDO	2024-09-30 03:00:00	IMPORTACION	333.15	7719	2025-02-11 03:00:00	344	525.00	EFECTIVO_USD	\N	191.85	6	\N	\N	2026-01-02 15:23:49.981	2026-01-02 15:23:49.981
+2915	40	7719-088	VENDIDO	2024-09-30 03:00:00	IMPORTACION	333.15	7719	2025-02-20 03:00:00	262	525.00	EFECTIVO_USD	\N	191.85	6	\N	\N	2026-01-02 15:23:49.982	2026-01-02 15:23:49.982
+2916	40	7719-089	VENDIDO	2024-09-30 03:00:00	IMPORTACION	333.15	7719	2025-02-07 03:00:00	195	515.00	EFECTIVO_USD	\N	181.85	6	\N	\N	2026-01-02 15:23:49.984	2026-01-02 15:23:49.984
+2917	40	7719-115	VENDIDO	2024-09-30 03:00:00	IMPORTACION	333.15	7719	2025-02-07 03:00:00	195	515.00	EFECTIVO_USD	\N	181.85	6	\N	\N	2026-01-02 15:23:49.985	2026-01-02 15:23:49.985
+2918	40	7719-116	VENDIDO	2024-09-30 03:00:00	IMPORTACION	333.15	7719	2025-02-25 03:00:00	212	530.00	EFECTIVO_USD	\N	196.85	6	\N	\N	2026-01-02 15:23:49.987	2026-01-02 15:23:49.987
+2919	40	7719-117	VENDIDO	2024-09-30 03:00:00	IMPORTACION	333.15	7719	2025-02-25 03:00:00	212	530.00	TRANSFERENCIA_BS	\N	196.85	6	\N	\N	2026-01-02 15:23:49.989	2026-01-02 15:23:49.989
+2920	40	7719-118	VENDIDO	2024-09-30 03:00:00	IMPORTACION	333.15	7719	2025-03-14 03:00:00	302	530.00	ZELLE	\N	196.85	6	\N	\N	2026-01-02 15:23:49.991	2026-01-02 15:23:49.991
+2921	40	7719-119	VENDIDO	2024-09-30 03:00:00	IMPORTACION	333.15	7719	2025-03-20 03:00:00	247	530.00	EFECTIVO_USD	\N	196.85	6	\N	\N	2026-01-02 15:23:49.993	2026-01-02 15:23:49.993
+2922	40	7719-120	VENDIDO	2024-09-30 03:00:00	IMPORTACION	333.15	7719	2025-03-25 03:00:00	260	530.00	EFECTIVO_USD	\N	196.85	6	\N	\N	2026-01-02 15:23:49.995	2026-01-02 15:23:49.995
+2923	40	7719-121	VENDIDO	2024-09-30 03:00:00	IMPORTACION	333.15	7719	2025-03-23 03:00:00	279	515.00	EFECTIVO_USD	\N	181.85	6	\N	\N	2026-01-02 15:23:49.998	2026-01-02 15:23:49.998
+2924	40	7719-122	VENDIDO	2024-09-30 03:00:00	IMPORTACION	333.15	7719	2025-03-23 03:00:00	279	515.00	EFECTIVO_USD	\N	181.85	6	\N	\N	2026-01-02 15:23:50	2026-01-02 15:23:50
+2925	40	7719-123	VENDIDO	2024-09-30 03:00:00	IMPORTACION	333.15	7719	2025-03-25 03:00:00	260	530.00	EFECTIVO_USD	\N	196.85	6	\N	\N	2026-01-02 15:23:50.003	2026-01-02 15:23:50.003
+2926	40	7719-124	VENDIDO	2024-09-30 03:00:00	IMPORTACION	333.15	7719	2025-03-31 03:00:00	195	515.00	EFECTIVO_USD	\N	181.85	6	\N	\N	2026-01-02 15:23:50.005	2026-01-02 15:23:50.005
+2927	40	7719-125	VENDIDO	2024-09-30 03:00:00	IMPORTACION	333.15	7719	2025-03-31 03:00:00	195	515.00	EFECTIVO_USD	\N	181.85	6	\N	\N	2026-01-02 15:23:50.009	2026-01-02 15:23:50.009
+2928	40	7719-126	VENDIDO	2024-09-30 03:00:00	IMPORTACION	333.15	7719	2025-04-01 03:00:00	262	530.00	EFECTIVO_USD	\N	196.85	6	\N	\N	2026-01-02 15:23:50.011	2026-01-02 15:23:50.011
+2929	40	7719-127	VENDIDO	2024-09-30 03:00:00	IMPORTACION	333.15	7719	2025-06-13 04:00:00	267	530.00	EFECTIVO_USD	\N	196.85	6	\N	\N	2026-01-02 15:23:50.013	2026-01-02 15:23:50.013
+2930	40	7719-128	VENDIDO	2024-09-30 03:00:00	IMPORTACION	333.15	7719	2025-04-03 03:00:00	345	530.00	EFECTIVO_USD	\N	196.85	6	\N	\N	2026-01-02 15:23:50.015	2026-01-02 15:23:50.015
+2931	40	7719-129	VENDIDO	2024-09-30 03:00:00	IMPORTACION	333.15	7719	2025-06-17 04:00:00	252	535.00	EFECTIVO_USD	\N	201.85	6	\N	\N	2026-01-02 15:23:50.017	2026-01-02 15:23:50.017
+2932	40	7719-130	VENDIDO	2024-09-30 03:00:00	IMPORTACION	333.15	7719	2025-04-28 04:00:00	279	520.00	EFECTIVO_USD	\N	186.85	6	\N	\N	2026-01-02 15:23:50.019	2026-01-02 15:23:50.019
+2933	40	7890-001	VENDIDO	2024-09-30 03:00:00	IMPORTACION	333.15	7890	2025-04-11 04:00:00	279	515.00	EFECTIVO_USD	\N	181.85	6	\N	\N	2026-01-02 15:23:50.021	2026-01-02 15:23:50.021
+2934	40	7890-002	VENDIDO	2024-09-30 03:00:00	IMPORTACION	333.15	7890	2025-04-11 04:00:00	279	515.00	EFECTIVO_USD	\N	181.85	6	\N	\N	2026-01-02 15:23:50.023	2026-01-02 15:23:50.023
+2935	40	7890-003	VENDIDO	2024-09-30 03:00:00	IMPORTACION	333.15	7890	2025-04-14 04:00:00	206	530.00	EFECTIVO_USD	\N	196.85	6	\N	\N	2026-01-02 15:23:50.026	2026-01-02 15:23:50.026
+2936	40	7890-004	VENDIDO	2024-09-30 03:00:00	IMPORTACION	333.15	7890	2025-04-28 04:00:00	279	520.00	EFECTIVO_USD	\N	186.85	6	\N	\N	2026-01-02 15:23:50.027	2026-01-02 15:23:50.027
+2937	40	7890-005	VENDIDO	2024-09-30 03:00:00	IMPORTACION	333.15	7890	2025-05-06 04:00:00	195	515.00	EFECTIVO_USD	\N	181.85	6	\N	\N	2026-01-02 15:23:50.029	2026-01-02 15:23:50.029
+2938	40	7890-006	VENDIDO	2024-09-30 03:00:00	IMPORTACION	333.15	7890	2025-05-06 04:00:00	195	515.00	EFECTIVO_USD	\N	181.85	6	\N	\N	2026-01-02 15:23:50.031	2026-01-02 15:23:50.031
+2939	40	7890-007	VENDIDO	2024-09-30 03:00:00	IMPORTACION	333.15	7890	2025-05-06 04:00:00	195	515.00	EFECTIVO_USD	\N	181.85	6	\N	\N	2026-01-02 15:23:50.033	2026-01-02 15:23:50.033
+2940	40	7890-008	VENDIDO	2024-09-30 03:00:00	IMPORTACION	333.15	7890	2025-05-06 04:00:00	195	515.00	EFECTIVO_USD	\N	181.85	6	\N	\N	2026-01-02 15:23:50.035	2026-01-02 15:23:50.035
+2941	40	7890-009	VENDIDO	2024-09-30 03:00:00	IMPORTACION	333.15	7890	2025-05-12 04:00:00	270	530.00	EFECTIVO_USD	\N	196.85	6	\N	\N	2026-01-02 15:23:50.037	2026-01-02 15:23:50.037
+2942	40	7890-010	VENDIDO	2024-09-30 03:00:00	IMPORTACION	333.15	7890	2025-05-12 04:00:00	251	530.00	EFECTIVO_USD	\N	196.85	6	\N	\N	2026-01-02 15:23:50.038	2026-01-02 15:23:50.038
+2943	40	7890-011	VENDIDO	2024-09-30 03:00:00	IMPORTACION	333.15	7890	2025-06-03 04:00:00	195	515.00	EFECTIVO_USD	\N	181.85	6	\N	\N	2026-01-02 15:23:50.04	2026-01-02 15:23:50.04
+2944	40	7890-012	VENDIDO	2024-09-30 03:00:00	IMPORTACION	333.15	7890	2025-06-03 04:00:00	195	515.00	EFECTIVO_USD	\N	181.85	6	\N	\N	2026-01-02 15:23:50.041	2026-01-02 15:23:50.041
+2945	40	7890-013	VENDIDO	2024-09-30 03:00:00	IMPORTACION	333.15	7890	2025-06-11 04:00:00	200	530.00	EFECTIVO_USD	\N	196.85	6	\N	\N	2026-01-02 15:23:50.043	2026-01-02 15:23:50.043
+2946	40	7890-014	VENDIDO	2024-09-30 03:00:00	IMPORTACION	333.15	7890	2025-06-16 04:00:00	307	535.00	EFECTIVO_USD	\N	201.85	6	\N	\N	2026-01-02 15:23:50.045	2026-01-02 15:23:50.045
+2947	40	7890-015	VENDIDO	2024-09-30 03:00:00	IMPORTACION	333.15	7890	2025-07-03 04:00:00	249	535.00	BINANCE	\N	201.85	6	\N	\N	2026-01-02 15:23:50.046	2026-01-02 15:23:50.046
+2948	40	7890-016	VENDIDO	2024-09-30 03:00:00	IMPORTACION	333.15	7890	2025-07-03 04:00:00	249	535.00	MIXTO	\N	201.85	6	\N	\N	2026-01-02 15:23:50.048	2026-01-02 15:23:50.048
+2949	40	7890-017	VENDIDO	2024-09-30 03:00:00	IMPORTACION	333.15	7890	2025-07-25 04:00:00	196	535.00	EFECTIVO_USD	\N	201.85	6	\N	\N	2026-01-02 15:23:50.049	2026-01-02 15:23:50.049
+2950	40	7890-018	VENDIDO	2024-09-30 03:00:00	IMPORTACION	333.15	7890	2025-07-25 04:00:00	256	535.00	EFECTIVO_USD	\N	201.85	6	\N	\N	2026-01-02 15:23:50.051	2026-01-02 15:23:50.051
+2951	40	7890-019	VENDIDO	2024-09-30 03:00:00	IMPORTACION	333.15	7890	2025-07-29 04:00:00	279	520.00	EFECTIVO_USD	\N	186.85	6	\N	\N	2026-01-02 15:23:50.053	2026-01-02 15:23:50.053
+2952	40	7890-020	VENDIDO	2024-09-30 03:00:00	IMPORTACION	333.15	7890	2025-07-29 04:00:00	279	520.00	EFECTIVO_USD	\N	186.85	6	\N	\N	2026-01-02 15:23:50.055	2026-01-02 15:23:50.055
+2953	40	7890-021	VENDIDO	2024-09-30 03:00:00	IMPORTACION	333.15	7890	2025-07-31 04:00:00	336	535.00	EFECTIVO_USD	\N	201.85	6	\N	\N	2026-01-02 15:23:50.056	2026-01-02 15:23:50.056
+2954	40	7890-022	VENDIDO	2024-09-30 03:00:00	IMPORTACION	333.15	7890	2025-08-01 04:00:00	230	535.00	EFECTIVO_USD	\N	201.85	6	\N	\N	2026-01-02 15:23:50.058	2026-01-02 15:23:50.058
+2955	40	7890-023	VENDIDO	2024-09-30 03:00:00	IMPORTACION	333.15	7890	2025-08-04 04:00:00	283	535.00	EFECTIVO_USD	\N	201.85	6	\N	\N	2026-01-02 15:23:50.06	2026-01-02 15:23:50.06
+2956	40	7890-024	VENDIDO	2024-09-30 03:00:00	IMPORTACION	333.15	7890	2025-08-06 04:00:00	195	520.00	EFECTIVO_USD	\N	186.85	6	\N	\N	2026-01-02 15:23:50.062	2026-01-02 15:23:50.062
+2957	40	7890-025	VENDIDO	2024-09-30 03:00:00	IMPORTACION	333.15	7890	2025-08-06 04:00:00	195	520.00	EFECTIVO_USD	\N	186.85	6	\N	\N	2026-01-02 15:23:50.064	2026-01-02 15:23:50.064
+2958	40	7890-026	VENDIDO	2024-09-30 03:00:00	IMPORTACION	333.15	7890	2025-08-11 04:00:00	195	520.00	EFECTIVO_USD	\N	186.85	6	\N	\N	2026-01-02 15:23:50.065	2026-01-02 15:23:50.065
+2959	40	7890-027	VENDIDO	2024-09-30 03:00:00	IMPORTACION	333.15	7890	2025-08-11 04:00:00	195	520.00	EFECTIVO_USD	\N	186.85	6	\N	\N	2026-01-02 15:23:50.067	2026-01-02 15:23:50.067
+2960	40	7890-028	VENDIDO	2024-09-30 03:00:00	IMPORTACION	333.15	7890	2025-08-25 04:00:00	196	535.00	EFECTIVO_USD	\N	201.85	6	\N	\N	2026-01-02 15:23:50.068	2026-01-02 15:23:50.068
+2961	40	7890-029	VENDIDO	2024-09-30 03:00:00	IMPORTACION	333.15	7890	2025-09-02 04:00:00	230	535.00	EFECTIVO_USD	\N	201.85	6	\N	\N	2026-01-02 15:23:50.069	2026-01-02 15:23:50.069
+2962	40	7890-030	VENDIDO	2024-09-30 03:00:00	IMPORTACION	333.15	7890	2025-08-28 04:00:00	244	535.00	EFECTIVO_USD	\N	201.85	6	\N	\N	2026-01-02 15:23:50.071	2026-01-02 15:23:50.071
+2963	40	7890-031	VENDIDO	2024-09-30 03:00:00	IMPORTACION	333.15	7890	2025-09-03 04:00:00	195	520.00	EFECTIVO_USD	\N	186.85	6	\N	\N	2026-01-02 15:23:50.073	2026-01-02 15:23:50.073
+2964	40	7890-032	VENDIDO	2024-09-30 03:00:00	IMPORTACION	333.15	7890	2025-09-02 04:00:00	230	535.00	EFECTIVO_USD	\N	201.85	6	\N	\N	2026-01-02 15:23:50.075	2026-01-02 15:23:50.075
+2965	40	8020-071	VENDIDO	2025-05-21 04:00:00	IMPORTACION	333.15	8020	2025-09-03 04:00:00	195	520.00	EFECTIVO_USD	\N	186.85	6	\N	\N	2026-01-02 15:23:50.076	2026-01-02 15:23:50.076
+2966	40	8020-072	VENDIDO	2025-05-21 04:00:00	IMPORTACION	333.15	8020	2025-09-12 03:00:00	195	520.00	EFECTIVO_USD	\N	186.85	6	\N	\N	2026-01-02 15:23:50.078	2026-01-02 15:23:50.078
+2967	40	8020-073	VENDIDO	2025-05-21 04:00:00	IMPORTACION	333.15	8020	2025-09-15 03:00:00	346	535.00	EFECTIVO_USD	\N	201.85	6	\N	\N	2026-01-02 15:23:50.079	2026-01-02 15:23:50.079
+2968	40	8020-074	VENDIDO	2025-05-21 04:00:00	IMPORTACION	333.15	8020	2025-09-26 03:00:00	188	535.00	EFECTIVO_USD	\N	201.85	6	\N	\N	2026-01-02 15:23:50.081	2026-01-02 15:23:50.081
+2969	40	8064-075	VENDIDO	2025-05-21 04:00:00	IMPORTACION	333.15	8064	2025-10-08 03:00:00	195	520.00	\N	\N	186.85	6	\N	\N	2026-01-02 15:23:50.082	2026-01-02 15:23:50.082
+2970	40	8064-045	VENDIDO	2025-05-21 04:00:00	IMPORTACION	333.15	8064	2025-10-08 03:00:00	195	520.00	\N	\N	186.85	6	\N	\N	2026-01-02 15:23:50.084	2026-01-02 15:23:50.084
+2971	40	8064-046	VENDIDO	2025-05-21 04:00:00	IMPORTACION	333.15	8064	2025-10-08 03:00:00	195	520.00	\N	\N	186.85	6	\N	\N	2026-01-02 15:23:50.085	2026-01-02 15:23:50.085
+2972	40	8064-047	VENDIDO	2025-05-21 04:00:00	IMPORTACION	333.15	8064	2025-10-16 03:00:00	191	535.00	EFECTIVO_USD	\N	201.85	6	\N	\N	2026-01-02 15:23:50.087	2026-01-02 15:23:50.087
+2973	40	8064-051	VENDIDO	2025-05-21 04:00:00	IMPORTACION	333.15	8064	2025-10-27 03:00:00	230	530.00	EFECTIVO_USD	\N	196.85	6	\N	\N	2026-01-02 15:23:50.088	2026-01-02 15:23:50.088
+2974	40	8064-052	VENDIDO	2025-05-21 04:00:00	IMPORTACION	333.15	8064	2025-10-27 03:00:00	347	540.00	EFECTIVO_USD	\N	206.85	6	\N	\N	2026-01-02 15:23:50.091	2026-01-02 15:23:50.091
+2975	40	8064-053	VENDIDO	2025-05-21 04:00:00	IMPORTACION	333.15	8064	2025-11-11 03:00:00	249	540.00	EFECTIVO_USD	\N	206.85	6	\N	\N	2026-01-02 15:23:50.092	2026-01-02 15:23:50.092
+2976	40	8064-054	VENDIDO	2025-05-21 04:00:00	IMPORTACION	333.15	8064	2025-11-21 03:00:00	230	530.00	EFECTIVO_USD	\N	196.85	6	\N	\N	2026-01-02 15:23:50.093	2026-01-02 15:23:50.093
+2977	40	8064-055	VENDIDO	2025-05-21 04:00:00	IMPORTACION	333.15	8064	2025-11-21 03:00:00	230	530.00	EFECTIVO_USD	\N	196.85	6	\N	\N	2026-01-02 15:23:50.094	2026-01-02 15:23:50.094
+2978	40	8064-056	VENDIDO	2025-05-21 04:00:00	IMPORTACION	333.15	8064	2025-11-24 03:00:00	348	530.00	EFECTIVO_USD	\N	196.85	6	\N	\N	2026-01-02 15:23:50.096	2026-01-02 15:23:50.096
+2979	40	8064-057	VENDIDO	2025-05-21 04:00:00	IMPORTACION	333.15	8064	2025-11-24 03:00:00	192	540.00	EFECTIVO_USD	\N	206.85	6	\N	\N	2026-01-02 15:23:50.097	2026-01-02 15:23:50.097
+2980	40	8064-058	VENDIDO	2025-05-21 04:00:00	IMPORTACION	333.15	8064	2025-12-04 03:00:00	349	540.00	EFECTIVO_USD	\N	206.85	6	\N	\N	2026-01-02 15:23:50.099	2026-01-02 15:23:50.099
+2981	40	8064-059	VENDIDO	2025-05-21 04:00:00	IMPORTACION	333.15	8064	2025-12-04 03:00:00	350	540.00	EFECTIVO_USD	\N	206.85	6	\N	\N	2026-01-02 15:23:50.1	2026-01-02 15:23:50.1
+2982	40	8064-060	VENDIDO	2025-05-21 04:00:00	IMPORTACION	333.15	8064	2025-12-11 03:00:00	351	540.00	EFECTIVO_USD	\N	206.85	6	\N	\N	2026-01-02 15:23:50.102	2026-01-02 15:23:50.102
+2983	40	8064-061	DISPONIBLE	2025-05-21 04:00:00	IMPORTACION	333.15	8064	\N	\N	\N	\N	\N	0.00	6	\N	\N	2026-01-02 15:23:50.103	2026-01-02 15:23:50.103
+2984	40	8064-062	DISPONIBLE	2025-05-21 04:00:00	IMPORTACION	333.15	8064	\N	\N	\N	\N	\N	0.00	6	\N	\N	2026-01-02 15:23:50.105	2026-01-02 15:23:50.105
+2985	42	7379-001	VENDIDO	2023-06-09 04:00:00	IMPORTACION	310.31	7379	2023-08-17 04:00:00	188	470.00	EFECTIVO_USD	\N	159.69	6	\N	\N	2026-01-02 15:23:50.106	2026-01-02 15:23:50.106
+2986	42	7379-002	VENDIDO	2023-06-09 04:00:00	IMPORTACION	310.31	7379	2023-10-10 03:00:00	324	490.00	EFECTIVO_USD	\N	179.69	6	\N	\N	2026-01-02 15:23:50.108	2026-01-02 15:23:50.108
+2987	42	7379-003	VENDIDO	2023-06-09 04:00:00	IMPORTACION	310.31	7379	2023-10-16 03:00:00	196	490.00	EFECTIVO_USD	\N	179.69	6	\N	\N	2026-01-02 15:23:50.11	2026-01-02 15:23:50.11
+2988	42	7379-004	VENDIDO	2023-06-09 04:00:00	IMPORTACION	310.31	7379	2023-11-07 03:00:00	241	475.00	EFECTIVO_USD	\N	164.69	6	\N	\N	2026-01-02 15:23:50.111	2026-01-02 15:23:50.111
+2989	42	7379-005	VENDIDO	2023-06-09 04:00:00	IMPORTACION	310.31	7379	2023-12-18 03:00:00	188	490.00	EFECTIVO_USD	\N	179.69	6	\N	\N	2026-01-02 15:23:50.114	2026-01-02 15:23:50.114
+2990	42	7379-006	VENDIDO	2023-06-16 04:00:00	IMPORTACION	310.31	7379	2023-12-06 03:00:00	191	500.00	EFECTIVO_USD	\N	189.69	6	\N	\N	2026-01-02 15:23:50.116	2026-01-02 15:23:50.116
+2991	42	7379-007	VENDIDO	2023-06-16 04:00:00	IMPORTACION	310.31	7379	2023-12-06 03:00:00	289	500.00	EFECTIVO_USD	\N	189.69	6	\N	\N	2026-01-02 15:23:50.117	2026-01-02 15:23:50.117
+2992	42	7379-008	VENDIDO	2023-06-16 04:00:00	IMPORTACION	310.31	7379	2024-01-16 03:00:00	299	500.00	EFECTIVO_USD	\N	189.69	6	\N	\N	2026-01-02 15:23:50.119	2026-01-02 15:23:50.119
+2993	42	7379-009	VENDIDO	2023-06-16 04:00:00	IMPORTACION	310.31	7379	2024-01-24 03:00:00	299	500.00	EFECTIVO_USD	\N	189.69	6	\N	\N	2026-01-02 15:23:50.121	2026-01-02 15:23:50.121
+2994	42	7379-010	VENDIDO	2023-06-16 04:00:00	IMPORTACION	310.31	7379	2024-03-14 03:00:00	299	500.00	EFECTIVO_USD	\N	189.69	6	\N	\N	2026-01-02 15:23:50.122	2026-01-02 15:23:50.122
+2995	42	7379-011	VENDIDO	2023-06-16 04:00:00	IMPORTACION	310.31	7379	2024-02-05 03:00:00	299	500.00	EFECTIVO_USD	\N	189.69	6	\N	\N	2026-01-02 15:23:50.125	2026-01-02 15:23:50.125
+2996	42	7379-012	VENDIDO	2023-06-16 04:00:00	IMPORTACION	310.31	7379	2024-01-24 03:00:00	212	495.00	EFECTIVO_USD	\N	184.69	6	\N	\N	2026-01-02 15:23:50.126	2026-01-02 15:23:50.126
+2997	42	7379-013	VENDIDO	2023-06-16 04:00:00	IMPORTACION	310.31	7379	2024-04-11 04:00:00	195	500.00	EFECTIVO_USD	\N	189.69	6	\N	\N	2026-01-02 15:23:50.128	2026-01-02 15:23:50.128
+2998	42	7379-014	VENDIDO	2023-06-16 04:00:00	IMPORTACION	310.31	7379	2024-06-11 04:00:00	299	510.00	EFECTIVO_USD	\N	199.69	6	\N	\N	2026-01-02 15:23:50.13	2026-01-02 15:23:50.13
+2999	42	7379-015	VENDIDO	2023-06-16 04:00:00	IMPORTACION	310.31	7379	2024-04-16 04:00:00	244	510.00	EFECTIVO_USD	\N	199.69	6	\N	\N	2026-01-02 15:23:50.133	2026-01-02 15:23:50.133
+3000	42	7628-016	VENDIDO	2024-02-15 03:00:00	IMPORTACION	310.31	7628	2024-04-30 04:00:00	299	510.00	EFECTIVO_USD	\N	199.69	6	\N	\N	2026-01-02 15:23:50.135	2026-01-02 15:23:50.135
+3001	42	7628-017	VENDIDO	2024-02-15 03:00:00	IMPORTACION	310.31	7628	2024-06-21 04:00:00	289	510.00	EFECTIVO_USD	\N	199.69	6	\N	\N	2026-01-02 15:23:50.136	2026-01-02 15:23:50.136
+3002	42	7628-018	VENDIDO	2024-02-15 03:00:00	IMPORTACION	310.31	7628	2024-06-21 04:00:00	289	510.00	EFECTIVO_USD	\N	199.69	6	\N	\N	2026-01-02 15:23:50.138	2026-01-02 15:23:50.138
+3003	42	7628-019	VENDIDO	2024-02-15 03:00:00	IMPORTACION	310.31	7628	2024-06-21 04:00:00	289	510.00	EFECTIVO_USD	\N	199.69	6	\N	\N	2026-01-02 15:23:50.139	2026-01-02 15:23:50.139
+3004	42	7628-020	VENDIDO	2024-02-15 03:00:00	IMPORTACION	310.31	7628	2024-06-21 04:00:00	289	510.00	EFECTIVO_USD	\N	199.69	6	\N	\N	2026-01-02 15:23:50.141	2026-01-02 15:23:50.141
+3005	42	7628-021	VENDIDO	2024-02-15 03:00:00	IMPORTACION	310.31	7628	2024-06-21 04:00:00	289	510.00	EFECTIVO_USD	\N	199.69	6	\N	\N	2026-01-02 15:23:50.143	2026-01-02 15:23:50.143
+3006	42	7628-022	VENDIDO	2024-02-15 03:00:00	IMPORTACION	310.31	7628	2024-06-21 04:00:00	195	500.00	EFECTIVO_USD	\N	189.69	6	\N	\N	2026-01-02 15:23:50.144	2026-01-02 15:23:50.144
+3007	42	7628-023	VENDIDO	2024-02-15 03:00:00	IMPORTACION	310.31	7628	2024-06-21 04:00:00	195	500.00	EFECTIVO_USD	\N	189.69	6	\N	\N	2026-01-02 15:23:50.145	2026-01-02 15:23:50.145
+3008	42	7628-024	VENDIDO	2024-02-15 03:00:00	IMPORTACION	310.31	7628	2024-07-17 04:00:00	193	500.00	EFECTIVO_USD	\N	189.69	6	\N	\N	2026-01-02 15:23:50.147	2026-01-02 15:23:50.147
+3009	42	7628-025	VENDIDO	2024-02-15 03:00:00	IMPORTACION	310.31	7628	2024-07-19 04:00:00	289	510.00	EFECTIVO_USD	\N	199.69	6	\N	\N	2026-01-02 15:23:50.15	2026-01-02 15:23:50.15
+3010	42	7628-026	VENDIDO	2024-02-15 03:00:00	IMPORTACION	310.31	7628	2024-07-24 04:00:00	299	510.00	EFECTIVO_USD	\N	199.69	6	\N	\N	2026-01-02 15:23:50.152	2026-01-02 15:23:50.152
+3011	42	7628-027	VENDIDO	2024-02-15 03:00:00	IMPORTACION	310.31	7628	2024-10-25 03:00:00	289	510.00	EFECTIVO_USD	\N	199.69	6	\N	\N	2026-01-02 15:23:50.153	2026-01-02 15:23:50.153
+3012	42	7628-028	VENDIDO	2024-02-15 03:00:00	IMPORTACION	310.31	7628	2024-09-09 03:00:00	289	510.00	EFECTIVO_USD	\N	199.69	6	\N	\N	2026-01-02 15:23:50.157	2026-01-02 15:23:50.157
+3013	42	7628-029	VENDIDO	2024-02-15 03:00:00	IMPORTACION	310.31	7628	2024-10-31 03:00:00	289	510.00	EFECTIVO_USD	\N	199.69	6	\N	\N	2026-01-02 15:23:50.158	2026-01-02 15:23:50.158
+3014	42	7628-030	VENDIDO	2024-02-15 03:00:00	IMPORTACION	310.31	7628	2024-12-02 03:00:00	191	510.00	ZELLE	\N	199.69	6	\N	\N	2026-01-02 15:23:50.16	2026-01-02 15:23:50.16
+3015	42	7760-039	VENDIDO	2024-09-30 03:00:00	IMPORTACION	310.31	7760	2024-12-16 03:00:00	191	510.00	ZELLE	\N	199.69	6	\N	\N	2026-01-02 15:23:50.164	2026-01-02 15:23:50.164
+3016	42	7760-040	VENDIDO	2024-09-30 03:00:00	IMPORTACION	310.31	7760	2025-01-20 03:00:00	352	510.00	EFECTIVO_USD	\N	199.69	6	\N	\N	2026-01-02 15:23:50.165	2026-01-02 15:23:50.165
+3017	42	7760-041	VENDIDO	2024-09-30 03:00:00	IMPORTACION	310.31	7760	2025-02-07 03:00:00	353	500.00	EFECTIVO_USD	\N	189.69	6	\N	\N	2026-01-02 15:23:50.167	2026-01-02 15:23:50.167
+3018	42	7760-042	VENDIDO	2024-09-30 03:00:00	IMPORTACION	310.31	7760	2025-02-07 03:00:00	195	500.00	\N	\N	189.69	6	\N	\N	2026-01-02 15:23:50.169	2026-01-02 15:23:50.169
+3019	42	7760-043	VENDIDO	2024-09-30 03:00:00	IMPORTACION	310.31	7760	2025-02-11 03:00:00	191	515.00	ZELLE	\N	204.69	6	\N	\N	2026-01-02 15:23:50.17	2026-01-02 15:23:50.17
+3020	42	7760-044	VENDIDO	2024-09-30 03:00:00	IMPORTACION	310.31	7760	2025-02-20 03:00:00	289	510.00	TRANSFERENCIA_USD	\N	199.69	6	\N	\N	2026-01-02 15:23:50.172	2026-01-02 15:23:50.172
+3021	42	7760-045	VENDIDO	2024-09-30 03:00:00	IMPORTACION	310.31	7760	2025-02-07 03:00:00	195	500.00	\N	\N	189.69	6	\N	\N	2026-01-02 15:23:50.175	2026-01-02 15:23:50.175
+3022	42	7760-046	VENDIDO	2024-09-30 03:00:00	IMPORTACION	310.31	7760	2025-02-20 03:00:00	289	510.00	TRANSFERENCIA_USD	\N	199.69	6	\N	\N	2026-01-02 15:23:50.177	2026-01-02 15:23:50.177
+3023	42	7760-047	VENDIDO	2024-09-30 03:00:00	IMPORTACION	310.31	7760	2025-02-20 03:00:00	289	510.00	TRANSFERENCIA_USD	\N	199.69	6	\N	\N	2026-01-02 15:23:50.179	2026-01-02 15:23:50.179
+3024	42	7760-048	VENDIDO	2024-09-30 03:00:00	IMPORTACION	310.31	7760	2025-02-25 03:00:00	212	515.00	\N	\N	204.69	6	\N	\N	2026-01-02 15:23:50.18	2026-01-02 15:23:50.18
+3025	42	7760-049	VENDIDO	2024-09-30 03:00:00	IMPORTACION	310.31	7760	2025-02-25 03:00:00	212	515.00	TRANSFERENCIA_BS	\N	204.69	6	\N	\N	2026-01-02 15:23:50.182	2026-01-02 15:23:50.182
+3026	42	7760-050	VENDIDO	2024-09-30 03:00:00	IMPORTACION	310.31	7760	2025-02-28 03:00:00	299	515.00	EFECTIVO_USD	\N	204.69	6	\N	\N	2026-01-02 15:23:50.183	2026-01-02 15:23:50.183
+3027	42	7901-001	VENDIDO	2024-09-30 03:00:00	IMPORTACION	310.31	7901	2025-03-14 03:00:00	354	515.00	EFECTIVO_USD	\N	204.69	6	\N	\N	2026-01-02 15:23:50.185	2026-01-02 15:23:50.185
+3028	42	7901-002	VENDIDO	2024-09-30 03:00:00	IMPORTACION	310.31	7901	2025-03-14 03:00:00	354	515.00	EFECTIVO_USD	\N	204.69	6	\N	\N	2026-01-02 15:23:50.187	2026-01-02 15:23:50.187
+3029	42	7901-003	VENDIDO	2024-09-30 03:00:00	IMPORTACION	310.31	7901	2025-03-21 03:00:00	289	510.00	ZELLE	\N	199.69	6	\N	\N	2026-01-02 15:23:50.189	2026-01-02 15:23:50.189
+3030	42	7901-004	VENDIDO	2024-09-30 03:00:00	IMPORTACION	310.31	7901	2025-03-21 03:00:00	289	510.00	ZELLE	\N	199.69	6	\N	\N	2026-01-02 15:23:50.19	2026-01-02 15:23:50.19
+3031	42	7901-005	VENDIDO	2024-09-30 03:00:00	IMPORTACION	310.31	7901	2025-05-15 04:00:00	273	515.00	EFECTIVO_USD	\N	204.69	6	\N	\N	2026-01-02 15:23:50.192	2026-01-02 15:23:50.192
+3032	42	7901-006	VENDIDO	2024-09-30 03:00:00	IMPORTACION	310.31	7901	2025-05-28 04:00:00	259	515.00	EFECTIVO_USD	\N	204.69	6	\N	\N	2026-01-02 15:23:50.194	2026-01-02 15:23:50.194
+3033	42	7901-007	VENDIDO	2024-09-30 03:00:00	IMPORTACION	310.31	7901	2025-07-08 04:00:00	273	515.00	EFECTIVO_USD	\N	204.69	6	\N	\N	2026-01-02 15:23:50.195	2026-01-02 15:23:50.195
+3034	42	7901-008	VENDIDO	2024-09-30 03:00:00	IMPORTACION	310.31	7901	2025-07-22 04:00:00	324	515.00	EFECTIVO_USD	\N	204.69	6	\N	\N	2026-01-02 15:23:50.197	2026-01-02 15:23:50.197
+3035	42	7901-040	VENDIDO	2025-05-21 04:00:00	IMPORTACION	310.31	7901	2025-08-05 04:00:00	299	515.00	EFECTIVO_USD	\N	204.69	6	\N	\N	2026-01-02 15:23:50.198	2026-01-02 15:23:50.198
+3036	42	7901-041	VENDIDO	2025-05-21 04:00:00	IMPORTACION	310.31	7901	2025-08-07 04:00:00	299	515.00	EFECTIVO_USD	\N	204.69	6	\N	\N	2026-01-02 15:23:50.2	2026-01-02 15:23:50.2
+3037	42	7901-042	VENDIDO	2025-05-21 04:00:00	IMPORTACION	310.31	7901	2025-08-15 04:00:00	259	515.00	EFECTIVO_USD	\N	204.69	6	\N	\N	2026-01-02 15:23:50.201	2026-01-02 15:23:50.201
+3038	42	7901-043	VENDIDO	2025-05-21 04:00:00	IMPORTACION	310.31	7901	2025-09-26 03:00:00	289	515.00	EFECTIVO_USD	\N	204.69	6	\N	\N	2026-01-02 15:23:50.202	2026-01-02 15:23:50.202
+3098	41	8110-054	DISPONIBLE	2025-05-21 04:00:00	IMPORTACION	342.67	8110	\N	\N	\N	\N	\N	0.00	6	\N	\N	2026-01-02 15:23:50.318	2026-01-02 15:23:50.318
+3039	42	7901-044	VENDIDO	2025-05-21 04:00:00	IMPORTACION	310.31	7901	2025-11-26 03:00:00	299	520.00	EFECTIVO_USD	\N	209.69	6	\N	\N	2026-01-02 15:23:50.204	2026-01-02 15:23:50.204
+3040	42	7901-045	VENDIDO	2025-05-21 04:00:00	IMPORTACION	310.31	7901	2025-12-02 03:00:00	321	520.00	EFECTIVO_USD	\N	209.69	6	\N	\N	2026-01-02 15:23:50.205	2026-01-02 15:23:50.205
+3041	42	7901-046	VENDIDO	2025-05-21 04:00:00	IMPORTACION	310.31	7901	2025-11-24 03:00:00	321	520.00	EFECTIVO_USD	\N	209.69	6	\N	\N	2026-01-02 15:23:50.207	2026-01-02 15:23:50.207
+3042	42	7901-047	VENDIDO	2025-05-21 04:00:00	IMPORTACION	310.31	7901	2025-12-19 03:00:00	321	505.00	EFECTIVO_USD	\N	194.69	6	\N	\N	2026-01-02 15:23:50.211	2026-01-02 15:23:50.211
+3043	42	7901-048	VENDIDO	2025-05-21 04:00:00	IMPORTACION	310.31	7901	2025-12-19 03:00:00	321	505.00	EFECTIVO_USD	\N	194.69	6	\N	\N	2026-01-02 15:23:50.215	2026-01-02 15:23:50.215
+3044	42	7901-049	DISPONIBLE	2025-05-21 04:00:00	IMPORTACION	310.31	7901	\N	\N	\N	\N	\N	0.00	6	\N	\N	2026-01-02 15:23:50.218	2026-01-02 15:23:50.218
+3045	41	7267-0053	VENDIDO	2023-03-07 03:00:00	IMPORTACION	342.67	7267	2023-03-15 03:00:00	193	500.00	MIXTO	\N	157.33	6	\N	\N	2026-01-02 15:23:50.219	2026-01-02 15:23:50.219
+3046	41	7267-0054	VENDIDO	2023-03-07 03:00:00	IMPORTACION	342.67	7267	2023-03-21 03:00:00	190	510.00	TRANSFERENCIA_BS	\N	167.33	6	\N	\N	2026-01-02 15:23:50.221	2026-01-02 15:23:50.221
+3047	41	7267-0055	VENDIDO	2023-03-07 03:00:00	IMPORTACION	342.67	7267	2023-04-24 04:00:00	186	500.00	EFECTIVO_USD	\N	157.33	6	\N	\N	2026-01-02 15:23:50.223	2026-01-02 15:23:50.223
+3048	41	7267-0056	VENDIDO	2023-03-07 03:00:00	IMPORTACION	342.67	7267	2023-04-27 04:00:00	208	460.00	EFECTIVO_USD	\N	117.33	6	\N	\N	2026-01-02 15:23:50.224	2026-01-02 15:23:50.224
+3049	41	7267-0057	VENDIDO	2023-03-07 03:00:00	IMPORTACION	342.67	7267	2023-05-03 04:00:00	241	490.00	EFECTIVO_USD	\N	147.33	6	\N	\N	2026-01-02 15:23:50.226	2026-01-02 15:23:50.226
+3050	41	7267-0058	VENDIDO	2023-03-07 03:00:00	IMPORTACION	342.67	7267	2023-05-17 04:00:00	193	500.00	EFECTIVO_USD	\N	157.33	6	\N	\N	2026-01-02 15:23:50.227	2026-01-02 15:23:50.227
+3051	41	7267-0059	VENDIDO	2023-03-07 03:00:00	IMPORTACION	342.67	7267	2023-05-30 04:00:00	191	510.00	EFECTIVO_USD	\N	167.33	6	\N	\N	2026-01-02 15:23:50.229	2026-01-02 15:23:50.229
+3052	41	7267-0060	VENDIDO	2023-03-07 03:00:00	IMPORTACION	342.67	7267	2023-08-17 04:00:00	191	510.00	TRANSFERENCIA_BS	\N	167.33	6	\N	\N	2026-01-02 15:23:50.23	2026-01-02 15:23:50.23
+3053	41	7267-0061	VENDIDO	2023-03-07 03:00:00	IMPORTACION	342.67	7267	2023-08-22 04:00:00	355	510.00	EFECTIVO_USD	\N	167.33	6	\N	\N	2026-01-02 15:23:50.232	2026-01-02 15:23:50.232
+3054	41	7267-0062	VENDIDO	2023-03-07 03:00:00	IMPORTACION	342.67	7267	2023-10-31 03:00:00	292	510.00	EFECTIVO_USD	\N	167.33	6	\N	\N	2026-01-02 15:23:50.233	2026-01-02 15:23:50.233
+3055	41	7267-0063	VENDIDO	2023-03-07 03:00:00	IMPORTACION	342.67	7267	2023-11-07 03:00:00	257	510.00	EFECTIVO_USD	\N	167.33	6	\N	\N	2026-01-02 15:23:50.236	2026-01-02 15:23:50.236
+3056	41	7267-0064	VENDIDO	2023-03-07 03:00:00	IMPORTACION	342.67	7267	2023-11-13 03:00:00	292	500.00	EFECTIVO_USD	\N	157.33	6	\N	\N	2026-01-02 15:23:50.239	2026-01-02 15:23:50.239
+3057	41	7267-0065	VENDIDO	2023-03-07 03:00:00	IMPORTACION	342.67	7267	2023-11-13 03:00:00	292	500.00	EFECTIVO_USD	\N	157.33	6	\N	\N	2026-01-02 15:23:50.242	2026-01-02 15:23:50.242
+3058	41	7267-0066	VENDIDO	2023-03-07 03:00:00	IMPORTACION	342.67	7267	2023-12-06 03:00:00	191	520.00	EFECTIVO_USD	\N	177.33	6	\N	\N	2026-01-02 15:23:50.245	2026-01-02 15:23:50.245
+3059	41	7267-0067	VENDIDO	2023-03-07 03:00:00	IMPORTACION	342.67	7267	2023-12-15 03:00:00	292	510.00	EFECTIVO_USD	\N	167.33	6	\N	\N	2026-01-02 15:23:50.246	2026-01-02 15:23:50.246
+3060	41	7338-029	VENDIDO	2023-06-09 04:00:00	IMPORTACION	342.67	7338	2024-01-24 03:00:00	293	530.00	EFECTIVO_USD	\N	187.33	6	\N	\N	2026-01-02 15:23:50.248	2026-01-02 15:23:50.248
+3061	41	7338-043	VENDIDO	2023-06-09 04:00:00	IMPORTACION	342.67	7338	2023-12-11 03:00:00	208	490.00	EFECTIVO_USD	\N	147.33	6	\N	\N	2026-01-02 15:23:50.252	2026-01-02 15:23:50.252
+3062	41	7338-044	VENDIDO	2023-06-09 04:00:00	IMPORTACION	342.67	7338	2023-12-11 03:00:00	208	490.00	EFECTIVO_USD	\N	147.33	6	\N	\N	2026-01-02 15:23:50.253	2026-01-02 15:23:50.253
+3063	41	7338-045	VENDIDO	2023-06-09 04:00:00	IMPORTACION	342.67	7338	2024-04-22 04:00:00	292	515.00	EFECTIVO_USD	\N	172.33	6	\N	\N	2026-01-02 15:23:50.255	2026-01-02 15:23:50.255
+3064	41	7338-077	VENDIDO	2023-06-09 04:00:00	IMPORTACION	342.67	7338	2024-06-03 04:00:00	208	510.00	EFECTIVO_USD	\N	167.33	6	\N	\N	2026-01-02 15:23:50.256	2026-01-02 15:23:50.256
+3065	41	7690-001	VENDIDO	2024-02-15 03:00:00	IMPORTACION	342.67	7690	2024-06-03 04:00:00	208	510.00	EFECTIVO_USD	\N	167.33	6	\N	\N	2026-01-02 15:23:50.258	2026-01-02 15:23:50.258
+3066	41	7690-002	VENDIDO	2024-02-15 03:00:00	IMPORTACION	342.67	7690	2024-05-28 04:00:00	292	515.00	ZELLE	\N	172.33	6	\N	\N	2026-01-02 15:23:50.26	2026-01-02 15:23:50.26
+3067	41	7690-003	VENDIDO	2024-02-15 03:00:00	IMPORTACION	342.67	7690	2024-06-06 04:00:00	261	530.00	EFECTIVO_USD	\N	187.33	6	\N	\N	2026-01-02 15:23:50.266	2026-01-02 15:23:50.266
+3068	41	7690-004	VENDIDO	2024-02-15 03:00:00	IMPORTACION	342.67	7690	2024-06-06 04:00:00	261	530.00	EFECTIVO_USD	\N	187.33	6	\N	\N	2026-01-02 15:23:50.268	2026-01-02 15:23:50.268
+3069	41	7690-005	VENDIDO	2024-02-15 03:00:00	IMPORTACION	342.67	7690	2024-07-09 04:00:00	212	520.00	MIXTO	\N	177.33	6	\N	\N	2026-01-02 15:23:50.269	2026-01-02 15:23:50.269
+3070	41	7690-006	VENDIDO	2024-02-15 03:00:00	IMPORTACION	342.67	7690	2024-08-16 04:00:00	208	520.00	ZELLE	\N	177.33	6	\N	\N	2026-01-02 15:23:50.271	2026-01-02 15:23:50.271
+3071	41	7690-007	VENDIDO	2024-02-15 03:00:00	IMPORTACION	342.67	7690	2024-09-04 04:00:00	193	520.00	EFECTIVO_USD	\N	177.33	6	\N	\N	2026-01-02 15:23:50.272	2026-01-02 15:23:50.272
+3072	41	7690-008	VENDIDO	2024-02-15 03:00:00	IMPORTACION	342.67	7690	2024-08-12 04:00:00	312	520.00	EFECTIVO_USD	\N	177.33	6	\N	\N	2026-01-02 15:23:50.274	2026-01-02 15:23:50.274
+3073	41	7690-009	VENDIDO	2024-02-15 03:00:00	IMPORTACION	342.67	7690	2024-09-09 03:00:00	293	540.00	BINANCE	\N	197.33	6	\N	\N	2026-01-02 15:23:50.275	2026-01-02 15:23:50.275
+3074	41	7690-010	VENDIDO	2024-02-15 03:00:00	IMPORTACION	342.67	7690	2024-09-12 03:00:00	292	520.00	ZELLE	\N	177.33	6	\N	\N	2026-01-02 15:23:50.277	2026-01-02 15:23:50.277
+3075	41	7690-011	VENDIDO	2024-02-15 03:00:00	IMPORTACION	342.67	7690	2024-12-12 03:00:00	312	520.00	EFECTIVO_USD	\N	177.33	6	\N	\N	2026-01-02 15:23:50.278	2026-01-02 15:23:50.278
+3076	41	7690-012	VENDIDO	2024-02-15 03:00:00	IMPORTACION	342.67	7690	2024-11-12 03:00:00	318	540.00	EFECTIVO_USD	\N	197.33	6	\N	\N	2026-01-02 15:23:50.28	2026-01-02 15:23:50.28
+3077	41	7690-013	VENDIDO	2024-02-15 03:00:00	IMPORTACION	342.67	7690	2024-12-12 03:00:00	312	520.00	EFECTIVO_USD	\N	177.33	6	\N	\N	2026-01-02 15:23:50.281	2026-01-02 15:23:50.281
+3078	41	7690-014	VENDIDO	2024-02-15 03:00:00	IMPORTACION	342.67	7690	2025-02-25 03:00:00	212	545.00	\N	\N	202.33	6	\N	\N	2026-01-02 15:23:50.283	2026-01-02 15:23:50.283
+3079	41	7690-015	VENDIDO	2024-02-15 03:00:00	IMPORTACION	342.67	7690	2025-02-25 03:00:00	212	545.00	\N	\N	202.33	6	\N	\N	2026-01-02 15:23:50.284	2026-01-02 15:23:50.284
+3080	41	7816-062	VENDIDO	2024-09-30 03:00:00	IMPORTACION	342.67	7816	2025-02-20 03:00:00	289	540.00	TRANSFERENCIA_USD	\N	197.33	6	\N	\N	2026-01-02 15:23:50.286	2026-01-02 15:23:50.286
+3081	41	7816-063	VENDIDO	2024-09-30 03:00:00	IMPORTACION	342.67	7816	2025-02-20 03:00:00	289	540.00	TRANSFERENCIA_USD	\N	197.33	6	\N	\N	2026-01-02 15:23:50.29	2026-01-02 15:23:50.29
+3082	41	7816-064	VENDIDO	2024-09-30 03:00:00	IMPORTACION	342.67	7816	2025-02-26 03:00:00	312	530.00	EFECTIVO_USD	\N	187.33	6	\N	\N	2026-01-02 15:23:50.292	2026-01-02 15:23:50.292
+3083	41	7816-065	VENDIDO	2024-09-30 03:00:00	IMPORTACION	342.67	7816	2025-02-27 03:00:00	296	545.00	ZELLE	\N	202.33	6	\N	\N	2026-01-02 15:23:50.295	2026-01-02 15:23:50.295
+3084	41	7816-066	VENDIDO	2024-09-30 03:00:00	IMPORTACION	342.67	7816	2025-02-27 03:00:00	296	545.00	ZELLE	\N	202.33	6	\N	\N	2026-01-02 15:23:50.297	2026-01-02 15:23:50.297
+3085	41	7816-067	VENDIDO	2024-09-30 03:00:00	IMPORTACION	342.67	7816	2025-04-01 03:00:00	217	545.00	ZELLE	\N	202.33	6	\N	\N	2026-01-02 15:23:50.298	2026-01-02 15:23:50.298
+3086	41	7816-068	VENDIDO	2024-09-30 03:00:00	IMPORTACION	342.67	7816	2025-04-01 03:00:00	217	545.00	ZELLE	\N	202.33	6	\N	\N	2026-01-02 15:23:50.3	2026-01-02 15:23:50.3
+3087	41	7816-069	VENDIDO	2024-09-30 03:00:00	IMPORTACION	342.67	7816	2025-04-14 04:00:00	296	550.00	ZELLE	\N	207.33	6	\N	\N	2026-01-02 15:23:50.301	2026-01-02 15:23:50.301
+3088	41	7816-070	VENDIDO	2024-09-30 03:00:00	IMPORTACION	342.67	7816	2025-08-01 04:00:00	191	545.00	EFECTIVO_USD	\N	202.33	6	\N	\N	2026-01-02 15:23:50.303	2026-01-02 15:23:50.303
+3089	41	7816-071	VENDIDO	2024-09-30 03:00:00	IMPORTACION	342.67	7816	2025-08-05 04:00:00	220	525.00	EFECTIVO_USD	\N	182.33	6	\N	\N	2026-01-02 15:23:50.304	2026-01-02 15:23:50.304
+3090	41	8110-046	VENDIDO	2025-05-21 04:00:00	IMPORTACION	342.67	8110	2025-09-23 03:00:00	221	550.00	EFECTIVO_USD	\N	207.33	6	\N	\N	2026-01-02 15:23:50.306	2026-01-02 15:23:50.306
+3091	41	8110-047	VENDIDO	2025-05-21 04:00:00	IMPORTACION	342.67	8110	2025-09-25 03:00:00	356	550.00	EFECTIVO_USD	\N	207.33	6	\N	\N	2026-01-02 15:23:50.308	2026-01-02 15:23:50.308
+3092	41	8110-048	VENDIDO	2025-05-21 04:00:00	IMPORTACION	342.67	8110	2025-09-25 03:00:00	356	550.00	EFECTIVO_USD	\N	207.33	6	\N	\N	2026-01-02 15:23:50.309	2026-01-02 15:23:50.309
+3093	41	8110-049	VENDIDO	2025-05-21 04:00:00	IMPORTACION	342.67	8110	2025-10-10 03:00:00	357	550.00	EFECTIVO_USD	\N	207.33	6	\N	\N	2026-01-02 15:23:50.311	2026-01-02 15:23:50.311
+3094	41	8110-050	VENDIDO	2025-05-21 04:00:00	IMPORTACION	342.67	8110	2025-11-12 03:00:00	358	550.00	EFECTIVO_USD	\N	207.33	6	\N	\N	2026-01-02 15:23:50.312	2026-01-02 15:23:50.312
+3095	41	8110-051	DISPONIBLE	2025-05-21 04:00:00	IMPORTACION	342.67	8110	\N	\N	\N	\N	\N	0.00	6	\N	\N	2026-01-02 15:23:50.314	2026-01-02 15:23:50.314
+3096	41	8110-052	DISPONIBLE	2025-05-21 04:00:00	IMPORTACION	342.67	8110	\N	\N	\N	\N	\N	0.00	6	\N	\N	2026-01-02 15:23:50.315	2026-01-02 15:23:50.315
+3097	41	8110-053	DISPONIBLE	2025-05-21 04:00:00	IMPORTACION	342.67	8110	\N	\N	\N	\N	\N	0.00	6	\N	\N	2026-01-02 15:23:50.317	2026-01-02 15:23:50.317
+3099	41	8110-056	DISPONIBLE	2025-05-21 04:00:00	IMPORTACION	342.67	8110	\N	\N	\N	\N	\N	0.00	6	\N	\N	2026-01-02 15:23:50.319	2026-01-02 15:23:50.319
+3100	45	7292-001	VENDIDO	2023-03-07 03:00:00	IMPORTACION	22.84	7292	2023-04-05 04:00:00	238	45.00	EFECTIVO_USD	\N	22.16	6	\N	\N	2026-01-02 15:23:50.321	2026-01-02 15:23:50.321
+3101	45	7292-002	VENDIDO	2023-03-07 03:00:00	IMPORTACION	22.84	7292	2023-04-05 04:00:00	238	45.00	EFECTIVO_USD	\N	22.16	6	\N	\N	2026-01-02 15:23:50.322	2026-01-02 15:23:50.322
+3102	45	7292-003	VENDIDO	2023-03-07 03:00:00	IMPORTACION	22.84	7292	2023-05-03 04:00:00	241	45.00	EFECTIVO_USD	\N	22.16	6	\N	\N	2026-01-02 15:23:50.324	2026-01-02 15:23:50.324
+3103	45	7292-004	VENDIDO	2023-03-07 03:00:00	IMPORTACION	22.84	7292	2023-05-03 04:00:00	241	45.00	EFECTIVO_USD	\N	22.16	6	\N	\N	2026-01-02 15:23:50.326	2026-01-02 15:23:50.326
+3104	45	7292-005	VENDIDO	2023-03-07 03:00:00	IMPORTACION	22.84	7292	2023-05-25 04:00:00	257	45.00	EFECTIVO_USD	\N	22.16	6	\N	\N	2026-01-02 15:23:50.327	2026-01-02 15:23:50.327
+3105	45	7292-006	VENDIDO	2023-03-07 03:00:00	IMPORTACION	22.84	7292	2023-06-14 04:00:00	189	45.00	EFECTIVO_USD	\N	22.16	6	\N	\N	2026-01-02 15:23:50.329	2026-01-02 15:23:50.329
+3106	45	7292-007	VENDIDO	2023-03-07 03:00:00	IMPORTACION	22.84	7292	2023-06-14 04:00:00	189	45.00	EFECTIVO_USD	\N	22.16	6	\N	\N	2026-01-02 15:23:50.331	2026-01-02 15:23:50.331
+3107	45	7292-008	VENDIDO	2023-03-07 03:00:00	IMPORTACION	22.84	7292	2023-06-14 04:00:00	186	45.00	TRANSFERENCIA_BS	\N	22.16	6	\N	\N	2026-01-02 15:23:50.332	2026-01-02 15:23:50.332
+3108	45	7292-009	VENDIDO	2023-03-07 03:00:00	IMPORTACION	22.84	7292	2023-06-14 04:00:00	186	45.00	TRANSFERENCIA_BS	\N	22.16	6	\N	\N	2026-01-02 15:23:50.334	2026-01-02 15:23:50.334
+3109	45	7292-010	VENDIDO	2023-03-07 03:00:00	IMPORTACION	22.84	7292	2023-08-10 04:00:00	237	45.00	EFECTIVO_USD	\N	22.16	6	\N	\N	2026-01-02 15:23:50.335	2026-01-02 15:23:50.335
+3110	45	7292-011	VENDIDO	2023-03-07 03:00:00	IMPORTACION	22.84	7292	2023-09-06 03:00:00	189	45.00	EFECTIVO_USD	\N	22.16	6	\N	\N	2026-01-02 15:23:50.337	2026-01-02 15:23:50.337
+3111	45	7292-012	VENDIDO	2023-03-07 03:00:00	IMPORTACION	22.84	7292	2023-09-06 03:00:00	189	45.00	EFECTIVO_USD	\N	22.16	6	\N	\N	2026-01-02 15:23:50.338	2026-01-02 15:23:50.338
+3112	45	7292-013	VENDIDO	2023-03-07 03:00:00	IMPORTACION	22.84	7292	2023-11-03 03:00:00	223	45.00	EFECTIVO_USD	\N	22.16	6	\N	\N	2026-01-02 15:23:50.34	2026-01-02 15:23:50.34
+3113	45	7292-014	VENDIDO	2023-03-07 03:00:00	IMPORTACION	22.84	7292	2023-11-10 03:00:00	345	45.00	EFECTIVO_USD	\N	22.16	6	\N	\N	2026-01-02 15:23:50.342	2026-01-02 15:23:50.342
+3114	45	7292-015	VENDIDO	2023-03-07 03:00:00	IMPORTACION	22.84	7292	2023-11-07 03:00:00	195	45.00	EFECTIVO_USD	\N	22.16	6	\N	\N	2026-01-02 15:23:50.343	2026-01-02 15:23:50.343
+3115	45	7292-016	VENDIDO	2023-03-07 03:00:00	IMPORTACION	22.84	7292	2024-03-01 03:00:00	315	40.00	EFECTIVO_USD	\N	17.16	6	\N	\N	2026-01-02 15:23:50.345	2026-01-02 15:23:50.345
+3116	45	7292-017	VENDIDO	2023-03-07 03:00:00	IMPORTACION	22.84	7292	2024-02-20 03:00:00	314	45.00	EFECTIVO_USD	\N	22.16	6	\N	\N	2026-01-02 15:23:50.347	2026-01-02 15:23:50.347
+3117	45	7292-018	VENDIDO	2023-03-07 03:00:00	IMPORTACION	22.84	7292	2024-03-01 03:00:00	315	40.00	EFECTIVO_USD	\N	17.16	6	\N	\N	2026-01-02 15:23:50.349	2026-01-02 15:23:50.349
+3118	45	7292-019	VENDIDO	2023-03-07 03:00:00	IMPORTACION	22.84	7292	2024-03-01 03:00:00	315	40.00	EFECTIVO_USD	\N	17.16	6	\N	\N	2026-01-02 15:23:50.351	2026-01-02 15:23:50.351
+3119	45	7292-020	VENDIDO	2023-03-07 03:00:00	IMPORTACION	22.84	7292	2024-03-01 03:00:00	315	40.00	EFECTIVO_USD	\N	17.16	6	\N	\N	2026-01-02 15:23:50.353	2026-01-02 15:23:50.353
+3120	45	7292-021	VENDIDO	2023-03-07 03:00:00	IMPORTACION	22.84	7292	2024-03-01 03:00:00	315	40.00	EFECTIVO_USD	\N	17.16	6	\N	\N	2026-01-02 15:23:50.354	2026-01-02 15:23:50.354
+3121	45	7292-022	VENDIDO	2023-03-07 03:00:00	IMPORTACION	22.84	7292	2024-03-01 03:00:00	315	40.00	EFECTIVO_USD	\N	17.16	6	\N	\N	2026-01-02 15:23:50.356	2026-01-02 15:23:50.356
+3122	45	7292-023	VENDIDO	2023-03-07 03:00:00	IMPORTACION	22.84	7292	2024-03-14 03:00:00	299	45.00	EFECTIVO_USD	\N	22.16	6	\N	\N	2026-01-02 15:23:50.357	2026-01-02 15:23:50.357
+3123	45	7292-024	VENDIDO	2023-03-07 03:00:00	IMPORTACION	22.84	7292	2024-03-14 03:00:00	299	45.00	EFECTIVO_USD	\N	22.16	6	\N	\N	2026-01-02 15:23:50.358	2026-01-02 15:23:50.358
+3124	45	7292-025	VENDIDO	2023-03-07 03:00:00	IMPORTACION	22.84	7292	2024-03-19 03:00:00	193	45.00	EFECTIVO_USD	\N	22.16	6	\N	\N	2026-01-02 15:23:50.36	2026-01-02 15:23:50.36
+3125	45	7292-026	VENDIDO	2023-03-07 03:00:00	IMPORTACION	22.84	7292	2024-03-19 03:00:00	193	45.00	EFECTIVO_USD	\N	22.16	6	\N	\N	2026-01-02 15:23:50.361	2026-01-02 15:23:50.361
+3126	45	7292-027	VENDIDO	2023-03-07 03:00:00	IMPORTACION	22.84	7292	2024-04-11 04:00:00	359	45.00	EFECTIVO_USD	\N	22.16	6	\N	\N	2026-01-02 15:23:50.363	2026-01-02 15:23:50.363
+3127	45	7292-028	VENDIDO	2023-03-07 03:00:00	IMPORTACION	22.84	7292	2024-08-12 04:00:00	212	42.00	EFECTIVO_USD	\N	19.16	6	\N	\N	2026-01-02 15:23:50.365	2026-01-02 15:23:50.365
+3128	45	7292-029	VENDIDO	2023-03-07 03:00:00	IMPORTACION	22.84	7292	2024-08-12 04:00:00	212	42.00	EFECTIVO_USD	\N	19.16	6	\N	\N	2026-01-02 15:23:50.366	2026-01-02 15:23:50.366
+3129	45	7292-030	VENDIDO	2023-03-07 03:00:00	IMPORTACION	22.84	7292	2024-08-12 04:00:00	212	42.00	EFECTIVO_USD	\N	19.16	6	\N	\N	2026-01-02 15:23:50.367	2026-01-02 15:23:50.367
+3130	45	7292-031	VENDIDO	2023-03-07 03:00:00	IMPORTACION	22.84	7292	2024-06-27 04:00:00	197	45.00	EFECTIVO_USD	\N	22.16	6	\N	\N	2026-01-02 15:23:50.368	2026-01-02 15:23:50.368
+3131	45	7292-032	VENDIDO	2023-03-07 03:00:00	IMPORTACION	22.84	7292	2024-06-27 04:00:00	197	45.00	EFECTIVO_USD	\N	22.16	6	\N	\N	2026-01-02 15:23:50.37	2026-01-02 15:23:50.37
+3132	45	7292-033	VENDIDO	2023-03-07 03:00:00	IMPORTACION	22.84	7292	2024-08-12 04:00:00	212	42.00	EFECTIVO_USD	\N	19.16	6	\N	\N	2026-01-02 15:23:50.371	2026-01-02 15:23:50.371
+3133	45	7292-034	VENDIDO	2023-03-07 03:00:00	IMPORTACION	22.84	7292	2024-08-12 04:00:00	212	42.00	MIXTO	\N	19.16	6	\N	\N	2026-01-02 15:23:50.373	2026-01-02 15:23:50.373
+3134	45	7292-035	VENDIDO	2023-03-07 03:00:00	IMPORTACION	22.84	7292	2024-10-28 03:00:00	327	45.00	EFECTIVO_USD	\N	22.16	6	\N	\N	2026-01-02 15:23:50.375	2026-01-02 15:23:50.375
+3135	45	7292-036	VENDIDO	2023-03-07 03:00:00	IMPORTACION	22.84	7292	2024-12-05 03:00:00	360	45.00	EFECTIVO_USD	\N	22.16	6	\N	\N	2026-01-02 15:23:50.376	2026-01-02 15:23:50.376
+3136	45	7292-037	VENDIDO	2023-03-07 03:00:00	IMPORTACION	22.84	7292	2024-12-05 03:00:00	360	45.00	EFECTIVO_USD	\N	22.16	6	\N	\N	2026-01-02 15:23:50.378	2026-01-02 15:23:50.378
+3137	45	7292-038	VENDIDO	2023-03-07 03:00:00	IMPORTACION	22.84	7292	2025-03-07 03:00:00	212	45.00	EFECTIVO_USD	\N	22.16	6	\N	\N	2026-01-02 15:23:50.379	2026-01-02 15:23:50.379
+3138	45	7292-039	VENDIDO	2023-03-07 03:00:00	IMPORTACION	22.84	7292	2025-05-09 04:00:00	193	45.00	EFECTIVO_USD	\N	22.16	6	\N	\N	2026-01-02 15:23:50.381	2026-01-02 15:23:50.381
+3139	45	7292-040	VENDIDO	2023-03-07 03:00:00	IMPORTACION	22.84	7292	2025-07-09 04:00:00	226	45.00	EFECTIVO_USD	\N	22.16	6	\N	\N	2026-01-02 15:23:50.382	2026-01-02 15:23:50.382
+3140	45	7812-041	VENDIDO	2025-05-21 04:00:00	IMPORTACION	22.84	7812	2025-07-09 04:00:00	226	45.00	EFECTIVO_USD	\N	22.16	6	\N	\N	2026-01-02 15:23:50.383	2026-01-02 15:23:50.383
+3141	45	7812-042	VENDIDO	2025-05-21 04:00:00	IMPORTACION	22.84	7812	2025-07-29 04:00:00	221	45.00	EFECTIVO_USD	\N	22.16	6	\N	\N	2026-01-02 15:23:50.384	2026-01-02 15:23:50.384
+3142	45	7812-043	VENDIDO	2025-05-21 04:00:00	IMPORTACION	22.84	7812	2025-07-31 04:00:00	269	45.00	EFECTIVO_USD	\N	22.16	6	\N	\N	2026-01-02 15:23:50.386	2026-01-02 15:23:50.386
+3143	45	7812-044	VENDIDO	2025-05-21 04:00:00	IMPORTACION	22.84	7812	2025-08-19 04:00:00	221	45.00	EFECTIVO_USD	\N	22.16	6	\N	\N	2026-01-02 15:23:50.388	2026-01-02 15:23:50.388
+3144	45	7812-045	VENDIDO	2025-05-21 04:00:00	IMPORTACION	22.84	7812	2025-11-10 03:00:00	297	40.00	EFECTIVO_USD	\N	17.16	6	\N	\N	2026-01-02 15:23:50.389	2026-01-02 15:23:50.389
+3145	45	7812-046	VENDIDO	2025-05-21 04:00:00	IMPORTACION	22.84	7812	2025-11-10 03:00:00	297	40.00	EFECTIVO_USD	\N	17.16	6	\N	\N	2026-01-02 15:23:50.39	2026-01-02 15:23:50.39
+3146	45	7812-047	VENDIDO	2025-05-21 04:00:00	IMPORTACION	22.84	7812	2025-11-10 03:00:00	297	40.00	EFECTIVO_USD	\N	17.16	6	\N	\N	2026-01-02 15:23:50.392	2026-01-02 15:23:50.392
+3147	45	7812-048	VENDIDO	2025-05-21 04:00:00	IMPORTACION	22.84	7812	2025-11-10 03:00:00	297	40.00	EFECTIVO_USD	\N	17.16	6	\N	\N	2026-01-02 15:23:50.394	2026-01-02 15:23:50.394
+3148	45	7812-049	VENDIDO	2025-05-21 04:00:00	IMPORTACION	22.84	7812	2025-11-10 03:00:00	297	40.00	EFECTIVO_USD	\N	17.16	6	\N	\N	2026-01-02 15:23:50.395	2026-01-02 15:23:50.395
+3149	45	7812-050	VENDIDO	2025-05-21 04:00:00	IMPORTACION	22.84	7812	2025-11-10 03:00:00	297	40.00	EFECTIVO_USD	\N	17.16	6	\N	\N	2026-01-02 15:23:50.397	2026-01-02 15:23:50.397
+3150	45	7812-051	VENDIDO	2025-05-21 04:00:00	IMPORTACION	22.84	7812	2025-11-10 03:00:00	297	40.00	EFECTIVO_USD	\N	17.16	6	\N	\N	2026-01-02 15:23:50.398	2026-01-02 15:23:50.398
+3151	45	7812-052	VENDIDO	2025-05-21 04:00:00	IMPORTACION	22.84	7812	2025-11-10 03:00:00	297	40.00	EFECTIVO_USD	\N	17.16	6	\N	\N	2026-01-02 15:23:50.399	2026-01-02 15:23:50.399
+3152	45	7812-053	VENDIDO	2025-05-21 04:00:00	IMPORTACION	22.84	7812	2025-11-11 03:00:00	297	40.00	EFECTIVO_USD	\N	17.16	6	\N	\N	2026-01-02 15:23:50.401	2026-01-02 15:23:50.401
+3153	45	7812-054	VENDIDO	2025-05-21 04:00:00	IMPORTACION	22.84	7812	2025-11-11 03:00:00	297	40.00	EFECTIVO_USD	\N	17.16	6	\N	\N	2026-01-02 15:23:50.402	2026-01-02 15:23:50.402
+3154	45	7812-055	VENDIDO	2025-05-21 04:00:00	IMPORTACION	22.84	7812	2025-11-11 03:00:00	297	40.00	EFECTIVO_USD	\N	17.16	6	\N	\N	2026-01-02 15:23:50.404	2026-01-02 15:23:50.404
+3155	45	7812-056	VENDIDO	2025-05-21 04:00:00	IMPORTACION	22.84	7812	2025-11-11 03:00:00	297	40.00	EFECTIVO_USD	\N	17.16	6	\N	\N	2026-01-02 15:23:50.405	2026-01-02 15:23:50.405
+3156	45	7812-057	VENDIDO	2025-05-21 04:00:00	IMPORTACION	22.84	7812	2025-11-11 03:00:00	297	40.00	EFECTIVO_USD	\N	17.16	6	\N	\N	2026-01-02 15:23:50.407	2026-01-02 15:23:50.407
+3157	45	7812-058	VENDIDO	2025-05-21 04:00:00	IMPORTACION	22.84	7812	2025-11-11 03:00:00	297	40.00	EFECTIVO_USD	\N	17.16	6	\N	\N	2026-01-02 15:23:50.408	2026-01-02 15:23:50.408
+3158	45	7812-059	VENDIDO	2025-05-21 04:00:00	IMPORTACION	22.84	7812	2025-11-11 03:00:00	361	45.00	EFECTIVO_USD	\N	22.16	6	\N	\N	2026-01-02 15:23:50.409	2026-01-02 15:23:50.409
+3159	45	7812-060	VENDIDO	2025-05-21 04:00:00	IMPORTACION	22.84	7812	2025-11-11 03:00:00	361	45.00	EFECTIVO_USD	\N	22.16	6	\N	\N	2026-01-02 15:23:50.411	2026-01-02 15:23:50.411
+3160	46	7261-1	VENDIDO	2023-03-07 03:00:00	IMPORTACION	59.02	7261	2023-03-24 03:00:00	261	110.00	EFECTIVO_USD	\N	50.98	6	\N	\N	2026-01-02 15:23:50.413	2026-01-02 15:23:50.413
+3161	46	7261-2	VENDIDO	2023-03-07 03:00:00	IMPORTACION	59.02	7261	2023-03-29 03:00:00	280	100.00	EFECTIVO_USD	\N	40.98	6	\N	\N	2026-01-02 15:23:50.414	2026-01-02 15:23:50.414
+3162	46	7261-3	VENDIDO	2023-03-07 03:00:00	IMPORTACION	59.02	7261	2023-07-31 04:00:00	362	110.00	EFECTIVO_USD	\N	50.98	6	\N	\N	2026-01-02 15:23:50.415	2026-01-02 15:23:50.415
+3163	46	7261-4	VENDIDO	2023-03-07 03:00:00	IMPORTACION	59.02	7261	2023-08-01 04:00:00	363	110.00	EFECTIVO_USD	\N	50.98	6	\N	\N	2026-01-02 15:23:50.417	2026-01-02 15:23:50.417
+3164	46	7261-5	VENDIDO	2023-03-07 03:00:00	IMPORTACION	59.02	7261	2023-09-26 03:00:00	364	110.00	EFECTIVO_USD	\N	50.98	6	\N	\N	2026-01-02 15:23:50.418	2026-01-02 15:23:50.418
+3165	46	7261-6	VENDIDO	2023-03-07 03:00:00	IMPORTACION	59.02	7261	2023-08-10 04:00:00	237	120.00	EFECTIVO_USD	\N	60.98	6	\N	\N	2026-01-02 15:23:50.42	2026-01-02 15:23:50.42
+3166	46	7261-7	VENDIDO	2023-11-17 03:00:00	IMPORTACION	59.02	7261	2024-01-31 03:00:00	313	120.00	EFECTIVO_USD	\N	60.98	6	\N	\N	2026-01-02 15:23:50.421	2026-01-02 15:23:50.421
+3167	46	7377-001	VENDIDO	2023-11-17 03:00:00	IMPORTACION	59.02	7377	2024-03-25 03:00:00	228	120.00	EFECTIVO_USD	\N	60.98	6	\N	\N	2026-01-02 15:23:50.423	2026-01-02 15:23:50.423
+3168	46	7377-002	VENDIDO	2023-11-17 03:00:00	IMPORTACION	59.02	7377	2024-07-11 04:00:00	245	130.00	ZELLE	\N	70.98	6	\N	\N	2026-01-02 15:23:50.424	2026-01-02 15:23:50.424
+3169	46	7377-003	VENDIDO	2023-11-17 03:00:00	IMPORTACION	59.02	7377	2025-01-21 03:00:00	250	135.00	EFECTIVO_USD	\N	75.98	6	\N	\N	2026-01-02 15:23:50.426	2026-01-02 15:23:50.426
+3170	46	7377-004	VENDIDO	2023-11-17 03:00:00	IMPORTACION	59.02	7377	2024-11-09 03:00:00	350	135.00	EFECTIVO_USD	\N	75.98	6	\N	\N	2026-01-02 15:23:50.428	2026-01-02 15:23:50.428
+3171	46	7377-005	DISPONIBLE	2023-11-17 03:00:00	IMPORTACION	59.02	7377	\N	365	\N	\N	\N	0.00	6	\N	\N	2026-01-02 15:23:50.43	2026-01-02 15:23:50.43
+3172	46	7547-001	VENDIDO	2023-11-17 03:00:00	IMPORTACION	59.02	7547	2025-02-12 03:00:00	307	140.00	EFECTIVO_USD	\N	80.98	6	\N	\N	2026-01-02 15:23:50.431	2026-01-02 15:23:50.431
+3173	46	8026-001	VENDIDO	2025-05-21 04:00:00	IMPORTACION	59.02	8026	2025-02-12 03:00:00	307	140.00	EFECTIVO_USD	\N	80.98	6	\N	\N	2026-01-02 15:23:50.433	2026-01-02 15:23:50.433
+3174	46	8026-002	VENDIDO	2025-05-21 04:00:00	IMPORTACION	59.02	8026	2025-07-01 04:00:00	261	140.00	EFECTIVO_USD	\N	80.98	6	\N	\N	2026-01-02 15:23:50.434	2026-01-02 15:23:50.434
+3175	46	8026-003	VENDIDO	2025-05-21 04:00:00	IMPORTACION	59.02	8026	2025-07-10 04:00:00	221	140.00	EFECTIVO_USD	\N	80.98	6	\N	\N	2026-01-02 15:23:50.435	2026-01-02 15:23:50.435
+3176	46	8026-004	VENDIDO	2025-05-21 04:00:00	IMPORTACION	59.02	8026	2025-07-29 04:00:00	196	140.00	EFECTIVO_USD	\N	80.98	6	\N	\N	2026-01-02 15:23:50.437	2026-01-02 15:23:50.437
+3177	46	8026-005	DISPONIBLE	2025-05-21 04:00:00	IMPORTACION	59.02	8026	\N	\N	\N	\N	\N	0.00	6	\N	\N	2026-01-02 15:23:50.438	2026-01-02 15:23:50.438
+3178	46	8026-006	DISPONIBLE	2025-05-21 04:00:00	IMPORTACION	59.02	8026	\N	\N	\N	\N	\N	0.00	6	\N	\N	2026-01-02 15:23:50.439	2026-01-02 15:23:50.439
+3179	46	8026-007	DISPONIBLE	2025-05-21 04:00:00	IMPORTACION	59.02	8026	\N	\N	\N	\N	\N	0.00	6	\N	\N	2026-01-02 15:23:50.441	2026-01-02 15:23:50.441
+3180	46	8026-008	DISPONIBLE	2025-05-21 04:00:00	IMPORTACION	59.02	8026	\N	\N	\N	\N	\N	0.00	6	\N	\N	2026-01-02 15:23:50.442	2026-01-02 15:23:50.442
+3181	46	8026-009	DISPONIBLE	2025-05-21 04:00:00	IMPORTACION	59.02	8026	\N	\N	\N	\N	\N	0.00	6	\N	\N	2026-01-02 15:23:50.443	2026-01-02 15:23:50.443
+3182	46	8026-010	DISPONIBLE	2025-05-21 04:00:00	IMPORTACION	59.02	8026	\N	\N	\N	\N	\N	0.00	6	\N	\N	2026-01-02 15:23:50.445	2026-01-02 15:23:50.445
+3183	47	7255-110	VENDIDO	2023-03-07 03:00:00	IMPORTACION	133.26	7255	2023-03-16 03:00:00	224	195.00	ZELLE	\N	61.74	6	\N	\N	2026-01-02 15:23:50.454	2026-01-02 15:23:50.454
+3184	47	7255-119	VENDIDO	2023-03-07 03:00:00	IMPORTACION	133.26	7255	2023-03-20 03:00:00	283	190.00	MIXTO	\N	56.74	6	\N	\N	2026-01-02 15:23:50.458	2026-01-02 15:23:50.458
+3185	47	7255-120	VENDIDO	2023-03-07 03:00:00	IMPORTACION	133.26	7255	2023-04-05 04:00:00	238	185.00	EFECTIVO_USD	\N	51.74	6	\N	\N	2026-01-02 15:23:50.46	2026-01-02 15:23:50.46
+3186	47	7255-123	VENDIDO	2023-03-07 03:00:00	IMPORTACION	133.26	7255	2023-08-10 04:00:00	237	200.00	EFECTIVO_USD	\N	66.74	6	\N	\N	2026-01-02 15:23:50.462	2026-01-02 15:23:50.462
+3187	47	7520-162	VENDIDO	2023-11-17 03:00:00	IMPORTACION	133.26	7520	2023-12-01 03:00:00	311	200.00	EFECTIVO_USD	\N	66.74	6	\N	\N	2026-01-02 15:23:50.463	2026-01-02 15:23:50.463
+3188	47	7520-163	VENDIDO	2023-11-17 03:00:00	IMPORTACION	133.26	7520	2023-12-13 03:00:00	311	200.00	EFECTIVO_USD	\N	66.74	6	\N	\N	2026-01-02 15:23:50.465	2026-01-02 15:23:50.465
+3189	47	7520-164	DISPONIBLE	2023-11-17 03:00:00	IMPORTACION	133.26	7520	\N	\N	\N	\N	\N	0.00	6	\N	\N	2026-01-02 15:23:50.466	2026-01-02 15:23:50.466
+3190	47	7520-165	VENDIDO	2023-11-17 03:00:00	IMPORTACION	133.26	7520	2025-04-04 03:00:00	221	270.00	EFECTIVO_USD	\N	136.74	6	\N	\N	2026-01-02 15:23:50.468	2026-01-02 15:23:50.468
+3191	47	7520-167	DISPONIBLE	2023-11-17 03:00:00	IMPORTACION	133.26	7520	\N	\N	\N	\N	\N	0.00	6	\N	\N	2026-01-02 15:23:50.47	2026-01-02 15:23:50.47
+1906	29	-020	VENDIDO	2023-03-07 03:00:00	IMPORTACION	18.03		2023-08-15 04:00:00	192	40.00	EFECTIVO_USD	\N	20.01	6	\N	\N	2026-01-02 15:23:47.344	2026-01-02 15:23:50.505
+3232	48	-41	VENDIDO	2023-11-17 03:00:00	IMPORTACION	19.99		2024-06-11 04:00:00	299	40.00	EFECTIVO_USD	\N	20.01	6	\N	\N	2026-01-02 15:23:50.539	2026-01-02 15:23:50.539
+3233	48	-42	VENDIDO	2023-11-17 03:00:00	IMPORTACION	19.99		2024-06-11 04:00:00	299	40.00	EFECTIVO_USD	\N	20.01	6	\N	\N	2026-01-02 15:23:50.541	2026-01-02 15:23:50.541
+3234	48	-43	VENDIDO	2023-11-17 03:00:00	IMPORTACION	19.99		2024-06-14 04:00:00	292	40.00	TRANSFERENCIA_BS	\N	20.01	6	\N	\N	2026-01-02 15:23:50.542	2026-01-02 15:23:50.542
+3235	48	-44	VENDIDO	2023-11-17 03:00:00	IMPORTACION	19.99		2024-06-14 04:00:00	292	40.00	TRANSFERENCIA_BS	\N	20.01	6	\N	\N	2026-01-02 15:23:50.544	2026-01-02 15:23:50.544
+3236	48	-45	VENDIDO	2023-11-17 03:00:00	IMPORTACION	19.99		2024-07-16 04:00:00	296	40.00	ZELLE	\N	20.01	6	\N	\N	2026-01-02 15:23:50.545	2026-01-02 15:23:50.545
+3237	48	-46	VENDIDO	2023-11-17 03:00:00	IMPORTACION	19.99		2024-07-16 04:00:00	296	40.00	ZELLE	\N	20.01	6	\N	\N	2026-01-02 15:23:50.547	2026-01-02 15:23:50.547
+3238	48	-47	VENDIDO	2023-11-17 03:00:00	IMPORTACION	19.99		2024-07-16 04:00:00	296	40.00	ZELLE	\N	20.01	6	\N	\N	2026-01-02 15:23:50.549	2026-01-02 15:23:50.549
+3239	48	-48	VENDIDO	2023-11-17 03:00:00	IMPORTACION	19.99		2024-07-19 04:00:00	289	40.00	EFECTIVO_USD	\N	20.01	6	\N	\N	2026-01-02 15:23:50.55	2026-01-02 15:23:50.55
+3240	48	-49	VENDIDO	2023-11-17 03:00:00	IMPORTACION	19.99		2024-07-19 04:00:00	289	40.00	EFECTIVO_USD	\N	20.01	6	\N	\N	2026-01-02 15:23:50.552	2026-01-02 15:23:50.552
+3241	48	-50	VENDIDO	2023-11-17 03:00:00	IMPORTACION	19.99		2024-08-27 04:00:00	296	40.00	ZELLE	\N	20.01	6	\N	\N	2026-01-02 15:23:50.553	2026-01-02 15:23:50.553
+3242	48	-51	VENDIDO	2023-11-17 03:00:00	IMPORTACION	19.99		2024-08-27 04:00:00	296	40.00	ZELLE	\N	20.01	6	\N	\N	2026-01-02 15:23:50.555	2026-01-02 15:23:50.555
+3243	48	-52	VENDIDO	2023-11-17 03:00:00	IMPORTACION	19.99		2024-08-27 04:00:00	296	40.00	ZELLE	\N	20.01	6	\N	\N	2026-01-02 15:23:50.558	2026-01-02 15:23:50.558
+3244	48	-53	VENDIDO	2023-11-17 03:00:00	IMPORTACION	19.99		2024-09-12 03:00:00	292	40.00	ZELLE	\N	20.01	6	\N	\N	2026-01-02 15:23:50.56	2026-01-02 15:23:50.56
+3245	48	-54	VENDIDO	2023-11-17 03:00:00	IMPORTACION	19.99		2024-09-12 03:00:00	292	40.00	ZELLE	\N	20.01	6	\N	\N	2026-01-02 15:23:50.562	2026-01-02 15:23:50.562
+3246	48	-55	VENDIDO	2023-11-17 03:00:00	IMPORTACION	19.99		2024-10-21 03:00:00	220	40.00	EFECTIVO_USD	\N	20.01	6	\N	\N	2026-01-02 15:23:50.564	2026-01-02 15:23:50.564
+3247	48	-56	VENDIDO	2023-11-17 03:00:00	IMPORTACION	19.99		2024-10-21 03:00:00	220	40.00	EFECTIVO_USD	\N	20.01	6	\N	\N	2026-01-02 15:23:50.566	2026-01-02 15:23:50.566
+3248	48	-57	VENDIDO	2023-11-17 03:00:00	IMPORTACION	19.99		2024-11-11 03:00:00	235	40.00	EFECTIVO_USD	\N	20.01	6	\N	\N	2026-01-02 15:23:50.575	2026-01-02 15:23:50.575
+3249	48	-58	VENDIDO	2023-11-17 03:00:00	IMPORTACION	19.99		2024-11-11 03:00:00	235	40.00	EFECTIVO_USD	\N	20.01	6	\N	\N	2026-01-02 15:23:50.578	2026-01-02 15:23:50.578
+3250	48	-59	VENDIDO	2023-11-17 03:00:00	IMPORTACION	19.99		2024-01-16 03:00:00	292	40.00	EFECTIVO_USD	\N	20.01	6	\N	\N	2026-01-02 15:23:50.58	2026-01-02 15:23:50.58
+3251	48	-60	VENDIDO	2023-11-17 03:00:00	IMPORTACION	19.99		2024-01-16 03:00:00	292	40.00	EFECTIVO_USD	\N	20.01	6	\N	\N	2026-01-02 15:23:50.581	2026-01-02 15:23:50.581
+3252	48	-61	VENDIDO	2024-09-30 03:00:00	IMPORTACION	19.99		2024-11-13 03:00:00	292	40.00	ZELLE	\N	20.01	6	\N	\N	2026-01-02 15:23:50.584	2026-01-02 15:23:50.584
+3253	48	-62	VENDIDO	2024-09-30 03:00:00	IMPORTACION	19.99		2024-12-02 03:00:00	191	40.00	ZELLE	\N	20.01	6	\N	\N	2026-01-02 15:23:50.585	2026-01-02 15:23:50.585
+3254	48	-63	VENDIDO	2024-09-30 03:00:00	IMPORTACION	19.99		2024-12-02 03:00:00	191	40.00	ZELLE	\N	20.01	6	\N	\N	2026-01-02 15:23:50.589	2026-01-02 15:23:50.589
+3255	48	-64	VENDIDO	2024-09-30 03:00:00	IMPORTACION	19.99		2024-12-10 03:00:00	296	40.00	EFECTIVO_USD	\N	20.01	6	\N	\N	2026-01-02 15:23:50.59	2026-01-02 15:23:50.59
+3256	48	-65	VENDIDO	2024-09-30 03:00:00	IMPORTACION	19.99		2024-12-10 03:00:00	296	40.00	EFECTIVO_USD	\N	20.01	6	\N	\N	2026-01-02 15:23:50.592	2026-01-02 15:23:50.592
+3257	48	-66	VENDIDO	2024-09-30 03:00:00	IMPORTACION	19.99		2024-12-11 03:00:00	296	40.00	ZELLE	\N	20.01	6	\N	\N	2026-01-02 15:23:50.593	2026-01-02 15:23:50.593
+3258	48	-67	VENDIDO	2024-09-30 03:00:00	IMPORTACION	19.99		2024-12-11 03:00:00	296	40.00	ZELLE	\N	20.01	6	\N	\N	2026-01-02 15:23:50.595	2026-01-02 15:23:50.595
+3259	48	-68	VENDIDO	2024-09-30 03:00:00	IMPORTACION	19.99		2024-12-16 03:00:00	191	40.00	ZELLE	\N	20.01	6	\N	\N	2026-01-02 15:23:50.596	2026-01-02 15:23:50.596
+3260	48	-69	VENDIDO	2024-09-30 03:00:00	IMPORTACION	19.99		2024-12-16 03:00:00	191	40.00	ZELLE	\N	20.01	6	\N	\N	2026-01-02 15:23:50.598	2026-01-02 15:23:50.598
+3261	48	-70	VENDIDO	2024-09-30 03:00:00	IMPORTACION	19.99		2024-12-20 03:00:00	258	40.00	EFECTIVO_USD	\N	20.01	6	\N	\N	2026-01-02 15:23:50.599	2026-01-02 15:23:50.599
+3262	48	-71	VENDIDO	2024-09-30 03:00:00	IMPORTACION	19.99		2024-12-20 03:00:00	258	40.00	EFECTIVO_USD	\N	20.01	6	\N	\N	2026-01-02 15:23:50.601	2026-01-02 15:23:50.601
+3263	48	-72	VENDIDO	2024-09-30 03:00:00	IMPORTACION	19.99		2024-12-20 03:00:00	258	40.00	EFECTIVO_USD	\N	20.01	6	\N	\N	2026-01-02 15:23:50.603	2026-01-02 15:23:50.603
+3264	48	-73	VENDIDO	2024-09-30 03:00:00	IMPORTACION	19.99		2024-12-20 03:00:00	258	40.00	EFECTIVO_USD	\N	20.01	6	\N	\N	2026-01-02 15:23:50.604	2026-01-02 15:23:50.604
+3265	48	-74	VENDIDO	2024-09-30 03:00:00	IMPORTACION	19.99		2024-12-27 03:00:00	319	40.00	EFECTIVO_USD	\N	20.01	6	\N	\N	2026-01-02 15:23:50.606	2026-01-02 15:23:50.606
+3266	48	-75	VENDIDO	2024-09-30 03:00:00	IMPORTACION	19.99		2024-12-27 03:00:00	319	40.00	EFECTIVO_USD	\N	20.01	6	\N	\N	2026-01-02 15:23:50.607	2026-01-02 15:23:50.607
+3267	48	-76	VENDIDO	2024-09-30 03:00:00	IMPORTACION	19.99		2025-01-06 03:00:00	192	40.00	EFECTIVO_USD	\N	20.01	6	\N	\N	2026-01-02 15:23:50.609	2026-01-02 15:23:50.609
+3268	48	-77	VENDIDO	2024-09-30 03:00:00	IMPORTACION	19.99		2025-01-06 03:00:00	192	40.00	EFECTIVO_USD	\N	20.01	6	\N	\N	2026-01-02 15:23:50.611	2026-01-02 15:23:50.611
+3269	48	-78	VENDIDO	2024-09-30 03:00:00	IMPORTACION	19.99		2025-01-27 03:00:00	261	40.00	EFECTIVO_USD	\N	20.01	6	\N	\N	2026-01-02 15:23:50.613	2026-01-02 15:23:50.613
+3270	48	-79	VENDIDO	2024-09-30 03:00:00	IMPORTACION	19.99		2025-01-27 03:00:00	261	40.00	EFECTIVO_USD	\N	20.01	6	\N	\N	2026-01-02 15:23:50.615	2026-01-02 15:23:50.615
+3271	48	-80	VENDIDO	2024-09-30 03:00:00	IMPORTACION	19.99		2025-02-11 03:00:00	191	40.00	EFECTIVO_USD	\N	20.01	6	\N	\N	2026-01-02 15:23:50.617	2026-01-02 15:23:50.617
+3272	48	-81	VENDIDO	2025-05-21 04:00:00	IMPORTACION	19.99		2025-07-03 04:00:00	268	40.00	EFECTIVO_USD	\N	20.01	6	\N	\N	2026-01-02 15:23:50.619	2026-01-02 15:23:50.619
+3273	48	-82	VENDIDO	2025-05-21 04:00:00	IMPORTACION	19.99		2025-07-29 04:00:00	221	40.00	EFECTIVO_USD	\N	20.01	6	\N	\N	2026-01-02 15:23:50.621	2026-01-02 15:23:50.621
+3274	48	-83	VENDIDO	2025-05-21 04:00:00	IMPORTACION	19.99		2025-07-29 04:00:00	221	40.00	EFECTIVO_USD	\N	20.01	6	\N	\N	2026-01-02 15:23:50.622	2026-01-02 15:23:50.622
+3275	48	-84	VENDIDO	2025-05-21 04:00:00	IMPORTACION	19.99		2025-08-01 04:00:00	191	40.00	EFECTIVO_USD	\N	20.01	6	\N	\N	2026-01-02 15:23:50.624	2026-01-02 15:23:50.624
+3276	48	-85	VENDIDO	2025-05-21 04:00:00	IMPORTACION	19.99		2025-08-01 04:00:00	191	40.00	EFECTIVO_USD	\N	20.01	6	\N	\N	2026-01-02 15:23:50.625	2026-01-02 15:23:50.625
+3277	48	-86	VENDIDO	2025-05-21 04:00:00	IMPORTACION	19.99		2025-09-08 03:00:00	270	40.00	EFECTIVO_USD	\N	20.01	6	\N	\N	2026-01-02 15:23:50.626	2026-01-02 15:23:50.626
+3278	48	-87	VENDIDO	2025-05-21 04:00:00	IMPORTACION	19.99		2025-09-08 03:00:00	270	40.00	EFECTIVO_USD	\N	20.01	6	\N	\N	2026-01-02 15:23:50.629	2026-01-02 15:23:50.629
+3279	48	-88	VENDIDO	2025-05-21 04:00:00	IMPORTACION	19.99		2025-09-11 03:00:00	238	40.00	EFECTIVO_USD	\N	20.01	6	\N	\N	2026-01-02 15:23:50.631	2026-01-02 15:23:50.631
+3280	48	-89	VENDIDO	2025-05-21 04:00:00	IMPORTACION	19.99		2025-09-11 03:00:00	238	40.00	EFECTIVO_USD	\N	20.01	6	\N	\N	2026-01-02 15:23:50.632	2026-01-02 15:23:50.632
+3281	48	-90	VENDIDO	2025-05-21 04:00:00	IMPORTACION	19.99		2025-10-14 03:00:00	270	40.00	EFECTIVO_USD	\N	20.01	6	\N	\N	2026-01-02 15:23:50.638	2026-01-02 15:23:50.638
+3282	48	-91	VENDIDO	2025-05-21 04:00:00	IMPORTACION	19.99		2025-10-14 03:00:00	270	40.00	EFECTIVO_USD	\N	20.01	6	\N	\N	2026-01-02 15:23:50.64	2026-01-02 15:23:50.64
+3283	48	-92	VENDIDO	2025-05-21 04:00:00	IMPORTACION	19.99		2025-10-14 03:00:00	270	40.00	EFECTIVO_USD	\N	20.01	6	\N	\N	2026-01-02 15:23:50.642	2026-01-02 15:23:50.642
+3284	48	-93	VENDIDO	2025-05-21 04:00:00	IMPORTACION	19.99		2025-10-14 03:00:00	270	40.00	EFECTIVO_USD	\N	20.01	6	\N	\N	2026-01-02 15:23:50.644	2026-01-02 15:23:50.644
+3285	48	-94	VENDIDO	2025-05-21 04:00:00	IMPORTACION	19.99		2025-10-17 03:00:00	191	40.00	EFECTIVO_USD	\N	20.01	6	\N	\N	2026-01-02 15:23:50.645	2026-01-02 15:23:50.645
+3286	48	-95	VENDIDO	2025-05-21 04:00:00	IMPORTACION	19.99		2025-10-17 03:00:00	191	40.00	EFECTIVO_USD	\N	20.01	6	\N	\N	2026-01-02 15:23:50.65	2026-01-02 15:23:50.65
+3287	48	-96	VENDIDO	2025-05-21 04:00:00	IMPORTACION	19.99		2025-11-17 03:00:00	299	40.00	EFECTIVO_USD	\N	20.01	6	\N	\N	2026-01-02 15:23:50.652	2026-01-02 15:23:50.652
+3288	48	-97	VENDIDO	2025-05-21 04:00:00	IMPORTACION	19.99		2025-11-17 03:00:00	299	40.00	EFECTIVO_USD	\N	20.01	6	\N	\N	2026-01-02 15:23:50.653	2026-01-02 15:23:50.653
+3289	48	-98	VENDIDO	2025-05-21 04:00:00	IMPORTACION	19.99		2025-11-26 03:00:00	299	40.00	EFECTIVO_USD	\N	20.01	6	\N	\N	2026-01-02 15:23:50.655	2026-01-02 15:23:50.655
+3290	48	-99	VENDIDO	2025-05-21 04:00:00	IMPORTACION	19.99		2025-11-26 03:00:00	299	40.00	EFECTIVO_USD	\N	20.01	6	\N	\N	2026-01-02 15:23:50.659	2026-01-02 15:23:50.659
+2026	30	-100	VENDIDO	2023-07-13 04:00:00	IMPORTACION	23.38		2025-11-26 03:00:00	299	40.00	EFECTIVO_USD	\N	20.01	6	\N	\N	2026-01-02 15:23:47.662	2026-01-02 15:23:50.661
+3312	34	7406-002	VENDIDO	2023-06-09 04:00:00	IMPORTACION	153.77	7406	2023-07-06 04:00:00	193	260.00	EFECTIVO_USD	\N	106.23	6	\N	\N	2026-01-02 15:23:50.694	2026-01-02 15:23:50.694
+3313	34	7406-003	VENDIDO	2023-06-09 04:00:00	IMPORTACION	153.77	7406	2023-07-06 04:00:00	193	260.00	EFECTIVO_USD	\N	106.23	6	\N	\N	2026-01-02 15:23:50.696	2026-01-02 15:23:50.696
+3314	34	7406-004	VENDIDO	2023-06-09 04:00:00	IMPORTACION	153.77	7406	2024-02-07 03:00:00	193	240.00	EFECTIVO_USD	\N	86.23	6	\N	\N	2026-01-02 15:23:50.697	2026-01-02 15:23:50.697
+3315	34	7406-005	VENDIDO	2023-06-09 04:00:00	IMPORTACION	153.77	7406	2024-02-07 03:00:00	193	240.00	EFECTIVO_USD	\N	86.23	6	\N	\N	2026-01-02 15:23:50.699	2026-01-02 15:23:50.699
+3316	34	7406-006	VENDIDO	2023-06-09 04:00:00	IMPORTACION	153.77	7406	2024-04-29 04:00:00	293	260.00	EFECTIVO_USD	\N	106.23	6	\N	\N	2026-01-02 15:23:50.701	2026-01-02 15:23:50.701
+3317	34	7406-007	VENDIDO	2023-06-09 04:00:00	IMPORTACION	153.77	7406	2024-05-14 04:00:00	193	240.00	EFECTIVO_USD	\N	86.23	6	\N	\N	2026-01-02 15:23:50.702	2026-01-02 15:23:50.702
+3318	34	7406-008	VENDIDO	2023-06-09 04:00:00	IMPORTACION	153.77	7406	2024-09-09 03:00:00	193	240.00	EFECTIVO_USD	\N	86.23	6	\N	\N	2026-01-02 15:23:50.704	2026-01-02 15:23:50.704
+3319	34	7406-009	VENDIDO	2023-06-09 04:00:00	IMPORTACION	153.77	7406	2024-09-09 03:00:00	193	240.00	EFECTIVO_USD	\N	86.23	6	\N	\N	2026-01-02 15:23:50.706	2026-01-02 15:23:50.706
+3320	34	7406-010	VENDIDO	2023-06-09 04:00:00	IMPORTACION	153.77	7406	2025-01-16 03:00:00	250	245.00	EFECTIVO_USD	\N	91.23	6	\N	\N	2026-01-02 15:23:50.708	2026-01-02 15:23:50.708
+3321	34	7406-011	VENDIDO	2023-06-09 04:00:00	IMPORTACION	153.77	7406	2024-11-09 03:00:00	350	260.00	EFECTIVO_USD	\N	106.23	6	\N	\N	2026-01-02 15:23:50.709	2026-01-02 15:23:50.709
+3322	34	7406-12	VENDIDO	2023-06-16 04:00:00	IMPORTACION	153.77	7406	2025-02-27 03:00:00	296	253.50	ZELLE	\N	99.73	6	\N	\N	2026-01-02 15:23:50.711	2026-01-02 15:23:50.711
+3323	34	7406-13	VENDIDO	2023-06-16 04:00:00	IMPORTACION	153.77	7406	2025-02-27 03:00:00	296	253.50	ZELLE	\N	99.73	6	\N	\N	2026-01-02 15:23:50.712	2026-01-02 15:23:50.712
+3324	34	7406-14	VENDIDO	2023-06-16 04:00:00	IMPORTACION	153.77	7406	2025-02-27 03:00:00	296	253.50	ZELLE	\N	99.73	6	\N	\N	2026-01-02 15:23:50.713	2026-01-02 15:23:50.713
+3325	34	7406-15	VENDIDO	2023-06-16 04:00:00	IMPORTACION	153.77	7406	2025-02-27 03:00:00	296	253.50	ZELLE	\N	99.73	6	\N	\N	2026-01-02 15:23:50.715	2026-01-02 15:23:50.715
+3326	34	7406-16	VENDIDO	2023-06-16 04:00:00	IMPORTACION	153.77	7406	2024-02-27 03:00:00	292	256.00	ZELLE	\N	102.23	6	\N	\N	2026-01-02 15:23:50.716	2026-01-02 15:23:50.716
+3327	34	7406-17	VENDIDO	2023-06-16 04:00:00	IMPORTACION	153.77	7406	2024-03-14 03:00:00	367	260.00	EFECTIVO_USD	\N	106.23	6	\N	\N	2026-01-02 15:23:50.719	2026-01-02 15:23:50.719
+3328	34	7406-18	DISPONIBLE	2023-06-16 04:00:00	IMPORTACION	153.77	7406	\N	\N	\N	\N	\N	0.00	6	\N	\N	2026-01-02 15:23:50.72	2026-01-02 15:23:50.72
+3329	34	7406-19	DISPONIBLE	2023-06-16 04:00:00	IMPORTACION	153.77	7406	\N	\N	\N	\N	\N	0.00	6	\N	\N	2026-01-02 15:23:50.722	2026-01-02 15:23:50.722
+3330	34	7406-20	VENDIDO	2023-06-16 04:00:00	IMPORTACION	153.77	7406	2025-07-30 04:00:00	350	260.00	EFECTIVO_USD	\N	106.23	6	\N	\N	2026-01-02 15:23:50.723	2026-01-02 15:23:50.723
+3331	34	7406-21	VENDIDO	2023-06-16 04:00:00	IMPORTACION	153.77	7406	2025-01-16 03:00:00	250	245.00	EFECTIVO_USD	\N	91.23	6	\N	\N	2026-01-02 15:23:50.725	2026-01-02 15:23:50.725
+3332	34	8160-18	VENDIDO	2025-05-21 04:00:00	IMPORTACION	153.77	8160	2025-09-25 03:00:00	193	260.00	EFECTIVO_USD	\N	106.23	6	\N	\N	2026-01-02 15:23:50.726	2026-01-02 15:23:50.726
+3333	34	8160-19	VENDIDO	2025-05-21 04:00:00	IMPORTACION	153.77	8160	2025-12-05 03:00:00	207	260.00	EFECTIVO_USD	\N	106.23	6	\N	\N	2026-01-02 15:23:50.728	2026-01-02 15:23:50.728
+3334	34	8160-20	VENDIDO	2025-05-21 04:00:00	IMPORTACION	153.77	8160	2025-12-15 03:00:00	207	260.00	EFECTIVO_USD	\N	106.23	6	\N	\N	2026-01-02 15:23:50.729	2026-01-02 15:23:50.729
+3335	34	8160-21	DISPONIBLE	2025-05-21 04:00:00	IMPORTACION	153.77	8160	\N	\N	\N	\N	\N	0.00	6	\N	\N	2026-01-02 15:23:50.731	2026-01-02 15:23:50.731
+3336	34	8160-22	DISPONIBLE	2025-05-21 04:00:00	IMPORTACION	153.77	8160	\N	\N	\N	\N	\N	0.00	6	\N	\N	2026-01-02 15:23:50.733	2026-01-02 15:23:50.733
+3337	34	8160-23	DISPONIBLE	2025-05-21 04:00:00	IMPORTACION	153.77	8160	\N	\N	\N	\N	\N	0.00	6	\N	\N	2026-01-02 15:23:50.734	2026-01-02 15:23:50.734
+3338	34	8160-24	DISPONIBLE	2025-05-21 04:00:00	IMPORTACION	153.77	8160	\N	\N	\N	\N	\N	0.00	6	\N	\N	2026-01-02 15:23:50.736	2026-01-02 15:23:50.736
+3339	34	8160-25	DISPONIBLE	2025-05-21 04:00:00	IMPORTACION	153.77	8160	\N	\N	\N	\N	\N	0.00	6	\N	\N	2026-01-02 15:23:50.741	2026-01-02 15:23:50.741
+3340	34	8160-26	DISPONIBLE	2025-05-21 04:00:00	IMPORTACION	153.77	8160	\N	\N	\N	\N	\N	0.00	6	\N	\N	2026-01-02 15:23:50.743	2026-01-02 15:23:50.743
+3341	34	8160-27	VENDIDO	2025-05-21 04:00:00	IMPORTACION	153.77	8160	2025-08-19 04:00:00	221	260.00	EFECTIVO_USD	\N	106.23	6	\N	\N	2026-01-02 15:23:50.744	2026-01-02 15:23:50.744
+3342	33	7294-032	VENDIDO	2023-06-09 04:00:00	IMPORTACION	78.47	7294	2023-08-02 04:00:00	193	150.00	EFECTIVO_USD	\N	71.53	6	\N	\N	2026-01-02 15:23:50.746	2026-01-02 15:23:50.746
+3343	33	7294-033	VENDIDO	2023-06-09 04:00:00	IMPORTACION	78.47	7294	2023-08-07 04:00:00	208	140.00	EFECTIVO_USD	\N	61.53	6	\N	\N	2026-01-02 15:23:50.747	2026-01-02 15:23:50.747
+3344	33	7294-034	VENDIDO	2023-06-09 04:00:00	IMPORTACION	78.47	7294	2023-08-07 04:00:00	208	140.00	EFECTIVO_USD	\N	61.53	6	\N	\N	2026-01-02 15:23:50.749	2026-01-02 15:23:50.749
+3345	33	7294-035	VENDIDO	2023-06-09 04:00:00	IMPORTACION	78.47	7294	2023-10-31 03:00:00	292	140.00	EFECTIVO_USD	\N	61.53	6	\N	\N	2026-01-02 15:23:50.751	2026-01-02 15:23:50.751
+3346	33	7294-036	VENDIDO	2023-06-09 04:00:00	IMPORTACION	78.47	7294	2023-10-31 03:00:00	292	140.00	EFECTIVO_USD	\N	61.53	6	\N	\N	2026-01-02 15:23:50.752	2026-01-02 15:23:50.752
+3347	33	7294-037	VENDIDO	2023-06-09 04:00:00	IMPORTACION	78.47	7294	2023-11-13 03:00:00	292	140.00	EFECTIVO_USD	\N	61.53	6	\N	\N	2026-01-02 15:23:50.754	2026-01-02 15:23:50.754
+3348	33	7294-038	VENDIDO	2023-06-09 04:00:00	IMPORTACION	78.47	7294	2025-04-09 04:00:00	350	150.00	EFECTIVO_USD	\N	71.53	6	\N	\N	2026-01-02 15:23:50.755	2026-01-02 15:23:50.755
+3349	33	7294-039	VENDIDO	2023-06-09 04:00:00	IMPORTACION	78.47	7294	2023-11-13 03:00:00	292	140.00	EFECTIVO_USD	\N	61.53	6	\N	\N	2026-01-02 15:23:50.756	2026-01-02 15:23:50.756
+3350	33	7294-040	VENDIDO	2023-06-09 04:00:00	IMPORTACION	78.47	7294	2024-02-27 03:00:00	292	143.00	ZELLE	\N	64.53	6	\N	\N	2026-01-02 15:23:50.758	2026-01-02 15:23:50.758
+3351	33	7294-041	VENDIDO	2023-06-09 04:00:00	IMPORTACION	78.47	7294	2024-02-27 03:00:00	292	143.00	ZELLE	\N	64.53	6	\N	\N	2026-01-02 15:23:50.76	2026-01-02 15:23:50.76
+3352	33	7294-042	VENDIDO	2023-06-09 04:00:00	IMPORTACION	78.47	7294	2024-02-27 03:00:00	292	143.00	ZELLE	\N	64.53	6	\N	\N	2026-01-02 15:23:50.762	2026-01-02 15:23:50.762
+3353	33	7294-043	VENDIDO	2023-06-09 04:00:00	IMPORTACION	78.47	7294	2024-02-27 03:00:00	292	143.00	ZELLE	\N	64.53	6	\N	\N	2026-01-02 15:23:50.765	2026-01-02 15:23:50.765
+3354	33	7294-044	VENDIDO	2023-06-09 04:00:00	IMPORTACION	78.47	7294	2024-04-22 04:00:00	292	145.00	EFECTIVO_USD	\N	66.53	6	\N	\N	2026-01-02 15:23:50.768	2026-01-02 15:23:50.768
+3355	33	7294-045	VENDIDO	2023-06-09 04:00:00	IMPORTACION	78.47	7294	2024-04-22 04:00:00	292	145.00	EFECTIVO_USD	\N	66.53	6	\N	\N	2026-01-02 15:23:50.77	2026-01-02 15:23:50.77
+3356	33	7294-046	VENDIDO	2023-06-09 04:00:00	IMPORTACION	78.47	7294	2024-05-22 04:00:00	320	150.00	EFECTIVO_USD	\N	71.53	6	\N	\N	2026-01-02 15:23:50.772	2026-01-02 15:23:50.772
+3357	33	7294-047	VENDIDO	2023-06-09 04:00:00	IMPORTACION	78.47	7294	2023-11-13 03:00:00	292	140.00	EFECTIVO_USD	\N	61.53	6	\N	\N	2026-01-02 15:23:50.773	2026-01-02 15:23:50.773
+3358	33	7294-048	VENDIDO	2023-06-09 04:00:00	IMPORTACION	78.47	7294	2023-11-13 03:00:00	292	140.00	EFECTIVO_USD	\N	61.53	6	\N	\N	2026-01-02 15:23:50.775	2026-01-02 15:23:50.775
+3359	33	7294-049	VENDIDO	2023-06-09 04:00:00	IMPORTACION	78.47	7294	2024-06-14 04:00:00	292	150.00	TRANSFERENCIA_BS	\N	71.53	6	\N	\N	2026-01-02 15:23:50.777	2026-01-02 15:23:50.777
+3360	33	7294-050	VENDIDO	2023-06-09 04:00:00	IMPORTACION	78.47	7294	2024-06-14 04:00:00	292	150.00	TRANSFERENCIA_BS	\N	71.53	6	\N	\N	2026-01-02 15:23:50.779	2026-01-02 15:23:50.779
+3361	33	7294-051	VENDIDO	2023-06-09 04:00:00	IMPORTACION	78.47	7294	2024-11-09 03:00:00	350	150.00	EFECTIVO_USD	\N	71.53	6	\N	\N	2026-01-02 15:23:50.78	2026-01-02 15:23:50.78
+3362	33	7294-052	VENDIDO	2023-06-16 04:00:00	IMPORTACION	78.47	7294	2005-02-27 03:00:00	296	147.00	ZELLE	\N	68.53	6	\N	\N	2026-01-02 15:23:50.782	2026-01-02 15:23:50.782
+3363	33	7294-053	VENDIDO	2023-06-16 04:00:00	IMPORTACION	78.47	7294	2005-02-27 03:00:00	296	147.00	ZELLE	\N	68.53	6	\N	\N	2026-01-02 15:23:50.783	2026-01-02 15:23:50.783
+3364	33	7294-054	VENDIDO	2023-06-16 04:00:00	IMPORTACION	78.47	7294	2005-02-27 03:00:00	296	147.00	ZELLE	\N	68.53	6	\N	\N	2026-01-02 15:23:50.785	2026-01-02 15:23:50.785
+3365	33	7294-055	VENDIDO	2023-06-16 04:00:00	IMPORTACION	78.47	7294	2005-02-27 03:00:00	296	147.00	ZELLE	\N	68.53	6	\N	\N	2026-01-02 15:23:50.786	2026-01-02 15:23:50.786
+3366	33	7294-056	VENDIDO	2023-06-16 04:00:00	IMPORTACION	78.47	7294	2024-09-12 03:00:00	292	146.00	ZELLE	\N	67.53	6	\N	\N	2026-01-02 15:23:50.789	2026-01-02 15:23:50.789
+3367	33	7294-057	VENDIDO	2023-06-16 04:00:00	IMPORTACION	78.47	7294	2005-02-27 03:00:00	296	147.00	ZELLE	\N	68.53	6	\N	\N	2026-01-02 15:23:50.791	2026-01-02 15:23:50.791
+3368	33	7294-058	VENDIDO	2023-06-16 04:00:00	IMPORTACION	78.47	7294	2024-09-12 03:00:00	292	146.00	ZELLE	\N	67.53	6	\N	\N	2026-01-02 15:23:50.792	2026-01-02 15:23:50.792
+3369	33	7294-059	DISPONIBLE	2023-06-16 04:00:00	IMPORTACION	78.47	7294	\N	\N	\N	\N	\N	0.00	6	\N	\N	2026-01-02 15:23:50.794	2026-01-02 15:23:50.794
+3370	33	7294-060	DISPONIBLE	2023-06-16 04:00:00	IMPORTACION	78.47	7294	\N	\N	\N	\N	\N	0.00	6	\N	\N	2026-01-02 15:23:50.796	2026-01-02 15:23:50.796
+3371	33	7294-061	VENDIDO	2023-06-16 04:00:00	IMPORTACION	78.47	7294	2005-02-27 03:00:00	296	147.00	ZELLE	\N	68.53	6	\N	\N	2026-01-02 15:23:50.797	2026-01-02 15:23:50.797
+3372	33	7294-062	VENDIDO	2023-06-16 04:00:00	IMPORTACION	78.47	7294	2005-02-27 03:00:00	296	147.00	ZELLE	\N	68.53	6	\N	\N	2026-01-02 15:23:50.799	2026-01-02 15:23:50.799
+3373	33	7294-063	VENDIDO	2023-06-16 04:00:00	IMPORTACION	78.47	7294	2005-02-27 03:00:00	296	147.00	ZELLE	\N	68.53	6	\N	\N	2026-01-02 15:23:50.8	2026-01-02 15:23:50.8
+3374	33	7294-064	VENDIDO	2023-06-16 04:00:00	IMPORTACION	78.47	7294	2025-08-19 04:00:00	221	150.00	EFECTIVO_USD	\N	71.53	6	\N	\N	2026-01-02 15:23:50.802	2026-01-02 15:23:50.802
+3375	33	7294-065	VENDIDO	2023-06-16 04:00:00	IMPORTACION	78.47	7294	2025-09-25 03:00:00	320	150.00	EFECTIVO_USD	\N	71.53	6	\N	\N	2026-01-02 15:23:50.804	2026-01-02 15:23:50.804
+3376	33	7294-066	DISPONIBLE	2023-06-16 04:00:00	IMPORTACION	78.47	7294	\N	\N	\N	\N	\N	0.00	6	\N	\N	2026-01-02 15:23:50.806	2026-01-02 15:23:50.806
+3377	33	7294-067	DISPONIBLE	2023-06-16 04:00:00	IMPORTACION	78.47	7294	\N	\N	\N	\N	\N	0.00	6	\N	\N	2026-01-02 15:23:50.807	2026-01-02 15:23:50.807
+3378	33	7294-068	DISPONIBLE	2023-06-16 04:00:00	IMPORTACION	78.47	7294	\N	\N	\N	\N	\N	0.00	6	\N	\N	2026-01-02 15:23:50.808	2026-01-02 15:23:50.808
+3379	33	7294-069	DISPONIBLE	2023-06-16 04:00:00	IMPORTACION	78.47	7294	\N	\N	\N	\N	\N	0.00	6	\N	\N	2026-01-02 15:23:50.81	2026-01-02 15:23:50.81
+3380	33	7294-070	DISPONIBLE	2023-06-16 04:00:00	IMPORTACION	78.47	7294	\N	\N	\N	\N	\N	0.00	6	\N	\N	2026-01-02 15:23:50.811	2026-01-02 15:23:50.811
+3381	33	7294-071	DISPONIBLE	2023-06-16 04:00:00	IMPORTACION	78.47	7294	\N	\N	\N	\N	\N	0.00	6	\N	\N	2026-01-02 15:23:50.813	2026-01-02 15:23:50.813
+3382	43	7381-005	VENDIDO	2023-06-09 04:00:00	IMPORTACION	280.80	7381	2023-09-20 03:00:00	329	395.00	EFECTIVO_USD	\N	114.20	6	\N	\N	2026-01-02 15:23:50.814	2026-01-02 15:23:50.814
+3383	43	7381-006	VENDIDO	2023-06-16 04:00:00	IMPORTACION	280.80	7381	2024-08-20 04:00:00	193	450.00	EFECTIVO_USD	\N	169.20	6	\N	\N	2026-01-02 15:23:50.818	2026-01-02 15:23:50.818
+3384	43	7500-003	DISPONIBLE	2023-11-17 03:00:00	IMPORTACION	280.80	7500	\N	\N	\N	\N	\N	0.00	6	\N	\N	2026-01-02 15:23:50.82	2026-01-02 15:23:50.82
+3385	43	8022-003	DISPONIBLE	2025-05-21 04:00:00	IMPORTACION	280.80	8022	\N	\N	\N	\N	\N	0.00	6	\N	\N	2026-01-02 15:23:50.822	2026-01-02 15:23:50.822
+3386	43	8022-004	DISPONIBLE	2025-05-21 04:00:00	IMPORTACION	280.80	8022	\N	\N	\N	\N	\N	0.00	6	\N	\N	2026-01-02 15:23:50.823	2026-01-02 15:23:50.823
+3387	49	7539-001	VENDIDO	2023-11-17 03:00:00	IMPORTACION	527.33	7539	2024-08-20 04:00:00	193	795.00	EFECTIVO_USD	\N	267.67	6	\N	\N	2026-01-02 15:23:50.825	2026-01-02 15:23:50.825
+3388	49	7539-002	DISPONIBLE	2023-11-17 03:00:00	IMPORTACION	527.33	7539	\N	\N	\N	\N	\N	0.00	6	\N	\N	2026-01-02 15:23:50.827	2026-01-02 15:23:50.827
+3389	49	7687-011	DISPONIBLE	2025-05-21 04:00:00	IMPORTACION	527.33	7687	\N	\N	\N	\N	\N	0.00	6	\N	\N	2026-01-02 15:23:50.829	2026-01-02 15:23:50.829
+3390	49	7687-012	DISPONIBLE	2025-05-21 04:00:00	IMPORTACION	527.33	7687	\N	\N	\N	\N	\N	0.00	6	\N	\N	2026-01-02 15:23:50.83	2026-01-02 15:23:50.83
+3391	44	7334-44	VENDIDO	2023-06-09 04:00:00	IMPORTACION	159.07	7334	2023-09-01 04:00:00	191	220.00	EFECTIVO_USD	\N	60.93	6	\N	\N	2026-01-02 15:23:50.833	2026-01-02 15:23:50.833
+3392	44	7334-45	VENDIDO	2023-06-09 04:00:00	IMPORTACION	159.07	7334	2023-12-15 03:00:00	191	250.00	EFECTIVO_USD	\N	90.93	6	\N	\N	2026-01-02 15:23:50.834	2026-01-02 15:23:50.834
+3393	44	7334-46	VENDIDO	2023-06-09 04:00:00	IMPORTACION	159.07	7334	2024-05-21 04:00:00	298	290.00	EFECTIVO_USD	\N	130.93	6	\N	\N	2026-01-02 15:23:50.836	2026-01-02 15:23:50.836
+3394	44	7334-047	VENDIDO	2023-06-16 04:00:00	IMPORTACION	159.07	7334	2024-04-30 04:00:00	299	290.00	EFECTIVO_USD	\N	130.93	6	\N	\N	2026-01-02 15:23:50.837	2026-01-02 15:23:50.837
+3395	44	7334-048	VENDIDO	2023-06-16 04:00:00	IMPORTACION	159.07	7334	2024-11-22 03:00:00	350	290.00	EFECTIVO_USD	\N	130.93	6	\N	\N	2026-01-02 15:23:50.839	2026-01-02 15:23:50.839
+3396	44	7334-049	VENDIDO	2023-06-16 04:00:00	IMPORTACION	159.07	7334	2025-04-14 04:00:00	296	290.00	ZELLE	\N	130.93	6	\N	\N	2026-01-02 15:23:50.84	2026-01-02 15:23:50.84
+3397	44	7409-20	VENDIDO	2023-11-17 03:00:00	IMPORTACION	159.07	7409	2024-09-02 04:00:00	193	290.00	EFECTIVO_USD	\N	130.93	6	\N	\N	2026-01-02 15:23:50.847	2026-01-02 15:23:50.847
+3398	44	7409-21	VENDIDO	2023-11-17 03:00:00	IMPORTACION	159.07	7409	2024-12-10 03:00:00	289	290.00	EFECTIVO_USD	\N	130.93	6	\N	\N	2026-01-02 15:23:50.848	2026-01-02 15:23:50.848
+3399	44	7409-22	DISPONIBLE	2023-11-17 03:00:00	IMPORTACION	159.07	7409	\N	\N	\N	\N	\N	0.00	6	\N	\N	2026-01-02 15:23:50.85	2026-01-02 15:23:50.85
+3400	44	7409-23	DISPONIBLE	2023-11-17 03:00:00	IMPORTACION	159.07	7409	\N	\N	\N	\N	\N	0.00	6	\N	\N	2026-01-02 15:23:50.852	2026-01-02 15:23:50.852
+3401	44	7409-24	VENDIDO	2023-11-17 03:00:00	IMPORTACION	159.07	7409	2025-04-21 04:00:00	202	290.00	EFECTIVO_USD	\N	130.93	6	\N	\N	2026-01-02 15:23:50.854	2026-01-02 15:23:50.854
+3402	51	7562-009	VENDIDO	2024-09-30 03:00:00	IMPORTACION	214.17	7562	2025-02-07 03:00:00	250	450.00	EFECTIVO_USD	\N	235.83	6	\N	\N	2026-01-02 15:23:50.855	2026-01-02 15:23:50.855
+3403	51	7562-010	DISPONIBLE	2024-09-30 03:00:00	IMPORTACION	214.17	7562	\N	\N	\N	\N	\N	0.00	6	\N	\N	2026-01-02 15:23:50.857	2026-01-02 15:23:50.857
+3404	51	7562-011	DISPONIBLE	2024-09-30 03:00:00	IMPORTACION	214.17	7562	\N	\N	\N	\N	\N	0.00	6	\N	\N	2026-01-02 15:23:50.858	2026-01-02 15:23:50.858
+3405	51	8012-010	DISPONIBLE	2025-05-21 04:00:00	IMPORTACION	214.17	8012	\N	\N	\N	\N	\N	0.00	6	\N	\N	2026-01-02 15:23:50.859	2026-01-02 15:23:50.859
+3406	51	8012-011	DISPONIBLE	2025-05-21 04:00:00	IMPORTACION	214.17	8012	\N	\N	\N	\N	\N	0.00	6	\N	\N	2026-01-02 15:23:50.861	2026-01-02 15:23:50.861
+\.
+
+
+--
+-- Data for Name: usuarios; Type: TABLE DATA; Schema: public; Owner: -
+--
+
+COPY public.usuarios (id, email, password_hash, nombre_completo, rol_id, activo, ultimo_login, created_at, updated_at) FROM stdin;
+3	elevapartes@elevashop.com	$2b$10$eD45Lg5ap7RQtTxstdrXq.OfQQo4ebafWtFKAixKQXrdlhtIKyWuy	Elevapartes	2	t	\N	2025-12-22 16:32:00.068	2025-12-22 16:32:00.068
+4	elevashop@elevashop.com	$2b$10$7ewknpRlM76wwfGXKSRzl.EGsT/jIAc7Z.QANmjDqiuB4zxCKZZ.u	Elevashop	3	t	\N	2025-12-22 16:32:00.15	2025-12-22 16:32:00.15
+5	wvalera@elevashop.com	$2b$10$7uPKV.t13tszsuK2x0CB3.nbVwznwwaz76owoNgqNf8OarHjpbC.6	Wilmen Valera	2	t	\N	2026-01-02 15:43:04.705	2026-01-02 15:43:04.705
+6	jbriceno@elevashop.com	$2b$10$df4FWaVtc6cySqZ4I4D2r.WYoTvvxJjmeKLjiqSgrA5RSPcddl0A.	Jose Briceño	5	t	2026-01-02 15:44:25.99	2026-01-02 15:43:41.361	2026-01-02 15:44:25.991
+2	admin@elevashop.com	$2b$10$RPJiIhGTxPYwnqVx691rAOfZYNcPxRkZet98J2bG.I7sgUEgZNTdS	Administrador	2	t	2026-01-08 17:55:30.422	2025-12-22 16:31:59.99	2026-01-08 17:55:30.423
+7	***EMAIL_REMOVED***	$2b$10$YTugoUG9Zp8.FEC/RFPDf./NOajbmm5S3N/qROBrlUFcxQvsvNAH6	Sheila Briceno	2	t	2026-01-09 18:08:29.512	2026-01-09 18:07:07.033	2026-01-09 18:09:22.176
+\.
+
+
+--
+-- Data for Name: ventas; Type: TABLE DATA; Schema: public; Owner: -
+--
+
+COPY public.ventas (id, numero_orden, cliente_id, usuario_id, fecha, subtotal, descuento, impuesto, total, estado_pago, estado, notas, created_at, updated_at) FROM stdin;
+721	\N	186	3	2023-03-09 03:00:00	1480.00	0.00	0.00	1480.00	PAGADO	ENTREGADA	\N	2026-01-02 15:23:50.863	2026-01-02 15:23:50.863
+722	\N	187	3	2023-03-30 03:00:00	150.00	0.00	0.00	150.00	PAGADO	ENTREGADA	\N	2026-01-02 15:23:50.873	2026-01-02 15:23:50.873
+723	\N	186	3	2023-04-24 04:00:00	1660.00	0.00	0.00	1660.00	PAGADO	ENTREGADA	\N	2026-01-02 15:23:50.878	2026-01-02 15:23:50.878
+724	\N	188	3	2023-06-12 04:00:00	75.00	0.00	0.00	75.00	PAGADO	ENTREGADA	\N	2026-01-02 15:23:50.884	2026-01-02 15:23:50.884
+725	\N	189	3	2023-06-14 04:00:00	195.00	0.00	0.00	195.00	PAGADO	ENTREGADA	\N	2026-01-02 15:23:50.888	2026-01-02 15:23:50.888
+726	\N	190	3	2023-06-15 04:00:00	75.00	0.00	0.00	75.00	PAGADO	ENTREGADA	\N	2026-01-02 15:23:50.894	2026-01-02 15:23:50.894
+727	\N	191	3	2023-07-18 04:00:00	1160.00	0.00	0.00	1160.00	PAGADO	ENTREGADA	\N	2026-01-02 15:23:50.9	2026-01-02 15:23:50.9
+728	\N	192	3	2023-08-15 04:00:00	850.00	0.00	0.00	850.00	PAGADO	ENTREGADA	\N	2026-01-02 15:23:50.905	2026-01-02 15:23:50.905
+729	\N	188	3	2023-08-17 04:00:00	620.00	0.00	0.00	620.00	PAGADO	ENTREGADA	\N	2026-01-02 15:23:50.91	2026-01-02 15:23:50.91
+730	\N	193	3	2023-10-06 03:00:00	75.00	0.00	0.00	75.00	PAGADO	ENTREGADA	\N	2026-01-02 15:23:50.914	2026-01-02 15:23:50.914
+731	\N	193	3	2023-10-09 03:00:00	340.00	0.00	0.00	340.00	PAGADO	ENTREGADA	\N	2026-01-02 15:23:50.918	2026-01-02 15:23:50.918
+732	\N	193	3	2023-10-20 03:00:00	410.00	0.00	0.00	410.00	PAGADO	ENTREGADA	\N	2026-01-02 15:23:50.927	2026-01-02 15:23:50.927
+733	\N	193	3	2023-11-14 03:00:00	1085.00	0.00	0.00	1085.00	PAGADO	ENTREGADA	\N	2026-01-02 15:23:50.933	2026-01-02 15:23:50.933
+734	\N	193	3	2023-11-22 03:00:00	75.00	0.00	0.00	75.00	PAGADO	ENTREGADA	\N	2026-01-02 15:23:50.938	2026-01-02 15:23:50.938
+735	\N	193	3	2023-12-01 03:00:00	280.00	0.00	0.00	280.00	PAGADO	ENTREGADA	\N	2026-01-02 15:23:50.942	2026-01-02 15:23:50.942
+736	\N	194	3	2023-12-05 03:00:00	695.00	0.00	0.00	695.00	PAGADO	ENTREGADA	\N	2026-01-02 15:23:50.948	2026-01-02 15:23:50.948
+737	\N	195	3	2023-12-15 03:00:00	75.00	0.00	0.00	75.00	PAGADO	ENTREGADA	\N	2026-01-02 15:23:50.953	2026-01-02 15:23:50.953
+738	\N	193	3	2023-12-15 03:00:00	910.00	0.00	0.00	910.00	PAGADO	ENTREGADA	\N	2026-01-02 15:23:50.96	2026-01-02 15:23:50.96
+739	\N	193	3	2024-04-03 03:00:00	1030.00	0.00	0.00	1030.00	PAGADO	ENTREGADA	\N	2026-01-02 15:23:50.966	2026-01-02 15:23:50.966
+740	\N	193	3	2024-05-29 04:00:00	1035.00	0.00	0.00	1035.00	PAGADO	ENTREGADA	\N	2026-01-02 15:23:50.97	2026-01-02 15:23:50.97
+741	\N	196	3	2024-06-03 04:00:00	150.00	0.00	0.00	150.00	PAGADO	ENTREGADA	\N	2026-01-02 15:23:50.975	2026-01-02 15:23:50.975
+742	\N	197	3	2024-06-27 04:00:00	1340.00	0.00	0.00	1340.00	PAGADO	ENTREGADA	\N	2026-01-02 15:23:50.979	2026-01-02 15:23:50.979
+743	\N	198	3	2024-07-08 04:00:00	710.00	0.00	0.00	710.00	PAGADO	ENTREGADA	\N	2026-01-02 15:23:50.985	2026-01-02 15:23:50.985
+744	\N	199	3	2024-09-18 03:00:00	900.00	0.00	0.00	900.00	PAGADO	ENTREGADA	\N	2026-01-02 15:23:50.99	2026-01-02 15:23:50.99
+745	\N	194	3	2024-11-08 03:00:00	75.00	0.00	0.00	75.00	PAGADO	ENTREGADA	\N	2026-01-02 15:23:50.995	2026-01-02 15:23:50.995
+746	\N	200	3	2024-12-05 03:00:00	255.00	0.00	0.00	255.00	PAGADO	ENTREGADA	\N	2026-01-02 15:23:50.999	2026-01-02 15:23:50.999
+747	\N	201	3	2024-12-10 03:00:00	75.00	0.00	0.00	75.00	PAGADO	ENTREGADA	\N	2026-01-02 15:23:51.004	2026-01-02 15:23:51.004
+748	\N	191	3	2024-12-16 03:00:00	1190.00	0.00	0.00	1190.00	PAGADO	ENTREGADA	\N	2026-01-02 15:23:51.008	2026-01-02 15:23:51.008
+749	\N	202	3	2024-12-16 03:00:00	75.00	0.00	0.00	75.00	PAGADO	ENTREGADA	\N	2026-01-02 15:23:51.012	2026-01-02 15:23:51.012
+750	\N	203	3	2024-12-18 03:00:00	150.00	0.00	0.00	150.00	PAGADO	ENTREGADA	\N	2026-01-02 15:23:51.017	2026-01-02 15:23:51.017
+751	\N	204	3	2025-02-07 03:00:00	220.00	0.00	0.00	220.00	PAGADO	ENTREGADA	\N	2026-01-02 15:23:51.021	2026-01-02 15:23:51.021
+752	\N	205	3	2025-04-01 03:00:00	150.00	0.00	0.00	150.00	PAGADO	ENTREGADA	\N	2026-01-02 15:23:51.026	2026-01-02 15:23:51.026
+753	\N	191	3	2025-10-17 03:00:00	455.00	0.00	0.00	455.00	PAGADO	ENTREGADA	\N	2026-01-02 15:23:51.032	2026-01-02 15:23:51.032
+754	\N	195	3	2024-10-17 03:00:00	2155.00	0.00	0.00	2155.00	PAGADO	ENTREGADA	\N	2026-01-02 15:23:51.037	2026-01-02 15:23:51.037
+755	\N	206	3	2024-10-21 03:00:00	720.00	0.00	0.00	720.00	PAGADO	ENTREGADA	\N	2026-01-02 15:23:51.044	2026-01-02 15:23:51.044
+756	\N	207	3	2024-12-06 03:00:00	320.00	0.00	0.00	320.00	PAGADO	ENTREGADA	\N	2026-01-02 15:23:51.05	2026-01-02 15:23:51.05
+757	\N	202	3	2024-12-10 03:00:00	240.00	0.00	0.00	240.00	PAGADO	ENTREGADA	\N	2026-01-02 15:23:51.054	2026-01-02 15:23:51.054
+758	\N	208	3	2024-12-18 03:00:00	240.00	0.00	0.00	240.00	PAGADO	ENTREGADA	\N	2026-01-02 15:23:51.059	2026-01-02 15:23:51.059
+759	\N	209	3	2024-12-17 03:00:00	80.00	0.00	0.00	80.00	PAGADO	ENTREGADA	\N	2026-01-02 15:23:51.067	2026-01-02 15:23:51.067
+760	\N	207	3	2024-12-18 03:00:00	685.00	0.00	0.00	685.00	PAGADO	ENTREGADA	\N	2026-01-02 15:23:51.071	2026-01-02 15:23:51.071
+761	\N	210	3	2024-12-19 03:00:00	685.00	0.00	0.00	685.00	PAGADO	ENTREGADA	\N	2026-01-02 15:23:51.077	2026-01-02 15:23:51.077
+762	\N	192	3	2025-01-06 03:00:00	765.00	0.00	0.00	765.00	PAGADO	ENTREGADA	\N	2026-01-02 15:23:51.082	2026-01-02 15:23:51.082
+763	\N	211	3	2025-01-23 03:00:00	1225.00	0.00	0.00	1225.00	PAGADO	ENTREGADA	\N	2026-01-02 15:23:51.086	2026-01-02 15:23:51.086
+764	\N	212	3	2025-02-25 03:00:00	7430.00	0.00	0.00	7430.00	PAGADO	ENTREGADA	\N	2026-01-02 15:23:51.092	2026-01-02 15:23:51.092
+765	\N	213	3	2025-02-26 03:00:00	825.00	0.00	0.00	825.00	PAGADO	ENTREGADA	\N	2026-01-02 15:23:51.099	2026-01-02 15:23:51.099
+766	\N	214	3	2025-03-03 03:00:00	610.00	0.00	0.00	610.00	PAGADO	ENTREGADA	\N	2026-01-02 15:23:51.109	2026-01-02 15:23:51.109
+767	\N	215	3	2025-03-06 03:00:00	610.00	0.00	0.00	610.00	PAGADO	ENTREGADA	\N	2026-01-02 15:23:51.114	2026-01-02 15:23:51.114
+768	\N	216	3	2025-03-18 03:00:00	80.00	0.00	0.00	80.00	PAGADO	ENTREGADA	\N	2026-01-02 15:23:51.119	2026-01-02 15:23:51.119
+769	\N	195	3	2025-03-31 03:00:00	1270.00	0.00	0.00	1270.00	PAGADO	ENTREGADA	\N	2026-01-02 15:23:51.122	2026-01-02 15:23:51.122
+770	\N	217	3	2025-04-01 03:00:00	1170.00	0.00	0.00	1170.00	PAGADO	ENTREGADA	\N	2026-01-02 15:23:51.128	2026-01-02 15:23:51.128
+771	\N	218	3	2025-05-08 04:00:00	80.00	0.00	0.00	80.00	PAGADO	ENTREGADA	\N	2026-01-02 15:23:51.133	2026-01-02 15:23:51.133
+772	\N	219	3	2025-07-16 04:00:00	160.00	0.00	0.00	160.00	PAGADO	ENTREGADA	\N	2026-01-02 15:23:51.137	2026-01-02 15:23:51.137
+773	\N	191	3	2025-08-01 04:00:00	785.00	0.00	0.00	785.00	PAGADO	ENTREGADA	\N	2026-01-02 15:23:51.142	2026-01-02 15:23:51.142
+774	\N	220	3	2025-08-05 04:00:00	685.00	0.00	0.00	685.00	PAGADO	ENTREGADA	\N	2026-01-02 15:23:51.146	2026-01-02 15:23:51.146
+775	\N	221	3	2025-08-29 04:00:00	160.00	0.00	0.00	160.00	PAGADO	ENTREGADA	\N	2026-01-02 15:23:51.151	2026-01-02 15:23:51.151
+776	\N	222	3	2025-09-04 04:00:00	80.00	0.00	0.00	80.00	PAGADO	ENTREGADA	\N	2026-01-02 15:23:51.155	2026-01-02 15:23:51.155
+777	\N	223	3	2025-09-15 03:00:00	80.00	0.00	0.00	80.00	PAGADO	ENTREGADA	\N	2026-01-02 15:23:51.158	2026-01-02 15:23:51.158
+778	\N	195	3	2025-10-08 03:00:00	1640.00	0.00	0.00	1640.00	PAGADO	ENTREGADA	\N	2026-01-02 15:23:51.162	2026-01-02 15:23:51.162
+779	\N	207	3	2025-12-15 03:00:00	1460.00	0.00	0.00	1460.00	PAGADO	ENTREGADA	\N	2026-01-02 15:23:51.166	2026-01-02 15:23:51.166
+780	\N	224	3	2023-03-16 03:00:00	739.00	0.00	0.00	739.00	PAGADO	ENTREGADA	\N	2026-01-02 15:23:51.17	2026-01-02 15:23:51.17
+781	\N	186	3	2023-05-16 04:00:00	525.00	0.00	0.00	525.00	PAGADO	ENTREGADA	\N	2026-01-02 15:23:51.175	2026-01-02 15:23:51.175
+782	\N	193	3	2023-05-17 04:00:00	590.00	0.00	0.00	590.00	PAGADO	ENTREGADA	\N	2026-01-02 15:23:51.18	2026-01-02 15:23:51.18
+783	\N	193	3	2023-06-01 04:00:00	1580.00	0.00	0.00	1580.00	PAGADO	ENTREGADA	\N	2026-01-02 15:23:51.188	2026-01-02 15:23:51.188
+784	\N	225	3	2024-02-22 03:00:00	515.00	0.00	0.00	515.00	PAGADO	ENTREGADA	\N	2026-01-02 15:23:51.194	2026-01-02 15:23:51.194
+785	\N	226	3	2024-06-25 04:00:00	135.00	0.00	0.00	135.00	PAGADO	ENTREGADA	\N	2026-01-02 15:23:51.199	2026-01-02 15:23:51.199
+786	\N	227	3	2024-07-01 04:00:00	65.00	0.00	0.00	65.00	PAGADO	ENTREGADA	\N	2026-01-02 15:23:51.205	2026-01-02 15:23:51.205
+787	\N	225	3	2024-10-15 03:00:00	310.00	0.00	0.00	310.00	PAGADO	ENTREGADA	\N	2026-01-02 15:23:51.21	2026-01-02 15:23:51.21
+788	\N	193	3	2024-12-05 03:00:00	100.00	0.00	0.00	100.00	PAGADO	ENTREGADA	\N	2026-01-02 15:23:51.215	2026-01-02 15:23:51.215
+789	\N	228	3	2025-04-28 04:00:00	30.00	0.00	0.00	30.00	PAGADO	ENTREGADA	\N	2026-01-02 15:23:51.221	2026-01-02 15:23:51.221
+790	\N	229	3	2025-05-29 04:00:00	30.00	0.00	0.00	30.00	PAGADO	ENTREGADA	\N	2026-01-02 15:23:51.226	2026-01-02 15:23:51.226
+791	\N	196	3	2025-07-07 04:00:00	30.00	0.00	0.00	30.00	PAGADO	ENTREGADA	\N	2026-01-02 15:23:51.23	2026-01-02 15:23:51.23
+792	\N	196	3	2025-06-09 04:00:00	240.00	0.00	0.00	240.00	PAGADO	ENTREGADA	\N	2026-01-02 15:23:51.235	2026-01-02 15:23:51.235
+793	\N	230	3	2023-06-15 04:00:00	570.00	0.00	0.00	570.00	PAGADO	ENTREGADA	\N	2026-01-02 15:23:51.241	2026-01-02 15:23:51.241
+794	\N	231	3	2023-06-16 04:00:00	590.00	0.00	0.00	590.00	PAGADO	ENTREGADA	\N	2026-01-02 15:23:51.246	2026-01-02 15:23:51.246
+795	\N	232	3	2023-06-19 04:00:00	550.00	0.00	0.00	550.00	PAGADO	ENTREGADA	\N	2026-01-02 15:23:51.251	2026-01-02 15:23:51.251
+796	\N	186	3	2023-06-19 04:00:00	70.00	0.00	0.00	70.00	PAGADO	ENTREGADA	\N	2026-01-02 15:23:51.255	2026-01-02 15:23:51.255
+797	\N	233	3	2023-06-21 04:00:00	35.00	0.00	0.00	35.00	PAGADO	ENTREGADA	\N	2026-01-02 15:23:51.261	2026-01-02 15:23:51.261
+798	\N	226	3	2023-06-22 04:00:00	790.00	0.00	0.00	790.00	PAGADO	ENTREGADA	\N	2026-01-02 15:23:51.265	2026-01-02 15:23:51.265
+799	\N	186	3	2023-06-27 04:00:00	565.00	0.00	0.00	565.00	PAGADO	ENTREGADA	\N	2026-01-02 15:23:51.27	2026-01-02 15:23:51.27
+800	\N	234	3	2023-06-28 04:00:00	630.00	0.00	0.00	630.00	PAGADO	ENTREGADA	\N	2026-01-02 15:23:51.275	2026-01-02 15:23:51.275
+801	\N	193	3	2023-06-29 04:00:00	70.00	0.00	0.00	70.00	PAGADO	ENTREGADA	\N	2026-01-02 15:23:51.281	2026-01-02 15:23:51.281
+802	\N	233	3	2023-06-29 04:00:00	35.00	0.00	0.00	35.00	PAGADO	ENTREGADA	\N	2026-01-02 15:23:51.287	2026-01-02 15:23:51.287
+803	\N	235	3	2023-08-08 04:00:00	1080.00	0.00	0.00	1080.00	PAGADO	ENTREGADA	\N	2026-01-02 15:23:51.292	2026-01-02 15:23:51.292
+804	\N	236	3	2023-08-09 04:00:00	315.00	0.00	0.00	315.00	PAGADO	ENTREGADA	\N	2026-01-02 15:23:51.296	2026-01-02 15:23:51.296
+805	\N	237	3	2023-08-10 04:00:00	915.00	0.00	0.00	915.00	PAGADO	ENTREGADA	\N	2026-01-02 15:23:51.3	2026-01-02 15:23:51.3
+806	\N	238	3	2023-08-11 04:00:00	70.00	0.00	0.00	70.00	PAGADO	ENTREGADA	\N	2026-01-02 15:23:51.306	2026-01-02 15:23:51.306
+807	\N	189	3	2023-09-06 03:00:00	600.00	0.00	0.00	600.00	PAGADO	ENTREGADA	\N	2026-01-02 15:23:51.311	2026-01-02 15:23:51.311
+808	\N	223	3	2023-09-06 03:00:00	70.00	0.00	0.00	70.00	PAGADO	ENTREGADA	\N	2026-01-02 15:23:51.316	2026-01-02 15:23:51.316
+809	\N	239	3	2023-09-27 03:00:00	590.00	0.00	0.00	590.00	PAGADO	ENTREGADA	\N	2026-01-02 15:23:51.321	2026-01-02 15:23:51.321
+810	\N	186	3	2023-10-03 03:00:00	35.00	0.00	0.00	35.00	PAGADO	ENTREGADA	\N	2026-01-02 15:23:51.326	2026-01-02 15:23:51.326
+811	\N	193	3	2023-10-19 03:00:00	35.00	0.00	0.00	35.00	PAGADO	ENTREGADA	\N	2026-01-02 15:23:51.331	2026-01-02 15:23:51.331
+812	\N	193	3	2023-10-23 03:00:00	1005.00	0.00	0.00	1005.00	PAGADO	ENTREGADA	\N	2026-01-02 15:23:51.335	2026-01-02 15:23:51.335
+813	\N	230	3	2023-10-26 03:00:00	710.00	0.00	0.00	710.00	PAGADO	ENTREGADA	\N	2026-01-02 15:23:51.34	2026-01-02 15:23:51.34
+814	\N	240	3	2023-11-01 03:00:00	545.00	0.00	0.00	545.00	PAGADO	ENTREGADA	\N	2026-01-02 15:23:51.345	2026-01-02 15:23:51.345
+815	\N	193	3	2023-11-01 03:00:00	565.00	0.00	0.00	565.00	PAGADO	ENTREGADA	\N	2026-01-02 15:23:51.35	2026-01-02 15:23:51.35
+816	\N	241	3	2023-11-01 03:00:00	35.00	0.00	0.00	35.00	PAGADO	ENTREGADA	\N	2026-01-02 15:23:51.355	2026-01-02 15:23:51.355
+817	\N	219	3	2023-11-07 03:00:00	565.00	0.00	0.00	565.00	PAGADO	ENTREGADA	\N	2026-01-02 15:23:51.36	2026-01-02 15:23:51.36
+818	\N	241	3	2023-11-07 03:00:00	545.00	0.00	0.00	545.00	PAGADO	ENTREGADA	\N	2026-01-02 15:23:51.365	2026-01-02 15:23:51.365
+819	\N	195	3	2023-12-07 03:00:00	2040.00	0.00	0.00	2040.00	PAGADO	ENTREGADA	\N	2026-01-02 15:23:51.37	2026-01-02 15:23:51.37
+820	\N	188	3	2023-12-18 03:00:00	560.00	0.00	0.00	560.00	PAGADO	ENTREGADA	\N	2026-01-02 15:23:51.375	2026-01-02 15:23:51.375
+821	\N	193	3	2023-12-04 03:00:00	980.00	0.00	0.00	980.00	PAGADO	ENTREGADA	\N	2026-01-02 15:23:51.38	2026-01-02 15:23:51.38
+822	\N	242	3	2023-12-06 03:00:00	70.00	0.00	0.00	70.00	PAGADO	ENTREGADA	\N	2026-01-02 15:23:51.39	2026-01-02 15:23:51.39
+823	\N	208	3	2023-12-06 03:00:00	700.00	0.00	0.00	700.00	PAGADO	ENTREGADA	\N	2026-01-02 15:23:51.4	2026-01-02 15:23:51.4
+824	\N	193	3	2023-12-20 03:00:00	1005.00	0.00	0.00	1005.00	PAGADO	ENTREGADA	\N	2026-01-02 15:23:51.408	2026-01-02 15:23:51.408
+825	\N	243	3	2023-12-19 03:00:00	140.00	0.00	0.00	140.00	PAGADO	ENTREGADA	\N	2026-01-02 15:23:51.415	2026-01-02 15:23:51.415
+826	\N	193	3	2024-03-14 03:00:00	920.00	0.00	0.00	920.00	PAGADO	ENTREGADA	\N	2026-01-02 15:23:51.421	2026-01-02 15:23:51.421
+827	\N	193	3	2024-04-04 03:00:00	675.00	0.00	0.00	675.00	PAGADO	ENTREGADA	\N	2026-01-02 15:23:51.427	2026-01-02 15:23:51.427
+828	\N	244	3	2024-04-08 04:00:00	70.00	0.00	0.00	70.00	PAGADO	ENTREGADA	\N	2026-01-02 15:23:51.432	2026-01-02 15:23:51.432
+829	\N	230	3	2024-04-10 04:00:00	580.00	0.00	0.00	580.00	PAGADO	ENTREGADA	\N	2026-01-02 15:23:51.437	2026-01-02 15:23:51.437
+830	\N	193	3	2024-03-15 03:00:00	460.00	0.00	0.00	460.00	PAGADO	ENTREGADA	\N	2026-01-02 15:23:51.445	2026-01-02 15:23:51.445
+831	\N	193	3	2024-05-08 04:00:00	495.00	0.00	0.00	495.00	PAGADO	ENTREGADA	\N	2026-01-02 15:23:51.451	2026-01-02 15:23:51.451
+832	\N	187	3	2024-05-10 04:00:00	140.00	0.00	0.00	140.00	PAGADO	ENTREGADA	\N	2026-01-02 15:23:51.46	2026-01-02 15:23:51.46
+833	\N	244	3	2024-05-15 04:00:00	70.00	0.00	0.00	70.00	PAGADO	ENTREGADA	\N	2026-01-02 15:23:51.47	2026-01-02 15:23:51.47
+834	\N	230	3	2024-05-21 04:00:00	140.00	0.00	0.00	140.00	PAGADO	ENTREGADA	\N	2026-01-02 15:23:51.476	2026-01-02 15:23:51.476
+835	\N	193	3	2024-05-22 04:00:00	990.00	0.00	0.00	990.00	PAGADO	ENTREGADA	\N	2026-01-02 15:23:51.517	2026-01-02 15:23:51.517
+836	\N	193	3	2024-05-23 04:00:00	35.00	0.00	0.00	35.00	PAGADO	ENTREGADA	\N	2026-01-02 15:23:51.524	2026-01-02 15:23:51.524
+837	\N	220	3	2024-06-03 04:00:00	35.00	0.00	0.00	35.00	PAGADO	ENTREGADA	\N	2026-01-02 15:23:51.53	2026-01-02 15:23:51.53
+838	\N	208	3	2024-06-05 04:00:00	525.00	0.00	0.00	525.00	PAGADO	ENTREGADA	\N	2026-01-02 15:23:51.579	2026-01-02 15:23:51.579
+839	\N	208	3	2024-06-07 04:00:00	350.00	0.00	0.00	350.00	PAGADO	ENTREGADA	\N	2026-01-02 15:23:51.587	2026-01-02 15:23:51.587
+840	\N	193	3	2024-06-13 04:00:00	895.00	0.00	0.00	895.00	PAGADO	ENTREGADA	\N	2026-01-02 15:23:51.593	2026-01-02 15:23:51.593
+841	\N	193	3	2024-06-18 04:00:00	70.00	0.00	0.00	70.00	PAGADO	ENTREGADA	\N	2026-01-02 15:23:51.601	2026-01-02 15:23:51.601
+842	\N	193	3	2024-06-20 04:00:00	500.00	0.00	0.00	500.00	PAGADO	ENTREGADA	\N	2026-01-02 15:23:51.612	2026-01-02 15:23:51.612
+843	\N	245	3	2024-06-25 04:00:00	730.00	0.00	0.00	730.00	PAGADO	ENTREGADA	\N	2026-01-02 15:23:51.618	2026-01-02 15:23:51.618
+844	\N	193	3	2024-06-26 04:00:00	70.00	0.00	0.00	70.00	PAGADO	ENTREGADA	\N	2026-01-02 15:23:51.623	2026-01-02 15:23:51.623
+845	\N	193	3	2024-06-27 04:00:00	650.00	0.00	0.00	650.00	PAGADO	ENTREGADA	\N	2026-01-02 15:23:51.628	2026-01-02 15:23:51.628
+846	\N	246	3	2024-07-12 04:00:00	35.00	0.00	0.00	35.00	PAGADO	ENTREGADA	\N	2026-01-02 15:23:51.634	2026-01-02 15:23:51.634
+847	\N	247	3	2024-07-01 04:00:00	595.00	0.00	0.00	595.00	PAGADO	ENTREGADA	\N	2026-01-02 15:23:51.64	2026-01-02 15:23:51.64
+848	\N	208	3	2024-07-09 04:00:00	210.00	0.00	0.00	210.00	PAGADO	ENTREGADA	\N	2026-01-02 15:23:51.644	2026-01-02 15:23:51.644
+849	\N	220	3	2024-07-11 04:00:00	70.00	0.00	0.00	70.00	PAGADO	ENTREGADA	\N	2026-01-02 15:23:51.654	2026-01-02 15:23:51.654
+850	\N	248	3	2024-07-22 04:00:00	35.00	0.00	0.00	35.00	PAGADO	ENTREGADA	\N	2026-01-02 15:23:51.663	2026-01-02 15:23:51.663
+851	\N	249	3	2024-08-06 04:00:00	595.00	0.00	0.00	595.00	PAGADO	ENTREGADA	\N	2026-01-02 15:23:51.669	2026-01-02 15:23:51.669
+852	\N	238	3	2024-09-03 04:00:00	595.00	0.00	0.00	595.00	PAGADO	ENTREGADA	\N	2026-01-02 15:23:51.673	2026-01-02 15:23:51.673
+853	\N	220	3	2024-09-26 03:00:00	70.00	0.00	0.00	70.00	PAGADO	ENTREGADA	\N	2026-01-02 15:23:51.679	2026-01-02 15:23:51.679
+854	\N	195	3	2024-09-19 03:00:00	580.00	0.00	0.00	580.00	PAGADO	ENTREGADA	\N	2026-01-02 15:23:51.684	2026-01-02 15:23:51.684
+855	\N	246	3	2024-09-28 03:00:00	35.00	0.00	0.00	35.00	PAGADO	ENTREGADA	\N	2026-01-02 15:23:51.69	2026-01-02 15:23:51.69
+856	\N	250	3	2024-10-04 03:00:00	1030.00	0.00	0.00	1030.00	PAGADO	ENTREGADA	\N	2026-01-02 15:23:51.696	2026-01-02 15:23:51.696
+857	\N	220	3	2024-10-21 03:00:00	660.00	0.00	0.00	660.00	PAGADO	ENTREGADA	\N	2026-01-02 15:23:51.701	2026-01-02 15:23:51.701
+858	\N	226	3	2024-10-25 03:00:00	70.00	0.00	0.00	70.00	PAGADO	ENTREGADA	\N	2026-01-02 15:23:51.707	2026-01-02 15:23:51.707
+859	\N	226	3	2024-11-01 03:00:00	350.00	0.00	0.00	350.00	PAGADO	ENTREGADA	\N	2026-01-02 15:23:51.728	2026-01-02 15:23:51.728
+860	\N	251	3	2024-11-29 03:00:00	35.00	0.00	0.00	35.00	PAGADO	ENTREGADA	\N	2026-01-02 15:23:51.735	2026-01-02 15:23:51.735
+861	\N	252	3	2024-11-29 03:00:00	595.00	0.00	0.00	595.00	PAGADO	ENTREGADA	\N	2026-01-02 15:23:51.743	2026-01-02 15:23:51.743
+862	\N	253	3	2024-12-05 03:00:00	70.00	0.00	0.00	70.00	PAGADO	ENTREGADA	\N	2026-01-02 15:23:51.753	2026-01-02 15:23:51.753
+863	\N	254	3	2024-12-10 03:00:00	555.00	0.00	0.00	555.00	PAGADO	ENTREGADA	\N	2026-01-02 15:23:51.759	2026-01-02 15:23:51.759
+864	\N	224	3	2024-12-16 03:00:00	595.00	0.00	0.00	595.00	PAGADO	ENTREGADA	\N	2026-01-02 15:23:51.767	2026-01-02 15:23:51.767
+865	\N	255	3	2024-12-18 03:00:00	515.00	0.00	0.00	515.00	PAGADO	ENTREGADA	\N	2026-01-02 15:23:51.772	2026-01-02 15:23:51.772
+866	\N	256	3	2024-12-18 03:00:00	115.00	0.00	0.00	115.00	PAGADO	ENTREGADA	\N	2026-01-02 15:23:51.779	2026-01-02 15:23:51.779
+867	\N	257	3	2024-12-19 03:00:00	35.00	0.00	0.00	35.00	PAGADO	ENTREGADA	\N	2026-01-02 15:23:51.785	2026-01-02 15:23:51.785
+868	\N	258	3	2024-12-20 03:00:00	230.00	0.00	0.00	230.00	PAGADO	ENTREGADA	\N	2026-01-02 15:23:51.79	2026-01-02 15:23:51.79
+869	\N	193	3	2024-12-23 03:00:00	70.00	0.00	0.00	70.00	PAGADO	ENTREGADA	\N	2026-01-02 15:23:51.796	2026-01-02 15:23:51.796
+870	\N	259	3	2024-12-23 03:00:00	70.00	0.00	0.00	70.00	PAGADO	ENTREGADA	\N	2026-01-02 15:23:51.802	2026-01-02 15:23:51.802
+871	\N	257	3	2025-01-31 03:00:00	35.00	0.00	0.00	35.00	PAGADO	ENTREGADA	\N	2026-01-02 15:23:51.808	2026-01-02 15:23:51.808
+872	\N	243	3	2025-02-07 03:00:00	555.00	0.00	0.00	555.00	PAGADO	ENTREGADA	\N	2026-01-02 15:23:51.817	2026-01-02 15:23:51.817
+873	\N	191	3	2025-02-11 03:00:00	665.00	0.00	0.00	665.00	PAGADO	ENTREGADA	\N	2026-01-02 15:23:51.823	2026-01-02 15:23:51.823
+874	\N	260	3	2025-04-01 03:00:00	140.00	0.00	0.00	140.00	PAGADO	ENTREGADA	\N	2026-01-02 15:23:51.83	2026-01-02 15:23:51.83
+875	\N	261	3	2025-04-03 03:00:00	105.00	0.00	0.00	105.00	PAGADO	ENTREGADA	\N	2026-01-02 15:23:51.838	2026-01-02 15:23:51.838
+876	\N	262	3	2025-04-08 04:00:00	70.00	0.00	0.00	70.00	PAGADO	ENTREGADA	\N	2026-01-02 15:23:51.853	2026-01-02 15:23:51.853
+877	\N	263	3	2025-04-16 04:00:00	70.00	0.00	0.00	70.00	PAGADO	ENTREGADA	\N	2026-01-02 15:23:51.861	2026-01-02 15:23:51.861
+878	\N	264	3	2025-04-21 04:00:00	520.00	0.00	0.00	520.00	PAGADO	ENTREGADA	\N	2026-01-02 15:23:51.871	2026-01-02 15:23:51.871
+879	\N	195	3	2025-05-06 04:00:00	3480.00	0.00	0.00	3480.00	PAGADO	ENTREGADA	\N	2026-01-02 15:23:51.876	2026-01-02 15:23:51.876
+880	\N	195	3	2025-06-07 04:00:00	70.00	0.00	0.00	70.00	PAGADO	ENTREGADA	\N	2026-01-02 15:23:51.883	2026-01-02 15:23:51.883
+881	\N	265	3	2025-05-21 04:00:00	520.00	0.00	0.00	520.00	PAGADO	ENTREGADA	\N	2026-01-02 15:23:51.889	2026-01-02 15:23:51.889
+882	\N	259	3	2025-05-28 04:00:00	585.00	0.00	0.00	585.00	PAGADO	ENTREGADA	\N	2026-01-02 15:23:51.898	2026-01-02 15:23:51.898
+883	\N	226	3	2025-05-29 04:00:00	580.00	0.00	0.00	580.00	PAGADO	ENTREGADA	\N	2026-01-02 15:23:51.906	2026-01-02 15:23:51.906
+884	\N	266	3	2025-06-03 04:00:00	70.00	0.00	0.00	70.00	PAGADO	ENTREGADA	\N	2026-01-02 15:23:51.914	2026-01-02 15:23:51.914
+885	\N	230	3	2025-06-03 04:00:00	735.00	0.00	0.00	735.00	PAGADO	ENTREGADA	\N	2026-01-02 15:23:51.933	2026-01-02 15:23:51.933
+886	\N	267	3	2025-06-05 04:00:00	70.00	0.00	0.00	70.00	PAGADO	ENTREGADA	\N	2026-01-02 15:23:51.945	2026-01-02 15:23:51.945
+887	\N	252	3	2025-06-17 04:00:00	605.00	0.00	0.00	605.00	PAGADO	ENTREGADA	\N	2026-01-02 15:23:51.952	2026-01-02 15:23:51.952
+888	\N	265	3	2025-06-30 04:00:00	35.00	0.00	0.00	35.00	PAGADO	ENTREGADA	\N	2026-01-02 15:23:51.958	2026-01-02 15:23:51.958
+889	\N	268	3	2025-07-03 04:00:00	600.00	0.00	0.00	600.00	PAGADO	ENTREGADA	\N	2026-01-02 15:23:51.964	2026-01-02 15:23:51.964
+890	\N	195	3	2025-07-08 04:00:00	150.00	0.00	0.00	150.00	PAGADO	ENTREGADA	\N	2026-01-02 15:23:51.972	2026-01-02 15:23:51.972
+891	\N	269	3	2025-08-06 04:00:00	70.00	0.00	0.00	70.00	PAGADO	ENTREGADA	\N	2026-01-02 15:23:51.978	2026-01-02 15:23:51.978
+892	\N	195	3	2025-08-06 04:00:00	3020.00	0.00	0.00	3020.00	PAGADO	ENTREGADA	\N	2026-01-02 15:23:51.982	2026-01-02 15:23:51.982
+893	\N	259	3	2025-08-15 04:00:00	585.00	0.00	0.00	585.00	PAGADO	ENTREGADA	\N	2026-01-02 15:23:51.988	2026-01-02 15:23:51.988
+894	\N	230	3	2025-09-02 04:00:00	1350.00	0.00	0.00	1350.00	PAGADO	ENTREGADA	\N	2026-01-02 15:23:51.993	2026-01-02 15:23:51.993
+895	\N	270	3	2025-09-08 03:00:00	150.00	0.00	0.00	150.00	PAGADO	ENTREGADA	\N	2026-01-02 15:23:51.997	2026-01-02 15:23:51.997
+896	\N	271	3	2025-09-15 03:00:00	35.00	0.00	0.00	35.00	PAGADO	ENTREGADA	\N	2026-01-02 15:23:52.005	2026-01-02 15:23:52.005
+897	\N	220	3	2025-10-09 03:00:00	35.00	0.00	0.00	35.00	PAGADO	ENTREGADA	\N	2026-01-02 15:23:52.01	2026-01-02 15:23:52.01
+898	\N	219	3	2025-09-17 03:00:00	70.00	0.00	0.00	70.00	PAGADO	ENTREGADA	\N	2026-01-02 15:23:52.015	2026-01-02 15:23:52.015
+899	\N	272	3	2025-09-25 03:00:00	520.00	0.00	0.00	520.00	PAGADO	ENTREGADA	\N	2026-01-02 15:23:52.021	2026-01-02 15:23:52.021
+900	\N	250	3	2025-10-02 03:00:00	140.00	0.00	0.00	140.00	PAGADO	ENTREGADA	\N	2026-01-02 15:23:52.028	2026-01-02 15:23:52.028
+901	\N	273	3	2025-10-03 03:00:00	35.00	0.00	0.00	35.00	PAGADO	ENTREGADA	\N	2026-01-02 15:23:52.034	2026-01-02 15:23:52.034
+902	\N	274	3	2025-10-03 03:00:00	70.00	0.00	0.00	70.00	PAGADO	ENTREGADA	\N	2026-01-02 15:23:52.038	2026-01-02 15:23:52.038
+903	\N	225	3	2025-10-10 03:00:00	520.00	0.00	0.00	520.00	PAGADO	ENTREGADA	\N	2026-01-02 15:23:52.043	2026-01-02 15:23:52.043
+904	\N	275	3	2025-10-16 03:00:00	35.00	0.00	0.00	35.00	PAGADO	ENTREGADA	\N	2026-01-02 15:23:52.048	2026-01-02 15:23:52.048
+905	\N	276	3	2025-10-21 03:00:00	70.00	0.00	0.00	70.00	PAGADO	ENTREGADA	\N	2026-01-02 15:23:52.052	2026-01-02 15:23:52.052
+906	\N	226	3	2025-10-29 03:00:00	70.00	0.00	0.00	70.00	PAGADO	ENTREGADA	\N	2026-01-02 15:23:52.056	2026-01-02 15:23:52.056
+907	\N	276	3	2025-10-23 03:00:00	70.00	0.00	0.00	70.00	PAGADO	ENTREGADA	\N	2026-01-02 15:23:52.06	2026-01-02 15:23:52.06
+908	\N	243	3	2025-10-27 03:00:00	70.00	0.00	0.00	70.00	PAGADO	ENTREGADA	\N	2026-01-02 15:23:52.064	2026-01-02 15:23:52.064
+909	\N	232	3	2025-10-28 03:00:00	510.00	0.00	0.00	510.00	PAGADO	ENTREGADA	\N	2026-01-02 15:23:52.068	2026-01-02 15:23:52.068
+910	\N	263	3	2025-11-10 03:00:00	105.00	0.00	0.00	105.00	PAGADO	ENTREGADA	\N	2026-01-02 15:23:52.073	2026-01-02 15:23:52.073
+911	\N	277	3	2025-11-11 03:00:00	140.00	0.00	0.00	140.00	PAGADO	ENTREGADA	\N	2026-01-02 15:23:52.077	2026-01-02 15:23:52.077
+912	\N	225	3	2025-11-13 03:00:00	70.00	0.00	0.00	70.00	PAGADO	ENTREGADA	\N	2026-01-02 15:23:52.082	2026-01-02 15:23:52.082
+913	\N	201	3	2025-11-13 03:00:00	70.00	0.00	0.00	70.00	PAGADO	ENTREGADA	\N	2026-01-02 15:23:52.086	2026-01-02 15:23:52.086
+914	\N	195	3	2025-11-19 03:00:00	150.00	0.00	0.00	150.00	PAGADO	ENTREGADA	\N	2026-01-02 15:23:52.09	2026-01-02 15:23:52.09
+915	\N	230	3	2025-11-21 03:00:00	1200.00	0.00	0.00	1200.00	PAGADO	ENTREGADA	\N	2026-01-02 15:23:52.095	2026-01-02 15:23:52.095
+916	\N	255	3	2025-12-01 03:00:00	70.00	0.00	0.00	70.00	PAGADO	ENTREGADA	\N	2026-01-02 15:23:52.099	2026-01-02 15:23:52.099
+917	\N	278	3	2023-12-07 03:00:00	80.00	0.00	0.00	80.00	PAGADO	ENTREGADA	\N	2026-01-02 15:23:52.103	2026-01-02 15:23:52.103
+918	\N	200	3	2024-11-22 03:00:00	120.00	0.00	0.00	120.00	PAGADO	ENTREGADA	\N	2026-01-02 15:23:52.106	2026-01-02 15:23:52.106
+919	\N	187	3	2024-12-06 03:00:00	80.00	0.00	0.00	80.00	PAGADO	ENTREGADA	\N	2026-01-02 15:23:52.11	2026-01-02 15:23:52.11
+920	\N	256	3	2025-07-25 04:00:00	615.00	0.00	0.00	615.00	PAGADO	ENTREGADA	\N	2026-01-02 15:23:52.115	2026-01-02 15:23:52.115
+921	\N	279	3	2025-07-29 04:00:00	1240.00	0.00	0.00	1240.00	PAGADO	ENTREGADA	\N	2026-01-02 15:23:52.119	2026-01-02 15:23:52.119
+922	\N	280	3	2023-03-29 03:00:00	1190.00	0.00	0.00	1190.00	PAGADO	ENTREGADA	\N	2026-01-02 15:23:52.123	2026-01-02 15:23:52.123
+923	\N	186	3	2023-06-06 04:00:00	310.00	0.00	0.00	310.00	PAGADO	ENTREGADA	\N	2026-01-02 15:23:52.128	2026-01-02 15:23:52.128
+924	\N	193	3	2023-03-10 03:00:00	1670.00	0.00	0.00	1670.00	PAGADO	ENTREGADA	\N	2026-01-02 15:23:52.133	2026-01-02 15:23:52.133
+925	\N	281	3	2023-03-17 03:00:00	280.00	0.00	0.00	280.00	PAGADO	ENTREGADA	\N	2026-01-02 15:23:52.137	2026-01-02 15:23:52.137
+926	\N	282	3	2023-03-17 03:00:00	270.00	0.00	0.00	270.00	PAGADO	ENTREGADA	\N	2026-01-02 15:23:52.141	2026-01-02 15:23:52.141
+927	\N	193	3	2023-03-20 03:00:00	1560.00	0.00	0.00	1560.00	PAGADO	ENTREGADA	\N	2026-01-02 15:23:52.145	2026-01-02 15:23:52.145
+928	\N	283	3	2023-03-22 03:00:00	280.00	0.00	0.00	280.00	PAGADO	ENTREGADA	\N	2026-01-02 15:23:52.15	2026-01-02 15:23:52.15
+929	\N	284	3	2023-03-24 03:00:00	280.00	0.00	0.00	280.00	PAGADO	ENTREGADA	\N	2026-01-02 15:23:52.157	2026-01-02 15:23:52.157
+930	\N	193	3	2023-03-27 03:00:00	690.00	0.00	0.00	690.00	PAGADO	ENTREGADA	\N	2026-01-02 15:23:52.162	2026-01-02 15:23:52.162
+931	\N	236	3	2023-03-31 03:00:00	280.00	0.00	0.00	280.00	PAGADO	ENTREGADA	\N	2026-01-02 15:23:52.167	2026-01-02 15:23:52.167
+932	\N	196	3	2023-04-17 04:00:00	360.00	0.00	0.00	360.00	PAGADO	ENTREGADA	\N	2026-01-02 15:23:52.171	2026-01-02 15:23:52.171
+933	\N	285	3	2023-05-24 04:00:00	280.00	0.00	0.00	280.00	PAGADO	ENTREGADA	\N	2026-01-02 15:23:52.175	2026-01-02 15:23:52.175
+934	\N	193	3	2023-06-15 04:00:00	265.00	0.00	0.00	265.00	PAGADO	ENTREGADA	\N	2026-01-02 15:23:52.181	2026-01-02 15:23:52.181
+935	\N	193	3	2023-06-16 04:00:00	280.00	0.00	0.00	280.00	PAGADO	ENTREGADA	\N	2026-01-02 15:23:52.184	2026-01-02 15:23:52.184
+936	\N	193	3	2023-06-20 04:00:00	265.00	0.00	0.00	265.00	PAGADO	ENTREGADA	\N	2026-01-02 15:23:52.188	2026-01-02 15:23:52.188
+937	\N	193	3	2023-06-23 04:00:00	775.00	0.00	0.00	775.00	PAGADO	ENTREGADA	\N	2026-01-02 15:23:52.192	2026-01-02 15:23:52.192
+938	\N	286	3	2023-06-27 04:00:00	280.00	0.00	0.00	280.00	PAGADO	ENTREGADA	\N	2026-01-02 15:23:52.196	2026-01-02 15:23:52.196
+939	\N	193	3	2023-06-27 04:00:00	565.00	0.00	0.00	565.00	PAGADO	ENTREGADA	\N	2026-01-02 15:23:52.2	2026-01-02 15:23:52.2
+940	\N	283	3	2023-07-17 04:00:00	1120.00	0.00	0.00	1120.00	PAGADO	ENTREGADA	\N	2026-01-02 15:23:52.206	2026-01-02 15:23:52.206
+941	\N	287	3	2023-07-19 04:00:00	530.00	0.00	0.00	530.00	PAGADO	ENTREGADA	\N	2026-01-02 15:23:52.211	2026-01-02 15:23:52.211
+942	\N	287	3	2023-08-25 04:00:00	270.00	0.00	0.00	270.00	PAGADO	ENTREGADA	\N	2026-01-02 15:23:52.216	2026-01-02 15:23:52.216
+943	\N	283	3	2023-09-25 03:00:00	280.00	0.00	0.00	280.00	PAGADO	ENTREGADA	\N	2026-01-02 15:23:52.221	2026-01-02 15:23:52.221
+944	\N	193	3	2023-09-26 03:00:00	265.00	0.00	0.00	265.00	PAGADO	ENTREGADA	\N	2026-01-02 15:23:52.225	2026-01-02 15:23:52.225
+945	\N	193	3	2023-10-05 03:00:00	720.00	0.00	0.00	720.00	PAGADO	ENTREGADA	\N	2026-01-02 15:23:52.23	2026-01-02 15:23:52.23
+946	\N	226	3	2023-11-24 03:00:00	280.00	0.00	0.00	280.00	PAGADO	ENTREGADA	\N	2026-01-02 15:23:52.235	2026-01-02 15:23:52.235
+947	\N	288	3	2023-12-04 03:00:00	280.00	0.00	0.00	280.00	PAGADO	ENTREGADA	\N	2026-01-02 15:23:52.239	2026-01-02 15:23:52.239
+948	\N	283	3	2023-11-27 03:00:00	280.00	0.00	0.00	280.00	PAGADO	ENTREGADA	\N	2026-01-02 15:23:52.244	2026-01-02 15:23:52.244
+949	\N	193	3	2023-12-05 03:00:00	265.00	0.00	0.00	265.00	PAGADO	ENTREGADA	\N	2026-01-02 15:23:52.248	2026-01-02 15:23:52.248
+950	\N	289	3	2023-12-05 03:00:00	280.00	0.00	0.00	280.00	PAGADO	ENTREGADA	\N	2026-01-02 15:23:52.253	2026-01-02 15:23:52.253
+951	\N	290	3	2023-12-07 03:00:00	265.00	0.00	0.00	265.00	PAGADO	ENTREGADA	\N	2026-01-02 15:23:52.26	2026-01-02 15:23:52.26
+952	\N	261	3	2023-12-08 03:00:00	720.00	0.00	0.00	720.00	PAGADO	ENTREGADA	\N	2026-01-02 15:23:52.267	2026-01-02 15:23:52.267
+953	\N	283	3	2023-12-11 03:00:00	280.00	0.00	0.00	280.00	PAGADO	ENTREGADA	\N	2026-01-02 15:23:52.273	2026-01-02 15:23:52.273
+954	\N	193	3	2024-01-23 03:00:00	685.00	0.00	0.00	685.00	PAGADO	ENTREGADA	\N	2026-01-02 15:23:52.28	2026-01-02 15:23:52.28
+955	\N	291	3	2024-02-20 03:00:00	280.00	0.00	0.00	280.00	PAGADO	ENTREGADA	\N	2026-01-02 15:23:52.286	2026-01-02 15:23:52.286
+956	\N	228	3	2024-04-15 04:00:00	1300.00	0.00	0.00	1300.00	PAGADO	ENTREGADA	\N	2026-01-02 15:23:52.291	2026-01-02 15:23:52.291
+957	\N	226	3	2024-05-02 04:00:00	280.00	0.00	0.00	280.00	PAGADO	ENTREGADA	\N	2026-01-02 15:23:52.297	2026-01-02 15:23:52.297
+958	\N	226	3	2024-05-20 04:00:00	280.00	0.00	0.00	280.00	PAGADO	ENTREGADA	\N	2026-01-02 15:23:52.301	2026-01-02 15:23:52.301
+959	\N	261	3	2024-06-06 04:00:00	2180.00	0.00	0.00	2180.00	PAGADO	ENTREGADA	\N	2026-01-02 15:23:52.305	2026-01-02 15:23:52.305
+960	\N	292	3	2024-06-14 04:00:00	940.00	0.00	0.00	940.00	PAGADO	ENTREGADA	\N	2026-01-02 15:23:52.31	2026-01-02 15:23:52.31
+961	\N	220	3	2024-06-06 04:00:00	265.00	0.00	0.00	265.00	PAGADO	ENTREGADA	\N	2026-01-02 15:23:52.316	2026-01-02 15:23:52.316
+962	\N	261	3	2024-06-18 04:00:00	280.00	0.00	0.00	280.00	PAGADO	ENTREGADA	\N	2026-01-02 15:23:52.321	2026-01-02 15:23:52.321
+963	\N	291	3	2024-06-28 04:00:00	560.00	0.00	0.00	560.00	PAGADO	ENTREGADA	\N	2026-01-02 15:23:52.326	2026-01-02 15:23:52.326
+964	\N	293	3	2024-07-17 04:00:00	280.00	0.00	0.00	280.00	PAGADO	ENTREGADA	\N	2026-01-02 15:23:52.331	2026-01-02 15:23:52.331
+965	\N	289	3	2024-10-25 03:00:00	790.00	0.00	0.00	790.00	PAGADO	ENTREGADA	\N	2026-01-02 15:23:52.335	2026-01-02 15:23:52.335
+966	\N	261	3	2024-11-01 03:00:00	280.00	0.00	0.00	280.00	PAGADO	ENTREGADA	\N	2026-01-02 15:23:52.342	2026-01-02 15:23:52.342
+967	\N	279	3	2024-11-07 03:00:00	280.00	0.00	0.00	280.00	PAGADO	ENTREGADA	\N	2026-01-02 15:23:52.347	2026-01-02 15:23:52.347
+968	\N	226	3	2024-11-21 03:00:00	280.00	0.00	0.00	280.00	PAGADO	ENTREGADA	\N	2026-01-02 15:23:52.352	2026-01-02 15:23:52.352
+969	\N	261	3	2024-11-29 03:00:00	280.00	0.00	0.00	280.00	PAGADO	ENTREGADA	\N	2026-01-02 15:23:52.356	2026-01-02 15:23:52.356
+970	\N	261	3	2024-12-11 03:00:00	280.00	0.00	0.00	280.00	PAGADO	ENTREGADA	\N	2026-01-02 15:23:52.36	2026-01-02 15:23:52.36
+971	\N	226	3	2024-12-19 03:00:00	280.00	0.00	0.00	280.00	PAGADO	ENTREGADA	\N	2026-01-02 15:23:52.364	2026-01-02 15:23:52.364
+972	\N	294	3	2025-04-08 04:00:00	270.00	0.00	0.00	270.00	PAGADO	ENTREGADA	\N	2026-01-02 15:23:52.368	2026-01-02 15:23:52.368
+973	\N	294	3	2025-04-09 04:00:00	270.00	0.00	0.00	270.00	PAGADO	ENTREGADA	\N	2026-01-02 15:23:52.373	2026-01-02 15:23:52.373
+974	\N	295	3	2025-01-08 03:00:00	280.00	0.00	0.00	280.00	PAGADO	ENTREGADA	\N	2026-01-02 15:23:52.379	2026-01-02 15:23:52.379
+975	\N	296	3	2025-04-14 04:00:00	1125.00	0.00	0.00	1125.00	PAGADO	ENTREGADA	\N	2026-01-02 15:23:52.384	2026-01-02 15:23:52.384
+976	\N	226	3	2025-07-01 04:00:00	285.00	0.00	0.00	285.00	PAGADO	ENTREGADA	\N	2026-01-02 15:23:52.389	2026-01-02 15:23:52.389
+977	\N	279	3	2025-08-08 04:00:00	280.00	0.00	0.00	280.00	PAGADO	ENTREGADA	\N	2026-01-02 15:23:52.394	2026-01-02 15:23:52.394
+978	\N	189	3	2025-09-02 04:00:00	285.00	0.00	0.00	285.00	PAGADO	ENTREGADA	\N	2026-01-02 15:23:52.399	2026-01-02 15:23:52.399
+979	\N	289	3	2025-09-26 03:00:00	800.00	0.00	0.00	800.00	PAGADO	ENTREGADA	\N	2026-01-02 15:23:52.403	2026-01-02 15:23:52.403
+980	\N	289	3	2025-10-10 03:00:00	285.00	0.00	0.00	285.00	PAGADO	ENTREGADA	\N	2026-01-02 15:23:52.41	2026-01-02 15:23:52.41
+981	\N	297	3	2025-10-13 03:00:00	560.00	0.00	0.00	560.00	PAGADO	ENTREGADA	\N	2026-01-02 15:23:52.415	2026-01-02 15:23:52.415
+982	\N	297	3	2025-11-17 03:00:00	540.00	0.00	0.00	540.00	PAGADO	ENTREGADA	\N	2026-01-02 15:23:52.422	2026-01-02 15:23:52.422
+983	\N	289	3	2023-06-16 04:00:00	320.00	0.00	0.00	320.00	PAGADO	ENTREGADA	\N	2026-01-02 15:23:52.427	2026-01-02 15:23:52.427
+984	\N	193	3	2023-07-19 04:00:00	740.00	0.00	0.00	740.00	PAGADO	ENTREGADA	\N	2026-01-02 15:23:52.431	2026-01-02 15:23:52.431
+985	\N	193	3	2023-11-08 03:00:00	1920.00	0.00	0.00	1920.00	PAGADO	ENTREGADA	\N	2026-01-02 15:23:52.436	2026-01-02 15:23:52.436
+986	\N	298	3	2024-05-15 04:00:00	320.00	0.00	0.00	320.00	PAGADO	ENTREGADA	\N	2026-01-02 15:23:52.441	2026-01-02 15:23:52.441
+987	\N	289	3	2024-05-20 04:00:00	320.00	0.00	0.00	320.00	PAGADO	ENTREGADA	\N	2026-01-02 15:23:52.445	2026-01-02 15:23:52.445
+988	\N	279	3	2023-12-05 03:00:00	320.00	0.00	0.00	320.00	PAGADO	ENTREGADA	\N	2026-01-02 15:23:52.449	2026-01-02 15:23:52.449
+989	\N	299	3	2024-09-24 03:00:00	320.00	0.00	0.00	320.00	PAGADO	ENTREGADA	\N	2026-01-02 15:23:52.453	2026-01-02 15:23:52.453
+990	\N	216	3	2025-05-19 04:00:00	325.00	0.00	0.00	325.00	PAGADO	ENTREGADA	\N	2026-01-02 15:23:52.457	2026-01-02 15:23:52.457
+991	\N	254	3	2023-03-10 03:00:00	480.00	0.00	0.00	480.00	PAGADO	ENTREGADA	\N	2026-01-02 15:23:52.462	2026-01-02 15:23:52.462
+992	\N	187	3	2023-03-20 03:00:00	480.00	0.00	0.00	480.00	PAGADO	ENTREGADA	\N	2026-01-02 15:23:52.466	2026-01-02 15:23:52.466
+993	\N	285	3	2023-03-27 03:00:00	480.00	0.00	0.00	480.00	PAGADO	ENTREGADA	\N	2026-01-02 15:23:52.471	2026-01-02 15:23:52.471
+994	\N	300	3	2023-03-29 03:00:00	480.00	0.00	0.00	480.00	PAGADO	ENTREGADA	\N	2026-01-02 15:23:52.476	2026-01-02 15:23:52.476
+995	\N	238	3	2023-04-05 04:00:00	829.00	0.00	0.00	829.00	PAGADO	ENTREGADA	\N	2026-01-02 15:23:52.481	2026-01-02 15:23:52.481
+996	\N	238	3	2023-04-11 04:00:00	480.00	0.00	0.00	480.00	PAGADO	ENTREGADA	\N	2026-01-02 15:23:52.486	2026-01-02 15:23:52.486
+997	\N	254	3	2023-06-13 04:00:00	480.00	0.00	0.00	480.00	PAGADO	ENTREGADA	\N	2026-01-02 15:23:52.489	2026-01-02 15:23:52.489
+998	\N	254	3	2023-07-03 04:00:00	480.00	0.00	0.00	480.00	PAGADO	ENTREGADA	\N	2026-01-02 15:23:52.493	2026-01-02 15:23:52.493
+999	\N	301	3	2023-10-19 03:00:00	480.00	0.00	0.00	480.00	PAGADO	ENTREGADA	\N	2026-01-02 15:23:52.498	2026-01-02 15:23:52.498
+1000	\N	219	3	2023-12-06 03:00:00	540.00	0.00	0.00	540.00	PAGADO	ENTREGADA	\N	2026-01-02 15:23:52.502	2026-01-02 15:23:52.502
+1001	\N	254	3	2023-12-15 03:00:00	480.00	0.00	0.00	480.00	PAGADO	ENTREGADA	\N	2026-01-02 15:23:52.507	2026-01-02 15:23:52.507
+1002	\N	302	3	2023-12-18 03:00:00	480.00	0.00	0.00	480.00	PAGADO	ENTREGADA	\N	2026-01-02 15:23:52.512	2026-01-02 15:23:52.512
+1003	\N	219	3	2024-01-31 03:00:00	485.00	0.00	0.00	485.00	PAGADO	ENTREGADA	\N	2026-01-02 15:23:52.516	2026-01-02 15:23:52.516
+1004	\N	303	3	2024-02-22 03:00:00	490.00	0.00	0.00	490.00	PAGADO	ENTREGADA	\N	2026-01-02 15:23:52.52	2026-01-02 15:23:52.52
+1005	\N	304	3	2024-03-15 03:00:00	485.00	0.00	0.00	485.00	PAGADO	ENTREGADA	\N	2026-01-02 15:23:52.524	2026-01-02 15:23:52.524
+1006	\N	294	3	2024-02-06 03:00:00	475.00	0.00	0.00	475.00	PAGADO	ENTREGADA	\N	2026-01-02 15:23:52.528	2026-01-02 15:23:52.528
+1007	\N	302	3	2024-03-25 03:00:00	485.00	0.00	0.00	485.00	PAGADO	ENTREGADA	\N	2026-01-02 15:23:52.532	2026-01-02 15:23:52.532
+1008	\N	304	3	2024-04-24 04:00:00	485.00	0.00	0.00	485.00	PAGADO	ENTREGADA	\N	2026-01-02 15:23:52.536	2026-01-02 15:23:52.536
+1009	\N	193	3	2024-04-29 04:00:00	465.00	0.00	0.00	465.00	PAGADO	ENTREGADA	\N	2026-01-02 15:23:52.54	2026-01-02 15:23:52.54
+1010	\N	219	3	2024-02-14 03:00:00	485.00	0.00	0.00	485.00	PAGADO	ENTREGADA	\N	2026-01-02 15:23:52.544	2026-01-02 15:23:52.544
+1011	\N	254	3	2024-06-06 04:00:00	485.00	0.00	0.00	485.00	PAGADO	ENTREGADA	\N	2026-01-02 15:23:52.549	2026-01-02 15:23:52.549
+1012	\N	212	3	2024-06-07 04:00:00	940.00	0.00	0.00	940.00	PAGADO	ENTREGADA	\N	2026-01-02 15:23:52.554	2026-01-02 15:23:52.554
+1013	\N	305	3	2024-06-07 04:00:00	470.00	0.00	0.00	470.00	PAGADO	ENTREGADA	\N	2026-01-02 15:23:52.559	2026-01-02 15:23:52.559
+1014	\N	193	3	2024-06-06 04:00:00	1010.00	0.00	0.00	1010.00	PAGADO	ENTREGADA	\N	2026-01-02 15:23:52.562	2026-01-02 15:23:52.562
+1015	\N	191	3	2024-06-10 04:00:00	485.00	0.00	0.00	485.00	PAGADO	ENTREGADA	\N	2026-01-02 15:23:52.567	2026-01-02 15:23:52.567
+1016	\N	195	3	2024-10-04 03:00:00	900.00	0.00	0.00	900.00	PAGADO	ENTREGADA	\N	2026-01-02 15:23:52.571	2026-01-02 15:23:52.571
+1017	\N	302	3	2024-10-29 03:00:00	490.00	0.00	0.00	490.00	PAGADO	ENTREGADA	\N	2026-01-02 15:23:52.576	2026-01-02 15:23:52.576
+1018	\N	195	3	2024-12-06 03:00:00	2230.00	0.00	0.00	2230.00	PAGADO	ENTREGADA	\N	2026-01-02 15:23:52.582	2026-01-02 15:23:52.582
+1019	\N	306	3	2025-02-06 03:00:00	480.00	0.00	0.00	480.00	PAGADO	ENTREGADA	\N	2026-01-02 15:23:52.587	2026-01-02 15:23:52.587
+1020	\N	307	3	2025-02-12 03:00:00	770.00	0.00	0.00	770.00	PAGADO	ENTREGADA	\N	2026-01-02 15:23:52.591	2026-01-02 15:23:52.591
+1021	\N	195	3	2025-02-07 03:00:00	4020.00	0.00	0.00	4020.00	PAGADO	ENTREGADA	\N	2026-01-02 15:23:52.598	2026-01-02 15:23:52.598
+1022	\N	306	3	2025-03-05 03:00:00	485.00	0.00	0.00	485.00	PAGADO	ENTREGADA	\N	2026-01-02 15:23:52.603	2026-01-02 15:23:52.603
+1023	\N	306	3	2025-04-08 04:00:00	485.00	0.00	0.00	485.00	PAGADO	ENTREGADA	\N	2026-01-02 15:23:52.609	2026-01-02 15:23:52.609
+1024	\N	306	3	2025-04-10 04:00:00	485.00	0.00	0.00	485.00	PAGADO	ENTREGADA	\N	2026-01-02 15:23:52.613	2026-01-02 15:23:52.613
+1025	\N	270	3	2025-05-12 04:00:00	1015.00	0.00	0.00	1015.00	PAGADO	ENTREGADA	\N	2026-01-02 15:23:52.617	2026-01-02 15:23:52.617
+1026	\N	232	3	2025-05-22 04:00:00	490.00	0.00	0.00	490.00	PAGADO	ENTREGADA	\N	2026-01-02 15:23:52.622	2026-01-02 15:23:52.622
+1027	\N	195	3	2025-06-25 04:00:00	1400.00	0.00	0.00	1400.00	PAGADO	ENTREGADA	\N	2026-01-02 15:23:52.628	2026-01-02 15:23:52.628
+1028	\N	232	3	2025-09-23 03:00:00	490.00	0.00	0.00	490.00	PAGADO	ENTREGADA	\N	2026-01-02 15:23:52.633	2026-01-02 15:23:52.633
+1029	\N	308	3	2025-10-15 03:00:00	960.00	0.00	0.00	960.00	PAGADO	ENTREGADA	\N	2026-01-02 15:23:52.639	2026-01-02 15:23:52.639
+1030	\N	309	3	2023-03-09 03:00:00	440.00	0.00	0.00	440.00	PAGADO	ENTREGADA	\N	2026-01-02 15:23:52.646	2026-01-02 15:23:52.646
+1031	\N	310	3	2023-03-09 03:00:00	440.00	0.00	0.00	440.00	PAGADO	ENTREGADA	\N	2026-01-02 15:23:52.654	2026-01-02 15:23:52.654
+1032	\N	208	3	2023-03-13 03:00:00	410.00	0.00	0.00	410.00	PAGADO	ENTREGADA	\N	2026-01-02 15:23:52.659	2026-01-02 15:23:52.659
+1033	\N	193	3	2023-03-17 03:00:00	1290.00	0.00	0.00	1290.00	PAGADO	ENTREGADA	\N	2026-01-02 15:23:52.664	2026-01-02 15:23:52.664
+1034	\N	283	3	2023-03-20 03:00:00	1130.00	0.00	0.00	1130.00	PAGADO	ENTREGADA	\N	2026-01-02 15:23:52.67	2026-01-02 15:23:52.67
+1035	\N	193	3	2023-03-22 03:00:00	1430.00	0.00	0.00	1430.00	PAGADO	ENTREGADA	\N	2026-01-02 15:23:52.676	2026-01-02 15:23:52.676
+1036	\N	208	3	2023-04-11 04:00:00	830.00	0.00	0.00	830.00	PAGADO	ENTREGADA	\N	2026-01-02 15:23:52.681	2026-01-02 15:23:52.681
+1037	\N	188	3	2023-05-09 04:00:00	425.00	0.00	0.00	425.00	PAGADO	ENTREGADA	\N	2026-01-02 15:23:52.686	2026-01-02 15:23:52.686
+1038	\N	261	3	2023-05-11 04:00:00	430.00	0.00	0.00	430.00	PAGADO	ENTREGADA	\N	2026-01-02 15:23:52.691	2026-01-02 15:23:52.691
+1039	\N	193	3	2023-05-24 04:00:00	425.00	0.00	0.00	425.00	PAGADO	ENTREGADA	\N	2026-01-02 15:23:52.696	2026-01-02 15:23:52.696
+1040	\N	310	3	2023-06-13 04:00:00	440.00	0.00	0.00	440.00	PAGADO	ENTREGADA	\N	2026-01-02 15:23:52.702	2026-01-02 15:23:52.702
+1041	\N	193	3	2023-06-19 04:00:00	420.00	0.00	0.00	420.00	PAGADO	ENTREGADA	\N	2026-01-02 15:23:52.707	2026-01-02 15:23:52.707
+1042	\N	193	3	2023-07-28 04:00:00	400.00	0.00	0.00	400.00	PAGADO	ENTREGADA	\N	2026-01-02 15:23:52.713	2026-01-02 15:23:52.713
+1043	\N	226	3	2023-09-01 04:00:00	880.00	0.00	0.00	880.00	PAGADO	ENTREGADA	\N	2026-01-02 15:23:52.722	2026-01-02 15:23:52.722
+1044	\N	193	3	2023-10-26 03:00:00	420.00	0.00	0.00	420.00	PAGADO	ENTREGADA	\N	2026-01-02 15:23:52.731	2026-01-02 15:23:52.731
+1045	\N	311	3	2023-11-08 03:00:00	440.00	0.00	0.00	440.00	PAGADO	ENTREGADA	\N	2026-01-02 15:23:52.737	2026-01-02 15:23:52.737
+1046	\N	193	3	2023-12-06 03:00:00	840.00	0.00	0.00	840.00	PAGADO	ENTREGADA	\N	2026-01-02 15:23:52.743	2026-01-02 15:23:52.743
+1047	\N	312	3	2023-12-07 03:00:00	420.00	0.00	0.00	420.00	PAGADO	ENTREGADA	\N	2026-01-02 15:23:52.749	2026-01-02 15:23:52.749
+1048	\N	313	3	2023-12-15 03:00:00	440.00	0.00	0.00	440.00	PAGADO	ENTREGADA	\N	2026-01-02 15:23:52.758	2026-01-02 15:23:52.758
+1049	\N	302	3	2023-12-15 03:00:00	440.00	0.00	0.00	440.00	PAGADO	ENTREGADA	\N	2026-01-02 15:23:52.766	2026-01-02 15:23:52.766
+1050	\N	224	3	2023-12-18 03:00:00	440.00	0.00	0.00	440.00	PAGADO	ENTREGADA	\N	2026-01-02 15:23:52.772	2026-01-02 15:23:52.772
+1051	\N	291	3	2023-12-20 03:00:00	440.00	0.00	0.00	440.00	PAGADO	ENTREGADA	\N	2026-01-02 15:23:52.78	2026-01-02 15:23:52.78
+1052	\N	193	3	2024-02-02 03:00:00	425.00	0.00	0.00	425.00	PAGADO	ENTREGADA	\N	2026-01-02 15:23:52.785	2026-01-02 15:23:52.785
+1053	\N	226	3	2024-02-02 03:00:00	445.00	0.00	0.00	445.00	PAGADO	ENTREGADA	\N	2026-01-02 15:23:52.79	2026-01-02 15:23:52.79
+1054	\N	193	3	2024-03-08 03:00:00	1360.00	0.00	0.00	1360.00	PAGADO	ENTREGADA	\N	2026-01-02 15:23:52.795	2026-01-02 15:23:52.795
+1055	\N	314	3	2024-02-14 03:00:00	450.00	0.00	0.00	450.00	PAGADO	ENTREGADA	\N	2026-01-02 15:23:52.801	2026-01-02 15:23:52.801
+1056	\N	314	3	2024-02-20 03:00:00	495.00	0.00	0.00	495.00	PAGADO	ENTREGADA	\N	2026-01-02 15:23:52.806	2026-01-02 15:23:52.806
+1057	\N	212	3	2024-03-04 03:00:00	430.00	0.00	0.00	430.00	PAGADO	ENTREGADA	\N	2026-01-02 15:23:52.811	2026-01-02 15:23:52.811
+1058	\N	315	3	2024-02-21 03:00:00	4000.00	0.00	0.00	4000.00	PAGADO	ENTREGADA	\N	2026-01-02 15:23:52.816	2026-01-02 15:23:52.816
+1059	\N	193	3	2024-03-20 03:00:00	850.00	0.00	0.00	850.00	PAGADO	ENTREGADA	\N	2026-01-02 15:23:52.822	2026-01-02 15:23:52.822
+1060	\N	316	3	2024-05-13 04:00:00	440.00	0.00	0.00	440.00	PAGADO	ENTREGADA	\N	2026-01-02 15:23:52.827	2026-01-02 15:23:52.827
+1061	\N	193	3	2024-05-16 04:00:00	425.00	0.00	0.00	425.00	PAGADO	ENTREGADA	\N	2026-01-02 15:23:52.832	2026-01-02 15:23:52.832
+1062	\N	193	3	2024-05-24 04:00:00	425.00	0.00	0.00	425.00	PAGADO	ENTREGADA	\N	2026-01-02 15:23:52.837	2026-01-02 15:23:52.837
+1063	\N	304	3	2024-05-31 04:00:00	445.00	0.00	0.00	445.00	PAGADO	ENTREGADA	\N	2026-01-02 15:23:52.843	2026-01-02 15:23:52.843
+1064	\N	191	3	2024-10-03 03:00:00	460.00	0.00	0.00	460.00	PAGADO	ENTREGADA	\N	2026-01-02 15:23:52.848	2026-01-02 15:23:52.848
+1065	\N	212	3	2024-10-16 03:00:00	430.00	0.00	0.00	430.00	PAGADO	ENTREGADA	\N	2026-01-02 15:23:52.854	2026-01-02 15:23:52.854
+1066	\N	306	3	2024-10-17 03:00:00	440.00	0.00	0.00	440.00	PAGADO	ENTREGADA	\N	2026-01-02 15:23:52.859	2026-01-02 15:23:52.859
+1067	\N	317	3	2024-10-22 03:00:00	450.00	0.00	0.00	450.00	PAGADO	ENTREGADA	\N	2026-01-02 15:23:52.863	2026-01-02 15:23:52.863
+1068	\N	226	3	2024-10-22 03:00:00	450.00	0.00	0.00	450.00	PAGADO	ENTREGADA	\N	2026-01-02 15:23:52.87	2026-01-02 15:23:52.87
+1069	\N	216	3	2024-10-23 03:00:00	445.00	0.00	0.00	445.00	PAGADO	ENTREGADA	\N	2026-01-02 15:23:52.878	2026-01-02 15:23:52.878
+1070	\N	318	3	2024-10-28 03:00:00	450.00	0.00	0.00	450.00	PAGADO	ENTREGADA	\N	2026-01-02 15:23:52.884	2026-01-02 15:23:52.884
+1071	\N	265	3	2024-10-29 03:00:00	445.00	0.00	0.00	445.00	PAGADO	ENTREGADA	\N	2026-01-02 15:23:52.891	2026-01-02 15:23:52.891
+1072	\N	195	3	2024-11-01 03:00:00	860.00	0.00	0.00	860.00	PAGADO	ENTREGADA	\N	2026-01-02 15:23:52.898	2026-01-02 15:23:52.898
+1073	\N	212	3	2024-11-15 03:00:00	430.00	0.00	0.00	430.00	PAGADO	ENTREGADA	\N	2026-01-02 15:23:52.905	2026-01-02 15:23:52.905
+1074	\N	261	3	2025-01-27 03:00:00	525.00	0.00	0.00	525.00	PAGADO	ENTREGADA	\N	2026-01-02 15:23:52.912	2026-01-02 15:23:52.912
+1075	\N	312	3	2025-03-13 03:00:00	450.00	0.00	0.00	450.00	PAGADO	ENTREGADA	\N	2026-01-02 15:23:52.921	2026-01-02 15:23:52.921
+1076	\N	319	3	2024-12-27 03:00:00	525.00	0.00	0.00	525.00	PAGADO	ENTREGADA	\N	2026-01-02 15:23:52.927	2026-01-02 15:23:52.927
+1077	\N	208	3	2025-04-02 03:00:00	860.00	0.00	0.00	860.00	PAGADO	ENTREGADA	\N	2026-01-02 15:23:52.933	2026-01-02 15:23:52.933
+1078	\N	224	3	2025-03-20 03:00:00	450.00	0.00	0.00	450.00	PAGADO	ENTREGADA	\N	2026-01-02 15:23:52.941	2026-01-02 15:23:52.941
+1079	\N	193	3	2025-04-10 04:00:00	440.00	0.00	0.00	440.00	PAGADO	ENTREGADA	\N	2026-01-02 15:23:52.946	2026-01-02 15:23:52.946
+1080	\N	193	3	2025-06-19 04:00:00	445.00	0.00	0.00	445.00	PAGADO	ENTREGADA	\N	2026-01-02 15:23:52.951	2026-01-02 15:23:52.951
+1081	\N	195	3	2025-06-18 04:00:00	440.00	0.00	0.00	440.00	PAGADO	ENTREGADA	\N	2026-01-02 15:23:52.957	2026-01-02 15:23:52.957
+1082	\N	320	3	2025-07-23 04:00:00	450.00	0.00	0.00	450.00	PAGADO	ENTREGADA	\N	2026-01-02 15:23:52.962	2026-01-02 15:23:52.962
+1083	\N	252	3	2025-09-10 03:00:00	450.00	0.00	0.00	450.00	PAGADO	ENTREGADA	\N	2026-01-02 15:23:52.968	2026-01-02 15:23:52.968
+1084	\N	274	3	2025-09-30 03:00:00	450.00	0.00	0.00	450.00	PAGADO	ENTREGADA	\N	2026-01-02 15:23:52.974	2026-01-02 15:23:52.974
+1085	\N	315	3	2025-10-08 03:00:00	440.00	0.00	0.00	440.00	PAGADO	ENTREGADA	\N	2026-01-02 15:23:52.984	2026-01-02 15:23:52.984
+1086	\N	228	3	2025-10-09 03:00:00	450.00	0.00	0.00	450.00	PAGADO	ENTREGADA	\N	2026-01-02 15:23:52.99	2026-01-02 15:23:52.99
+1087	\N	321	3	2025-10-16 03:00:00	880.00	0.00	0.00	880.00	PAGADO	ENTREGADA	\N	2026-01-02 15:23:52.999	2026-01-02 15:23:52.999
+1088	\N	321	3	2025-10-23 03:00:00	880.00	0.00	0.00	880.00	PAGADO	ENTREGADA	\N	2026-01-02 15:23:53.008	2026-01-02 15:23:53.008
+1089	\N	219	3	2025-10-23 03:00:00	450.00	0.00	0.00	450.00	PAGADO	ENTREGADA	\N	2026-01-02 15:23:53.016	2026-01-02 15:23:53.016
+1090	\N	228	3	2025-10-23 03:00:00	450.00	0.00	0.00	450.00	PAGADO	ENTREGADA	\N	2026-01-02 15:23:53.021	2026-01-02 15:23:53.021
+1091	\N	294	3	2025-10-28 03:00:00	450.00	0.00	0.00	450.00	PAGADO	ENTREGADA	\N	2026-01-02 15:23:53.025	2026-01-02 15:23:53.025
+1092	\N	321	3	2025-11-04 03:00:00	880.00	0.00	0.00	880.00	PAGADO	ENTREGADA	\N	2026-01-02 15:23:53.032	2026-01-02 15:23:53.032
+1093	\N	319	3	2025-11-12 03:00:00	450.00	0.00	0.00	450.00	PAGADO	ENTREGADA	\N	2026-01-02 15:23:53.041	2026-01-02 15:23:53.041
+1094	\N	228	3	2025-11-07 03:00:00	450.00	0.00	0.00	450.00	PAGADO	ENTREGADA	\N	2026-01-02 15:23:53.051	2026-01-02 15:23:53.051
+1095	\N	312	3	2023-03-15 03:00:00	535.00	0.00	0.00	535.00	PAGADO	ENTREGADA	\N	2026-01-02 15:23:53.057	2026-01-02 15:23:53.057
+1096	\N	312	3	2023-03-16 03:00:00	535.00	0.00	0.00	535.00	PAGADO	ENTREGADA	\N	2026-01-02 15:23:53.063	2026-01-02 15:23:53.063
+1097	\N	193	3	2023-03-21 03:00:00	540.00	0.00	0.00	540.00	PAGADO	ENTREGADA	\N	2026-01-02 15:23:53.071	2026-01-02 15:23:53.071
+1098	\N	322	3	2023-03-23 03:00:00	616.00	0.00	0.00	616.00	PAGADO	ENTREGADA	\N	2026-01-02 15:23:53.08	2026-01-02 15:23:53.08
+1099	\N	193	3	2023-03-24 03:00:00	540.00	0.00	0.00	540.00	PAGADO	ENTREGADA	\N	2026-01-02 15:23:53.087	2026-01-02 15:23:53.087
+1100	\N	312	3	2023-03-24 03:00:00	540.00	0.00	0.00	540.00	PAGADO	ENTREGADA	\N	2026-01-02 15:23:53.092	2026-01-02 15:23:53.092
+1101	\N	196	3	2023-05-17 04:00:00	560.00	0.00	0.00	560.00	PAGADO	ENTREGADA	\N	2026-01-02 15:23:53.1	2026-01-02 15:23:53.1
+1102	\N	323	3	2023-05-24 04:00:00	560.00	0.00	0.00	560.00	PAGADO	ENTREGADA	\N	2026-01-02 15:23:53.105	2026-01-02 15:23:53.105
+1103	\N	193	3	2023-05-26 04:00:00	540.00	0.00	0.00	540.00	PAGADO	ENTREGADA	\N	2026-01-02 15:23:53.111	2026-01-02 15:23:53.111
+1104	\N	186	3	2023-05-04 04:00:00	1120.00	0.00	0.00	1120.00	PAGADO	ENTREGADA	\N	2026-01-02 15:23:53.116	2026-01-02 15:23:53.116
+1105	\N	193	3	2023-08-10 04:00:00	540.00	0.00	0.00	540.00	PAGADO	ENTREGADA	\N	2026-01-02 15:23:53.121	2026-01-02 15:23:53.121
+1106	\N	193	3	2023-09-08 03:00:00	1060.00	0.00	0.00	1060.00	PAGADO	ENTREGADA	\N	2026-01-02 15:23:53.128	2026-01-02 15:23:53.128
+1107	\N	283	3	2023-09-11 03:00:00	1120.00	0.00	0.00	1120.00	PAGADO	ENTREGADA	\N	2026-01-02 15:23:53.135	2026-01-02 15:23:53.135
+1108	\N	188	3	2023-09-21 03:00:00	540.00	0.00	0.00	540.00	PAGADO	ENTREGADA	\N	2026-01-02 15:23:53.142	2026-01-02 15:23:53.142
+1109	\N	291	3	2023-11-10 03:00:00	1080.00	0.00	0.00	1080.00	PAGADO	ENTREGADA	\N	2026-01-02 15:23:53.148	2026-01-02 15:23:53.148
+1110	\N	193	3	2023-11-28 03:00:00	1020.00	0.00	0.00	1020.00	PAGADO	ENTREGADA	\N	2026-01-02 15:23:53.156	2026-01-02 15:23:53.156
+1111	\N	302	3	2023-12-06 03:00:00	560.00	0.00	0.00	560.00	PAGADO	ENTREGADA	\N	2026-01-02 15:23:53.161	2026-01-02 15:23:53.161
+1112	\N	193	3	2023-11-17 03:00:00	530.00	0.00	0.00	530.00	PAGADO	ENTREGADA	\N	2026-01-02 15:23:53.166	2026-01-02 15:23:53.166
+1113	\N	193	3	2023-12-13 03:00:00	530.00	0.00	0.00	530.00	PAGADO	ENTREGADA	\N	2026-01-02 15:23:53.171	2026-01-02 15:23:53.171
+1114	\N	324	3	2023-12-14 03:00:00	560.00	0.00	0.00	560.00	PAGADO	ENTREGADA	\N	2026-01-02 15:23:53.183	2026-01-02 15:23:53.183
+1115	\N	223	3	2023-12-15 03:00:00	1120.00	0.00	0.00	1120.00	PAGADO	ENTREGADA	\N	2026-01-02 15:23:53.191	2026-01-02 15:23:53.191
+1116	\N	208	3	2023-12-11 03:00:00	2040.00	0.00	0.00	2040.00	PAGADO	ENTREGADA	\N	2026-01-02 15:23:53.197	2026-01-02 15:23:53.197
+1117	\N	189	3	2024-02-07 03:00:00	560.00	0.00	0.00	560.00	PAGADO	ENTREGADA	\N	2026-01-02 15:23:53.202	2026-01-02 15:23:53.202
+1118	\N	212	3	2024-01-10 03:00:00	2800.00	0.00	0.00	2800.00	PAGADO	ENTREGADA	\N	2026-01-02 15:23:53.207	2026-01-02 15:23:53.207
+1119	\N	324	3	2024-02-07 03:00:00	560.00	0.00	0.00	560.00	PAGADO	ENTREGADA	\N	2026-01-02 15:23:53.214	2026-01-02 15:23:53.214
+1120	\N	195	3	2024-05-28 04:00:00	545.00	0.00	0.00	545.00	PAGADO	ENTREGADA	\N	2026-01-02 15:23:53.219	2026-01-02 15:23:53.219
+1121	\N	283	3	2024-05-27 04:00:00	560.00	0.00	0.00	560.00	PAGADO	ENTREGADA	\N	2026-01-02 15:23:53.237	2026-01-02 15:23:53.237
+1122	\N	212	3	2024-06-05 04:00:00	545.00	0.00	0.00	545.00	PAGADO	ENTREGADA	\N	2026-01-02 15:23:53.243	2026-01-02 15:23:53.243
+1126	\N	283	3	2024-07-01 04:00:00	560.00	0.00	0.00	560.00	PAGADO	ENTREGADA	\N	2026-01-02 15:23:53.274	2026-01-02 15:23:53.274
+1123	\N	193	3	2024-06-11 04:00:00	1090.00	0.00	0.00	1090.00	PAGADO	ENTREGADA	\N	2026-01-02 15:23:53.251	2026-01-02 15:23:53.251
+1124	\N	195	3	2024-06-21 04:00:00	3620.00	0.00	0.00	3620.00	PAGADO	ENTREGADA	\N	2026-01-02 15:23:53.258	2026-01-02 15:23:53.258
+1125	\N	291	3	2024-07-01 04:00:00	560.00	0.00	0.00	560.00	PAGADO	ENTREGADA	\N	2026-01-02 15:23:53.267	2026-01-02 15:23:53.267
+1407	\N	350	3	2024-11-22 03:00:00	290.00	0.00	0.00	290.00	PAGADO	ENTREGADA	\N	2026-01-02 15:23:54.933	2026-01-02 15:23:54.933
+1408	\N	193	3	2024-09-02 04:00:00	290.00	0.00	0.00	290.00	PAGADO	ENTREGADA	\N	2026-01-02 15:23:54.937	2026-01-02 15:23:54.937
+1409	\N	289	3	2024-12-10 03:00:00	290.00	0.00	0.00	290.00	PAGADO	ENTREGADA	\N	2026-01-02 15:23:54.942	2026-01-02 15:23:54.942
+1410	\N	202	3	2025-04-21 04:00:00	290.00	0.00	0.00	290.00	PAGADO	ENTREGADA	\N	2026-01-02 15:23:54.954	2026-01-02 15:23:54.954
+1127	\N	230	3	2024-07-03 04:00:00	1120.00	0.00	0.00	1120.00	PAGADO	ENTREGADA	\N	2026-01-02 15:23:53.286	2026-01-02 15:23:53.286
+1128	\N	258	3	2024-07-03 04:00:00	545.00	0.00	0.00	545.00	PAGADO	ENTREGADA	\N	2026-01-02 15:23:53.293	2026-01-02 15:23:53.293
+1129	\N	261	3	2024-08-08 04:00:00	560.00	0.00	0.00	560.00	PAGADO	ENTREGADA	\N	2026-01-02 15:23:53.304	2026-01-02 15:23:53.304
+1130	\N	190	3	2024-09-20 03:00:00	560.00	0.00	0.00	560.00	PAGADO	ENTREGADA	\N	2026-01-02 15:23:53.311	2026-01-02 15:23:53.311
+1131	\N	193	3	2024-08-23 04:00:00	545.00	0.00	0.00	545.00	PAGADO	ENTREGADA	\N	2026-01-02 15:23:53.318	2026-01-02 15:23:53.318
+1132	\N	250	3	2024-10-10 03:00:00	550.00	0.00	0.00	550.00	PAGADO	ENTREGADA	\N	2026-01-02 15:23:53.322	2026-01-02 15:23:53.322
+1133	\N	325	3	2025-07-30 04:00:00	535.00	0.00	0.00	535.00	PAGADO	ENTREGADA	\N	2026-01-02 15:23:53.327	2026-01-02 15:23:53.327
+1134	\N	282	3	2024-12-20 03:00:00	550.00	0.00	0.00	550.00	PAGADO	ENTREGADA	\N	2026-01-02 15:23:53.331	2026-01-02 15:23:53.331
+1135	\N	212	3	2025-01-27 03:00:00	545.00	0.00	0.00	545.00	PAGADO	ENTREGADA	\N	2026-01-02 15:23:53.337	2026-01-02 15:23:53.337
+1136	\N	198	3	2024-11-20 03:00:00	560.00	0.00	0.00	560.00	PAGADO	ENTREGADA	\N	2026-01-02 15:23:53.342	2026-01-02 15:23:53.342
+1137	\N	212	3	2024-11-19 03:00:00	545.00	0.00	0.00	545.00	PAGADO	ENTREGADA	\N	2026-01-02 15:23:53.347	2026-01-02 15:23:53.347
+1138	\N	212	3	2024-11-20 03:00:00	545.00	0.00	0.00	545.00	PAGADO	ENTREGADA	\N	2026-01-02 15:23:53.354	2026-01-02 15:23:53.354
+1139	\N	250	3	2025-02-07 03:00:00	1000.00	0.00	0.00	1000.00	PAGADO	ENTREGADA	\N	2026-01-02 15:23:53.36	2026-01-02 15:23:53.36
+1140	\N	189	3	2025-03-12 03:00:00	565.00	0.00	0.00	565.00	PAGADO	ENTREGADA	\N	2026-01-02 15:23:53.366	2026-01-02 15:23:53.366
+1141	\N	326	3	2025-02-19 03:00:00	570.00	0.00	0.00	570.00	PAGADO	ENTREGADA	\N	2026-01-02 15:23:53.371	2026-01-02 15:23:53.371
+1142	\N	289	3	2025-02-07 03:00:00	560.00	0.00	0.00	560.00	PAGADO	ENTREGADA	\N	2026-01-02 15:23:53.378	2026-01-02 15:23:53.378
+1143	\N	195	3	2025-03-18 03:00:00	1100.00	0.00	0.00	1100.00	PENDIENTE	ENTREGADA	\N	2026-01-02 15:23:53.383	2026-01-02 15:23:53.383
+1144	\N	277	3	2025-05-12 04:00:00	565.00	0.00	0.00	565.00	PAGADO	ENTREGADA	\N	2026-01-02 15:23:53.388	2026-01-02 15:23:53.388
+1145	\N	289	3	2025-05-22 04:00:00	565.00	0.00	0.00	565.00	PAGADO	ENTREGADA	\N	2026-01-02 15:23:53.397	2026-01-02 15:23:53.397
+1146	\N	302	3	2025-06-17 04:00:00	565.00	0.00	0.00	565.00	PAGADO	ENTREGADA	\N	2026-01-02 15:23:53.403	2026-01-02 15:23:53.403
+1147	\N	327	3	2025-06-12 04:00:00	1130.00	0.00	0.00	1130.00	PAGADO	ENTREGADA	\N	2026-01-02 15:23:53.41	2026-01-02 15:23:53.41
+1148	\N	230	3	2025-07-21 04:00:00	550.00	0.00	0.00	550.00	PAGADO	ENTREGADA	\N	2026-01-02 15:23:53.42	2026-01-02 15:23:53.42
+1149	\N	279	3	2025-08-25 04:00:00	555.00	0.00	0.00	555.00	PAGADO	ENTREGADA	\N	2026-01-02 15:23:53.426	2026-01-02 15:23:53.426
+1150	\N	279	3	2025-09-04 04:00:00	555.00	0.00	0.00	555.00	PAGADO	ENTREGADA	\N	2026-01-02 15:23:53.433	2026-01-02 15:23:53.433
+1151	\N	277	3	2025-10-17 03:00:00	570.00	0.00	0.00	570.00	PAGADO	ENTREGADA	\N	2026-01-02 15:23:53.438	2026-01-02 15:23:53.438
+1152	\N	207	3	2025-10-23 03:00:00	560.00	0.00	0.00	560.00	PAGADO	ENTREGADA	\N	2026-01-02 15:23:53.445	2026-01-02 15:23:53.445
+1153	\N	230	3	2023-03-08 03:00:00	500.00	0.00	0.00	500.00	PAGADO	ENTREGADA	\N	2026-01-02 15:23:53.449	2026-01-02 15:23:53.449
+1154	\N	193	3	2023-03-29 03:00:00	500.00	0.00	0.00	500.00	PAGADO	ENTREGADA	\N	2026-01-02 15:23:53.456	2026-01-02 15:23:53.456
+1155	\N	230	3	2023-04-21 04:00:00	500.00	0.00	0.00	500.00	PAGADO	ENTREGADA	\N	2026-01-02 15:23:53.461	2026-01-02 15:23:53.461
+1156	\N	193	3	2023-04-26 04:00:00	500.00	0.00	0.00	500.00	PAGADO	ENTREGADA	\N	2026-01-02 15:23:53.467	2026-01-02 15:23:53.467
+1157	\N	193	3	2023-05-05 04:00:00	520.00	0.00	0.00	520.00	PAGADO	ENTREGADA	\N	2026-01-02 15:23:53.472	2026-01-02 15:23:53.472
+1158	\N	193	3	2023-05-16 04:00:00	520.00	0.00	0.00	520.00	PAGADO	ENTREGADA	\N	2026-01-02 15:23:53.478	2026-01-02 15:23:53.478
+1159	\N	192	3	2023-05-31 04:00:00	520.00	0.00	0.00	520.00	PAGADO	ENTREGADA	\N	2026-01-02 15:23:53.483	2026-01-02 15:23:53.483
+1160	\N	285	3	2023-06-21 04:00:00	520.00	0.00	0.00	520.00	PAGADO	ENTREGADA	\N	2026-01-02 15:23:53.489	2026-01-02 15:23:53.489
+1161	\N	193	3	2023-07-06 04:00:00	1530.00	0.00	0.00	1530.00	PAGADO	ENTREGADA	\N	2026-01-02 15:23:53.496	2026-01-02 15:23:53.496
+1162	\N	186	3	2023-08-01 04:00:00	480.00	0.00	0.00	480.00	PAGADO	ENTREGADA	\N	2026-01-02 15:23:53.502	2026-01-02 15:23:53.502
+1163	\N	328	3	2023-08-21 04:00:00	500.00	0.00	0.00	500.00	PAGADO	ENTREGADA	\N	2026-01-02 15:23:53.508	2026-01-02 15:23:53.508
+1164	\N	249	3	2023-09-18 03:00:00	520.00	0.00	0.00	520.00	PAGADO	ENTREGADA	\N	2026-01-02 15:23:53.515	2026-01-02 15:23:53.515
+1165	\N	329	3	2023-09-20 03:00:00	915.00	0.00	0.00	915.00	PAGADO	ENTREGADA	\N	2026-01-02 15:23:53.521	2026-01-02 15:23:53.521
+1166	\N	249	3	2023-10-09 03:00:00	520.00	0.00	0.00	520.00	PAGADO	ENTREGADA	\N	2026-01-02 15:23:53.527	2026-01-02 15:23:53.527
+1167	\N	193	3	2023-10-13 03:00:00	980.00	0.00	0.00	980.00	PAGADO	ENTREGADA	\N	2026-01-02 15:23:53.536	2026-01-02 15:23:53.536
+1168	\N	330	3	2023-10-17 03:00:00	520.00	0.00	0.00	520.00	PAGADO	ENTREGADA	\N	2026-01-02 15:23:53.544	2026-01-02 15:23:53.544
+1169	\N	193	3	2023-10-18 03:00:00	490.00	0.00	0.00	490.00	PAGADO	ENTREGADA	\N	2026-01-02 15:23:53.552	2026-01-02 15:23:53.552
+1170	\N	186	3	2023-10-18 03:00:00	520.00	0.00	0.00	520.00	PAGADO	ENTREGADA	\N	2026-01-02 15:23:53.561	2026-01-02 15:23:53.561
+1171	\N	230	3	2023-10-23 03:00:00	1000.00	0.00	0.00	1000.00	PAGADO	ENTREGADA	\N	2026-01-02 15:23:53.57	2026-01-02 15:23:53.57
+1172	\N	193	3	2023-10-31 03:00:00	490.00	0.00	0.00	490.00	PAGADO	ENTREGADA	\N	2026-01-02 15:23:53.577	2026-01-02 15:23:53.577
+1173	\N	193	3	2023-11-03 03:00:00	980.00	0.00	0.00	980.00	PAGADO	ENTREGADA	\N	2026-01-02 15:23:53.582	2026-01-02 15:23:53.582
+1174	\N	256	3	2023-11-14 03:00:00	520.00	0.00	0.00	520.00	PAGADO	ENTREGADA	\N	2026-01-02 15:23:53.588	2026-01-02 15:23:53.588
+1175	\N	293	3	2023-11-16 03:00:00	520.00	0.00	0.00	520.00	PAGADO	ENTREGADA	\N	2026-01-02 15:23:53.592	2026-01-02 15:23:53.592
+1176	\N	193	3	2023-11-16 03:00:00	490.00	0.00	0.00	490.00	PAGADO	ENTREGADA	\N	2026-01-02 15:23:53.602	2026-01-02 15:23:53.602
+1177	\N	196	3	2023-11-21 03:00:00	1040.00	0.00	0.00	1040.00	PAGADO	ENTREGADA	\N	2026-01-02 15:23:53.607	2026-01-02 15:23:53.607
+1178	\N	193	3	2023-11-20 03:00:00	490.00	0.00	0.00	490.00	PAGADO	ENTREGADA	\N	2026-01-02 15:23:53.62	2026-01-02 15:23:53.62
+1179	\N	302	3	2023-11-24 03:00:00	520.00	0.00	0.00	520.00	PAGADO	ENTREGADA	\N	2026-01-02 15:23:53.626	2026-01-02 15:23:53.626
+1180	\N	193	3	2023-11-27 03:00:00	980.00	0.00	0.00	980.00	PAGADO	ENTREGADA	\N	2026-01-02 15:23:53.633	2026-01-02 15:23:53.633
+1181	\N	194	3	2023-11-27 03:00:00	520.00	0.00	0.00	520.00	PAGADO	ENTREGADA	\N	2026-01-02 15:23:53.639	2026-01-02 15:23:53.639
+1182	\N	195	3	2024-01-23 03:00:00	1510.00	0.00	0.00	1510.00	PAGADO	ENTREGADA	\N	2026-01-02 15:23:53.644	2026-01-02 15:23:53.644
+1183	\N	288	3	2023-12-07 03:00:00	520.00	0.00	0.00	520.00	PAGADO	ENTREGADA	\N	2026-01-02 15:23:53.649	2026-01-02 15:23:53.649
+1184	\N	223	3	2023-12-07 03:00:00	520.00	0.00	0.00	520.00	PAGADO	ENTREGADA	\N	2026-01-02 15:23:53.653	2026-01-02 15:23:53.653
+1185	\N	292	3	2023-12-15 03:00:00	1110.00	0.00	0.00	1110.00	PAGADO	ENTREGADA	\N	2026-01-02 15:23:53.657	2026-01-02 15:23:53.657
+1186	\N	245	3	2024-01-23 03:00:00	520.00	0.00	0.00	520.00	PAGADO	ENTREGADA	\N	2026-01-02 15:23:53.664	2026-01-02 15:23:53.664
+1187	\N	331	3	2024-02-16 03:00:00	525.00	0.00	0.00	525.00	PAGADO	ENTREGADA	\N	2026-01-02 15:23:53.668	2026-01-02 15:23:53.668
+1188	\N	262	3	2024-02-20 03:00:00	525.00	0.00	0.00	525.00	PAGADO	ENTREGADA	\N	2026-01-02 15:23:53.672	2026-01-02 15:23:53.672
+1189	\N	332	3	2024-03-11 03:00:00	525.00	0.00	0.00	525.00	PAGADO	ENTREGADA	\N	2026-01-02 15:23:53.677	2026-01-02 15:23:53.677
+1190	\N	230	3	2024-03-19 03:00:00	510.00	0.00	0.00	510.00	PAGADO	ENTREGADA	\N	2026-01-02 15:23:53.683	2026-01-02 15:23:53.683
+1191	\N	270	3	2024-03-20 03:00:00	525.00	0.00	0.00	525.00	PAGADO	ENTREGADA	\N	2026-01-02 15:23:53.687	2026-01-02 15:23:53.687
+1192	\N	333	3	2024-04-01 03:00:00	520.00	0.00	0.00	520.00	PAGADO	ENTREGADA	\N	2026-01-02 15:23:53.693	2026-01-02 15:23:53.693
+1193	\N	246	3	2024-04-05 03:00:00	525.00	0.00	0.00	525.00	PAGADO	ENTREGADA	\N	2026-01-02 15:23:53.702	2026-01-02 15:23:53.702
+1194	\N	195	3	2024-04-11 04:00:00	2030.00	0.00	0.00	2030.00	PAGADO	ENTREGADA	\N	2026-01-02 15:23:53.709	2026-01-02 15:23:53.709
+1195	\N	271	3	2024-05-03 04:00:00	525.00	0.00	0.00	525.00	PAGADO	ENTREGADA	\N	2026-01-02 15:23:53.716	2026-01-02 15:23:53.716
+1196	\N	305	3	2024-05-07 04:00:00	525.00	0.00	0.00	525.00	PAGADO	ENTREGADA	\N	2026-01-02 15:23:53.724	2026-01-02 15:23:53.724
+1197	\N	193	3	2024-05-14 04:00:00	750.00	0.00	0.00	750.00	PAGADO	ENTREGADA	\N	2026-01-02 15:23:53.73	2026-01-02 15:23:53.73
+1198	\N	239	3	2024-05-16 04:00:00	525.00	0.00	0.00	525.00	PAGADO	ENTREGADA	\N	2026-01-02 15:23:53.736	2026-01-02 15:23:53.736
+1199	\N	195	3	2024-05-20 04:00:00	1020.00	0.00	0.00	1020.00	PAGADO	ENTREGADA	\N	2026-01-02 15:23:53.742	2026-01-02 15:23:53.742
+1200	\N	196	3	2024-08-06 04:00:00	525.00	0.00	0.00	525.00	PAGADO	ENTREGADA	\N	2026-01-02 15:23:53.747	2026-01-02 15:23:53.747
+1201	\N	196	3	2024-07-31 04:00:00	525.00	0.00	0.00	525.00	PAGADO	ENTREGADA	\N	2026-01-02 15:23:53.753	2026-01-02 15:23:53.753
+1202	\N	298	3	2024-05-21 04:00:00	815.00	0.00	0.00	815.00	PAGADO	ENTREGADA	\N	2026-01-02 15:23:53.761	2026-01-02 15:23:53.761
+1203	\N	227	3	2024-06-14 04:00:00	520.00	0.00	0.00	520.00	PAGADO	ENTREGADA	\N	2026-01-02 15:23:53.766	2026-01-02 15:23:53.766
+1204	\N	334	3	2024-06-18 04:00:00	525.00	0.00	0.00	525.00	PAGADO	ENTREGADA	\N	2026-01-02 15:23:53.77	2026-01-02 15:23:53.77
+1205	\N	212	3	2024-06-19 04:00:00	525.00	0.00	0.00	525.00	PAGADO	ENTREGADA	\N	2026-01-02 15:23:53.776	2026-01-02 15:23:53.776
+1206	\N	196	3	2024-06-20 04:00:00	525.00	0.00	0.00	525.00	PAGADO	ENTREGADA	\N	2026-01-02 15:23:53.781	2026-01-02 15:23:53.781
+1207	\N	286	3	2024-06-26 04:00:00	525.00	0.00	0.00	525.00	PAGADO	ENTREGADA	\N	2026-01-02 15:23:53.785	2026-01-02 15:23:53.785
+1208	\N	201	3	2024-06-26 04:00:00	525.00	0.00	0.00	525.00	PAGADO	ENTREGADA	\N	2026-01-02 15:23:53.79	2026-01-02 15:23:53.79
+1209	\N	212	3	2024-07-02 04:00:00	525.00	0.00	0.00	525.00	PAGADO	ENTREGADA	\N	2026-01-02 15:23:53.794	2026-01-02 15:23:53.794
+1210	\N	286	3	2024-07-03 04:00:00	525.00	0.00	0.00	525.00	PAGADO	ENTREGADA	\N	2026-01-02 15:23:53.798	2026-01-02 15:23:53.798
+1211	\N	193	3	2024-08-02 04:00:00	515.00	0.00	0.00	515.00	PAGADO	ENTREGADA	\N	2026-01-02 15:23:53.802	2026-01-02 15:23:53.802
+1212	\N	193	3	2024-08-08 04:00:00	515.00	0.00	0.00	515.00	PAGADO	ENTREGADA	\N	2026-01-02 15:23:53.811	2026-01-02 15:23:53.811
+1213	\N	333	3	2024-08-08 04:00:00	525.00	0.00	0.00	525.00	PAGADO	ENTREGADA	\N	2026-01-02 15:23:53.817	2026-01-02 15:23:53.817
+1214	\N	197	3	2024-08-12 04:00:00	525.00	0.00	0.00	525.00	PAGADO	ENTREGADA	\N	2026-01-02 15:23:53.823	2026-01-02 15:23:53.823
+1215	\N	195	3	2024-08-12 04:00:00	1020.00	0.00	0.00	1020.00	PAGADO	ENTREGADA	\N	2026-01-02 15:23:53.827	2026-01-02 15:23:53.827
+1216	\N	212	3	2024-08-20 04:00:00	525.00	0.00	0.00	525.00	PAGADO	ENTREGADA	\N	2026-01-02 15:23:53.833	2026-01-02 15:23:53.833
+1217	\N	335	3	2024-08-26 04:00:00	525.00	0.00	0.00	525.00	PAGADO	ENTREGADA	\N	2026-01-02 15:23:53.839	2026-01-02 15:23:53.839
+1218	\N	261	3	2024-08-23 04:00:00	1050.00	0.00	0.00	1050.00	PAGADO	ENTREGADA	\N	2026-01-02 15:23:53.843	2026-01-02 15:23:53.843
+1219	\N	195	3	2024-08-26 04:00:00	510.00	0.00	0.00	510.00	PAGADO	ENTREGADA	\N	2026-01-02 15:23:53.847	2026-01-02 15:23:53.847
+1220	\N	336	3	2024-09-05 04:00:00	525.00	0.00	0.00	525.00	PAGADO	ENTREGADA	\N	2026-01-02 15:23:53.857	2026-01-02 15:23:53.857
+1221	\N	285	3	2024-09-20 03:00:00	525.00	0.00	0.00	525.00	PAGADO	ENTREGADA	\N	2026-01-02 15:23:53.863	2026-01-02 15:23:53.863
+1222	\N	337	3	2024-09-24 03:00:00	525.00	0.00	0.00	525.00	PAGADO	ENTREGADA	\N	2026-01-02 15:23:53.869	2026-01-02 15:23:53.869
+1223	\N	227	3	2024-09-24 03:00:00	525.00	0.00	0.00	525.00	PAGADO	ENTREGADA	\N	2026-01-02 15:23:53.875	2026-01-02 15:23:53.875
+1224	\N	230	3	2024-09-27 03:00:00	515.00	0.00	0.00	515.00	PAGADO	ENTREGADA	\N	2026-01-02 15:23:53.886	2026-01-02 15:23:53.886
+1225	\N	212	3	2024-09-26 03:00:00	525.00	0.00	0.00	525.00	PAGADO	ENTREGADA	\N	2026-01-02 15:23:53.89	2026-01-02 15:23:53.89
+1226	\N	338	3	2024-10-21 03:00:00	525.00	0.00	0.00	525.00	PAGADO	ENTREGADA	\N	2026-01-02 15:23:53.895	2026-01-02 15:23:53.895
+1227	\N	336	3	2024-10-30 03:00:00	525.00	0.00	0.00	525.00	PAGADO	ENTREGADA	\N	2026-01-02 15:23:53.899	2026-01-02 15:23:53.899
+1228	\N	289	3	2024-10-31 03:00:00	1035.00	0.00	0.00	1035.00	PAGADO	ENTREGADA	\N	2026-01-02 15:23:53.908	2026-01-02 15:23:53.908
+1229	\N	339	3	2024-11-01 03:00:00	525.00	0.00	0.00	525.00	PAGADO	ENTREGADA	\N	2026-01-02 15:23:53.914	2026-01-02 15:23:53.914
+1230	\N	288	3	2024-11-06 03:00:00	525.00	0.00	0.00	525.00	PAGADO	ENTREGADA	\N	2026-01-02 15:23:53.92	2026-01-02 15:23:53.92
+1231	\N	279	3	2024-11-13 03:00:00	510.00	0.00	0.00	510.00	PAGADO	ENTREGADA	\N	2026-01-02 15:23:53.926	2026-01-02 15:23:53.926
+1232	\N	279	3	2024-11-14 03:00:00	1020.00	0.00	0.00	1020.00	PAGADO	ENTREGADA	\N	2026-01-02 15:23:53.93	2026-01-02 15:23:53.93
+1233	\N	271	3	2024-11-14 03:00:00	525.00	0.00	0.00	525.00	PAGADO	ENTREGADA	\N	2026-01-02 15:23:53.934	2026-01-02 15:23:53.934
+1234	\N	224	3	2024-11-18 03:00:00	525.00	0.00	0.00	525.00	PAGADO	ENTREGADA	\N	2026-01-02 15:23:53.938	2026-01-02 15:23:53.938
+1235	\N	340	3	2024-11-28 03:00:00	525.00	0.00	0.00	525.00	PAGADO	ENTREGADA	\N	2026-01-02 15:23:53.943	2026-01-02 15:23:53.943
+1236	\N	341	3	2024-12-05 03:00:00	525.00	0.00	0.00	525.00	PAGADO	ENTREGADA	\N	2026-01-02 15:23:53.947	2026-01-02 15:23:53.947
+1237	\N	342	3	2025-01-17 03:00:00	525.00	0.00	0.00	525.00	PAGADO	ENTREGADA	\N	2026-01-02 15:23:53.951	2026-01-02 15:23:53.951
+1238	\N	193	3	2025-01-27 03:00:00	515.00	0.00	0.00	515.00	PAGADO	ENTREGADA	\N	2026-01-02 15:23:53.957	2026-01-02 15:23:53.957
+1239	\N	279	3	2025-02-06 03:00:00	1030.00	0.00	0.00	1030.00	PAGADO	ENTREGADA	\N	2026-01-02 15:23:53.962	2026-01-02 15:23:53.962
+1240	\N	212	3	2025-02-06 03:00:00	515.00	0.00	0.00	515.00	PAGADO	ENTREGADA	\N	2026-01-02 15:23:53.967	2026-01-02 15:23:53.967
+1241	\N	343	3	2025-02-06 03:00:00	525.00	0.00	0.00	525.00	PAGADO	ENTREGADA	\N	2026-01-02 15:23:53.971	2026-01-02 15:23:53.971
+1242	\N	344	3	2025-02-11 03:00:00	525.00	0.00	0.00	525.00	PAGADO	ENTREGADA	\N	2026-01-02 15:23:53.977	2026-01-02 15:23:53.977
+1243	\N	262	3	2025-02-20 03:00:00	525.00	0.00	0.00	525.00	PAGADO	ENTREGADA	\N	2026-01-02 15:23:53.982	2026-01-02 15:23:53.982
+1244	\N	302	3	2025-03-14 03:00:00	530.00	0.00	0.00	530.00	PAGADO	ENTREGADA	\N	2026-01-02 15:23:53.986	2026-01-02 15:23:53.986
+1245	\N	247	3	2025-03-20 03:00:00	530.00	0.00	0.00	530.00	PAGADO	ENTREGADA	\N	2026-01-02 15:23:53.991	2026-01-02 15:23:53.991
+1246	\N	260	3	2025-03-25 03:00:00	1060.00	0.00	0.00	1060.00	PAGADO	ENTREGADA	\N	2026-01-02 15:23:53.998	2026-01-02 15:23:53.998
+1247	\N	279	3	2025-03-23 03:00:00	1030.00	0.00	0.00	1030.00	PAGADO	ENTREGADA	\N	2026-01-02 15:23:54.002	2026-01-02 15:23:54.002
+1248	\N	262	3	2025-04-01 03:00:00	530.00	0.00	0.00	530.00	PAGADO	ENTREGADA	\N	2026-01-02 15:23:54.01	2026-01-02 15:23:54.01
+1249	\N	267	3	2025-06-13 04:00:00	530.00	0.00	0.00	530.00	PAGADO	ENTREGADA	\N	2026-01-02 15:23:54.017	2026-01-02 15:23:54.017
+1250	\N	345	3	2025-04-03 03:00:00	530.00	0.00	0.00	530.00	PAGADO	ENTREGADA	\N	2026-01-02 15:23:54.024	2026-01-02 15:23:54.024
+1251	\N	279	3	2025-04-28 04:00:00	1040.00	0.00	0.00	1040.00	PAGADO	ENTREGADA	\N	2026-01-02 15:23:54.029	2026-01-02 15:23:54.029
+1252	\N	279	3	2025-04-11 04:00:00	1030.00	0.00	0.00	1030.00	PAGADO	ENTREGADA	\N	2026-01-02 15:23:54.034	2026-01-02 15:23:54.034
+1253	\N	206	3	2025-04-14 04:00:00	530.00	0.00	0.00	530.00	PAGADO	ENTREGADA	\N	2026-01-02 15:23:54.038	2026-01-02 15:23:54.038
+1254	\N	251	3	2025-05-12 04:00:00	530.00	0.00	0.00	530.00	PAGADO	ENTREGADA	\N	2026-01-02 15:23:54.042	2026-01-02 15:23:54.042
+1255	\N	195	3	2025-06-03 04:00:00	1030.00	0.00	0.00	1030.00	PAGADO	ENTREGADA	\N	2026-01-02 15:23:54.047	2026-01-02 15:23:54.047
+1256	\N	200	3	2025-06-11 04:00:00	530.00	0.00	0.00	530.00	PAGADO	ENTREGADA	\N	2026-01-02 15:23:54.055	2026-01-02 15:23:54.055
+1257	\N	307	3	2025-06-16 04:00:00	535.00	0.00	0.00	535.00	PAGADO	ENTREGADA	\N	2026-01-02 15:23:54.06	2026-01-02 15:23:54.06
+1258	\N	249	3	2025-07-03 04:00:00	1070.00	0.00	0.00	1070.00	PAGADO	ENTREGADA	\N	2026-01-02 15:23:54.066	2026-01-02 15:23:54.066
+1259	\N	196	3	2025-07-25 04:00:00	535.00	0.00	0.00	535.00	PAGADO	ENTREGADA	\N	2026-01-02 15:23:54.073	2026-01-02 15:23:54.073
+1260	\N	336	3	2025-07-31 04:00:00	535.00	0.00	0.00	535.00	PAGADO	ENTREGADA	\N	2026-01-02 15:23:54.079	2026-01-02 15:23:54.079
+1261	\N	230	3	2025-08-01 04:00:00	535.00	0.00	0.00	535.00	PAGADO	ENTREGADA	\N	2026-01-02 15:23:54.086	2026-01-02 15:23:54.086
+1262	\N	283	3	2025-08-04 04:00:00	535.00	0.00	0.00	535.00	PAGADO	ENTREGADA	\N	2026-01-02 15:23:54.091	2026-01-02 15:23:54.091
+1263	\N	195	3	2025-08-11 04:00:00	1040.00	0.00	0.00	1040.00	PAGADO	ENTREGADA	\N	2026-01-02 15:23:54.098	2026-01-02 15:23:54.098
+1264	\N	196	3	2025-08-25 04:00:00	535.00	0.00	0.00	535.00	PAGADO	ENTREGADA	\N	2026-01-02 15:23:54.105	2026-01-02 15:23:54.105
+1265	\N	244	3	2025-08-28 04:00:00	535.00	0.00	0.00	535.00	PAGADO	ENTREGADA	\N	2026-01-02 15:23:54.11	2026-01-02 15:23:54.11
+1266	\N	195	3	2025-09-03 04:00:00	1040.00	0.00	0.00	1040.00	PAGADO	ENTREGADA	\N	2026-01-02 15:23:54.118	2026-01-02 15:23:54.118
+1267	\N	195	3	2025-09-12 03:00:00	520.00	0.00	0.00	520.00	PAGADO	ENTREGADA	\N	2026-01-02 15:23:54.13	2026-01-02 15:23:54.13
+1268	\N	346	3	2025-09-15 03:00:00	535.00	0.00	0.00	535.00	PAGADO	ENTREGADA	\N	2026-01-02 15:23:54.136	2026-01-02 15:23:54.136
+1269	\N	188	3	2025-09-26 03:00:00	535.00	0.00	0.00	535.00	PAGADO	ENTREGADA	\N	2026-01-02 15:23:54.141	2026-01-02 15:23:54.141
+1270	\N	191	3	2025-10-16 03:00:00	535.00	0.00	0.00	535.00	PAGADO	ENTREGADA	\N	2026-01-02 15:23:54.152	2026-01-02 15:23:54.152
+1271	\N	230	3	2025-10-27 03:00:00	530.00	0.00	0.00	530.00	PAGADO	ENTREGADA	\N	2026-01-02 15:23:54.157	2026-01-02 15:23:54.157
+1272	\N	347	3	2025-10-27 03:00:00	540.00	0.00	0.00	540.00	PAGADO	ENTREGADA	\N	2026-01-02 15:23:54.161	2026-01-02 15:23:54.161
+1273	\N	249	3	2025-11-11 03:00:00	540.00	0.00	0.00	540.00	PAGADO	ENTREGADA	\N	2026-01-02 15:23:54.165	2026-01-02 15:23:54.165
+1274	\N	348	3	2025-11-24 03:00:00	530.00	0.00	0.00	530.00	PAGADO	ENTREGADA	\N	2026-01-02 15:23:54.177	2026-01-02 15:23:54.177
+1275	\N	192	3	2025-11-24 03:00:00	540.00	0.00	0.00	540.00	PAGADO	ENTREGADA	\N	2026-01-02 15:23:54.183	2026-01-02 15:23:54.183
+1276	\N	349	3	2025-12-04 03:00:00	540.00	0.00	0.00	540.00	PAGADO	ENTREGADA	\N	2026-01-02 15:23:54.188	2026-01-02 15:23:54.188
+1277	\N	350	3	2025-12-04 03:00:00	540.00	0.00	0.00	540.00	PAGADO	ENTREGADA	\N	2026-01-02 15:23:54.197	2026-01-02 15:23:54.197
+1278	\N	351	3	2025-12-11 03:00:00	540.00	0.00	0.00	540.00	PAGADO	ENTREGADA	\N	2026-01-02 15:23:54.202	2026-01-02 15:23:54.202
+1279	\N	324	3	2023-10-10 03:00:00	490.00	0.00	0.00	490.00	PAGADO	ENTREGADA	\N	2026-01-02 15:23:54.21	2026-01-02 15:23:54.21
+1280	\N	196	3	2023-10-16 03:00:00	490.00	0.00	0.00	490.00	PAGADO	ENTREGADA	\N	2026-01-02 15:23:54.214	2026-01-02 15:23:54.214
+1281	\N	191	3	2023-12-06 03:00:00	1020.00	0.00	0.00	1020.00	PAGADO	ENTREGADA	\N	2026-01-02 15:23:54.218	2026-01-02 15:23:54.218
+1282	\N	289	3	2023-12-06 03:00:00	500.00	0.00	0.00	500.00	PAGADO	ENTREGADA	\N	2026-01-02 15:23:54.222	2026-01-02 15:23:54.222
+1283	\N	299	3	2024-01-16 03:00:00	500.00	0.00	0.00	500.00	PAGADO	ENTREGADA	\N	2026-01-02 15:23:54.226	2026-01-02 15:23:54.226
+1284	\N	299	3	2024-01-24 03:00:00	500.00	0.00	0.00	500.00	PAGADO	ENTREGADA	\N	2026-01-02 15:23:54.23	2026-01-02 15:23:54.23
+1285	\N	299	3	2024-03-14 03:00:00	590.00	0.00	0.00	590.00	PAGADO	ENTREGADA	\N	2026-01-02 15:23:54.234	2026-01-02 15:23:54.234
+1286	\N	299	3	2024-02-05 03:00:00	500.00	0.00	0.00	500.00	PAGADO	ENTREGADA	\N	2026-01-02 15:23:54.239	2026-01-02 15:23:54.239
+1287	\N	212	3	2024-01-24 03:00:00	495.00	0.00	0.00	495.00	PAGADO	ENTREGADA	\N	2026-01-02 15:23:54.244	2026-01-02 15:23:54.244
+1288	\N	299	3	2024-06-11 04:00:00	590.00	0.00	0.00	590.00	PAGADO	ENTREGADA	\N	2026-01-02 15:23:54.249	2026-01-02 15:23:54.249
+1289	\N	244	3	2024-04-16 04:00:00	510.00	0.00	0.00	510.00	PAGADO	ENTREGADA	\N	2026-01-02 15:23:54.255	2026-01-02 15:23:54.255
+1290	\N	299	3	2024-04-30 04:00:00	800.00	0.00	0.00	800.00	PAGADO	ENTREGADA	\N	2026-01-02 15:23:54.264	2026-01-02 15:23:54.264
+1291	\N	289	3	2024-06-21 04:00:00	2550.00	0.00	0.00	2550.00	PAGADO	ENTREGADA	\N	2026-01-02 15:23:54.271	2026-01-02 15:23:54.271
+1292	\N	193	3	2024-07-17 04:00:00	500.00	0.00	0.00	500.00	PAGADO	ENTREGADA	\N	2026-01-02 15:23:54.281	2026-01-02 15:23:54.281
+1293	\N	289	3	2024-07-19 04:00:00	590.00	0.00	0.00	590.00	PAGADO	ENTREGADA	\N	2026-01-02 15:23:54.286	2026-01-02 15:23:54.286
+1294	\N	299	3	2024-07-24 04:00:00	510.00	0.00	0.00	510.00	PAGADO	ENTREGADA	\N	2026-01-02 15:23:54.292	2026-01-02 15:23:54.292
+1295	\N	289	3	2024-09-09 03:00:00	510.00	0.00	0.00	510.00	PAGADO	ENTREGADA	\N	2026-01-02 15:23:54.3	2026-01-02 15:23:54.3
+1296	\N	191	3	2024-12-02 03:00:00	590.00	0.00	0.00	590.00	PAGADO	ENTREGADA	\N	2026-01-02 15:23:54.306	2026-01-02 15:23:54.306
+1297	\N	352	3	2025-01-20 03:00:00	510.00	0.00	0.00	510.00	PAGADO	ENTREGADA	\N	2026-01-02 15:23:54.312	2026-01-02 15:23:54.312
+1298	\N	353	3	2025-02-07 03:00:00	500.00	0.00	0.00	500.00	PAGADO	ENTREGADA	\N	2026-01-02 15:23:54.316	2026-01-02 15:23:54.316
+1299	\N	289	3	2025-02-20 03:00:00	2610.00	0.00	0.00	2610.00	PAGADO	ENTREGADA	\N	2026-01-02 15:23:54.323	2026-01-02 15:23:54.323
+1300	\N	299	3	2025-02-28 03:00:00	515.00	0.00	0.00	515.00	PAGADO	ENTREGADA	\N	2026-01-02 15:23:54.332	2026-01-02 15:23:54.332
+1301	\N	354	3	2025-03-14 03:00:00	1030.00	0.00	0.00	1030.00	PAGADO	ENTREGADA	\N	2026-01-02 15:23:54.341	2026-01-02 15:23:54.341
+1302	\N	289	3	2025-03-21 03:00:00	1020.00	0.00	0.00	1020.00	PAGADO	ENTREGADA	\N	2026-01-02 15:23:54.35	2026-01-02 15:23:54.35
+1303	\N	273	3	2025-05-15 04:00:00	515.00	0.00	0.00	515.00	PAGADO	ENTREGADA	\N	2026-01-02 15:23:54.357	2026-01-02 15:23:54.357
+1304	\N	273	3	2025-07-08 04:00:00	515.00	0.00	0.00	515.00	PAGADO	ENTREGADA	\N	2026-01-02 15:23:54.362	2026-01-02 15:23:54.362
+1305	\N	324	3	2025-07-22 04:00:00	515.00	0.00	0.00	515.00	PAGADO	ENTREGADA	\N	2026-01-02 15:23:54.365	2026-01-02 15:23:54.365
+1306	\N	299	3	2025-08-05 04:00:00	515.00	0.00	0.00	515.00	PAGADO	ENTREGADA	\N	2026-01-02 15:23:54.37	2026-01-02 15:23:54.37
+1307	\N	299	3	2025-08-07 04:00:00	515.00	0.00	0.00	515.00	PAGADO	ENTREGADA	\N	2026-01-02 15:23:54.374	2026-01-02 15:23:54.374
+1308	\N	299	3	2025-11-26 03:00:00	680.00	0.00	0.00	680.00	PAGADO	ENTREGADA	\N	2026-01-02 15:23:54.385	2026-01-02 15:23:54.385
+1309	\N	321	3	2025-12-02 03:00:00	520.00	0.00	0.00	520.00	PAGADO	ENTREGADA	\N	2026-01-02 15:23:54.39	2026-01-02 15:23:54.39
+1310	\N	321	3	2025-11-24 03:00:00	520.00	0.00	0.00	520.00	PAGADO	ENTREGADA	\N	2026-01-02 15:23:54.396	2026-01-02 15:23:54.396
+1311	\N	321	3	2025-12-19 03:00:00	1010.00	0.00	0.00	1010.00	PAGADO	ENTREGADA	\N	2026-01-02 15:23:54.401	2026-01-02 15:23:54.401
+1312	\N	193	3	2023-03-15 03:00:00	500.00	0.00	0.00	500.00	PAGADO	ENTREGADA	\N	2026-01-02 15:23:54.406	2026-01-02 15:23:54.406
+1313	\N	190	3	2023-03-21 03:00:00	510.00	0.00	0.00	510.00	PAGADO	ENTREGADA	\N	2026-01-02 15:23:54.412	2026-01-02 15:23:54.412
+1314	\N	208	3	2023-04-27 04:00:00	460.00	0.00	0.00	460.00	PAGADO	ENTREGADA	\N	2026-01-02 15:23:54.416	2026-01-02 15:23:54.416
+1315	\N	241	3	2023-05-03 04:00:00	580.00	0.00	0.00	580.00	PAGADO	ENTREGADA	\N	2026-01-02 15:23:54.422	2026-01-02 15:23:54.422
+1316	\N	191	3	2023-05-30 04:00:00	590.00	0.00	0.00	590.00	PAGADO	ENTREGADA	\N	2026-01-02 15:23:54.429	2026-01-02 15:23:54.429
+1317	\N	191	3	2023-08-17 04:00:00	590.00	0.00	0.00	590.00	PAGADO	ENTREGADA	\N	2026-01-02 15:23:54.434	2026-01-02 15:23:54.434
+1318	\N	355	3	2023-08-22 04:00:00	510.00	0.00	0.00	510.00	PAGADO	ENTREGADA	\N	2026-01-02 15:23:54.44	2026-01-02 15:23:54.44
+1319	\N	292	3	2023-10-31 03:00:00	910.00	0.00	0.00	910.00	PAGADO	ENTREGADA	\N	2026-01-02 15:23:54.446	2026-01-02 15:23:54.446
+1320	\N	257	3	2023-11-07 03:00:00	510.00	0.00	0.00	510.00	PAGADO	ENTREGADA	\N	2026-01-02 15:23:54.454	2026-01-02 15:23:54.454
+1321	\N	292	3	2023-11-13 03:00:00	1720.00	0.00	0.00	1720.00	PAGADO	ENTREGADA	\N	2026-01-02 15:23:54.459	2026-01-02 15:23:54.459
+1322	\N	293	3	2024-01-24 03:00:00	530.00	0.00	0.00	530.00	PAGADO	ENTREGADA	\N	2026-01-02 15:23:54.465	2026-01-02 15:23:54.465
+1323	\N	292	3	2024-04-22 04:00:00	885.00	0.00	0.00	885.00	PAGADO	ENTREGADA	\N	2026-01-02 15:23:54.469	2026-01-02 15:23:54.469
+1324	\N	208	3	2024-06-03 04:00:00	1020.00	0.00	0.00	1020.00	PAGADO	ENTREGADA	\N	2026-01-02 15:23:54.474	2026-01-02 15:23:54.474
+1325	\N	292	3	2024-05-28 04:00:00	515.00	0.00	0.00	515.00	PAGADO	ENTREGADA	\N	2026-01-02 15:23:54.482	2026-01-02 15:23:54.482
+1326	\N	212	3	2024-07-09 04:00:00	520.00	0.00	0.00	520.00	PAGADO	ENTREGADA	\N	2026-01-02 15:23:54.49	2026-01-02 15:23:54.49
+1327	\N	208	3	2024-08-16 04:00:00	520.00	0.00	0.00	520.00	PAGADO	ENTREGADA	\N	2026-01-02 15:23:54.497	2026-01-02 15:23:54.497
+1328	\N	193	3	2024-09-04 04:00:00	520.00	0.00	0.00	520.00	PAGADO	ENTREGADA	\N	2026-01-02 15:23:54.507	2026-01-02 15:23:54.507
+1329	\N	312	3	2024-08-12 04:00:00	520.00	0.00	0.00	520.00	PAGADO	ENTREGADA	\N	2026-01-02 15:23:54.514	2026-01-02 15:23:54.514
+1330	\N	293	3	2024-09-09 03:00:00	540.00	0.00	0.00	540.00	PAGADO	ENTREGADA	\N	2026-01-02 15:23:54.519	2026-01-02 15:23:54.519
+1331	\N	292	3	2024-09-12 03:00:00	892.00	0.00	0.00	892.00	PAGADO	ENTREGADA	\N	2026-01-02 15:23:54.523	2026-01-02 15:23:54.523
+1332	\N	312	3	2024-12-12 03:00:00	1040.00	0.00	0.00	1040.00	PAGADO	ENTREGADA	\N	2026-01-02 15:23:54.529	2026-01-02 15:23:54.529
+1333	\N	318	3	2024-11-12 03:00:00	540.00	0.00	0.00	540.00	PAGADO	ENTREGADA	\N	2026-01-02 15:23:54.534	2026-01-02 15:23:54.534
+1334	\N	312	3	2025-02-26 03:00:00	530.00	0.00	0.00	530.00	PAGADO	ENTREGADA	\N	2026-01-02 15:23:54.539	2026-01-02 15:23:54.539
+1335	\N	296	3	2025-02-27 03:00:00	2104.00	0.00	0.00	2104.00	PAGADO	ENTREGADA	\N	2026-01-02 15:23:54.543	2026-01-02 15:23:54.543
+1336	\N	221	3	2025-09-23 03:00:00	550.00	0.00	0.00	550.00	PAGADO	ENTREGADA	\N	2026-01-02 15:23:54.549	2026-01-02 15:23:54.549
+1337	\N	356	3	2025-09-25 03:00:00	1100.00	0.00	0.00	1100.00	PAGADO	ENTREGADA	\N	2026-01-02 15:23:54.558	2026-01-02 15:23:54.558
+1338	\N	357	3	2025-10-10 03:00:00	550.00	0.00	0.00	550.00	PAGADO	ENTREGADA	\N	2026-01-02 15:23:54.567	2026-01-02 15:23:54.567
+1339	\N	358	3	2025-11-12 03:00:00	550.00	0.00	0.00	550.00	PAGADO	ENTREGADA	\N	2026-01-02 15:23:54.572	2026-01-02 15:23:54.572
+1340	\N	257	3	2023-05-25 04:00:00	45.00	0.00	0.00	45.00	PAGADO	ENTREGADA	\N	2026-01-02 15:23:54.578	2026-01-02 15:23:54.578
+1341	\N	186	3	2023-06-14 04:00:00	90.00	0.00	0.00	90.00	PAGADO	ENTREGADA	\N	2026-01-02 15:23:54.584	2026-01-02 15:23:54.584
+1342	\N	223	3	2023-11-03 03:00:00	45.00	0.00	0.00	45.00	PAGADO	ENTREGADA	\N	2026-01-02 15:23:54.59	2026-01-02 15:23:54.59
+1343	\N	345	3	2023-11-10 03:00:00	45.00	0.00	0.00	45.00	PAGADO	ENTREGADA	\N	2026-01-02 15:23:54.596	2026-01-02 15:23:54.596
+1344	\N	195	3	2023-11-07 03:00:00	45.00	0.00	0.00	45.00	PAGADO	ENTREGADA	\N	2026-01-02 15:23:54.6	2026-01-02 15:23:54.6
+1345	\N	315	3	2024-03-01 03:00:00	240.00	0.00	0.00	240.00	PAGADO	ENTREGADA	\N	2026-01-02 15:23:54.604	2026-01-02 15:23:54.604
+1346	\N	193	3	2024-03-19 03:00:00	90.00	0.00	0.00	90.00	PAGADO	ENTREGADA	\N	2026-01-02 15:23:54.609	2026-01-02 15:23:54.609
+1347	\N	359	3	2024-04-11 04:00:00	45.00	0.00	0.00	45.00	PAGADO	ENTREGADA	\N	2026-01-02 15:23:54.616	2026-01-02 15:23:54.616
+1348	\N	212	3	2024-08-12 04:00:00	210.00	0.00	0.00	210.00	PAGADO	ENTREGADA	\N	2026-01-02 15:23:54.621	2026-01-02 15:23:54.621
+1349	\N	327	3	2024-10-28 03:00:00	45.00	0.00	0.00	45.00	PAGADO	ENTREGADA	\N	2026-01-02 15:23:54.627	2026-01-02 15:23:54.627
+1350	\N	360	3	2024-12-05 03:00:00	90.00	0.00	0.00	90.00	PAGADO	ENTREGADA	\N	2026-01-02 15:23:54.631	2026-01-02 15:23:54.631
+1351	\N	212	3	2025-03-07 03:00:00	45.00	0.00	0.00	45.00	PAGADO	ENTREGADA	\N	2026-01-02 15:23:54.637	2026-01-02 15:23:54.637
+1352	\N	193	3	2025-05-09 04:00:00	45.00	0.00	0.00	45.00	PAGADO	ENTREGADA	\N	2026-01-02 15:23:54.641	2026-01-02 15:23:54.641
+1353	\N	226	3	2025-07-09 04:00:00	90.00	0.00	0.00	90.00	PAGADO	ENTREGADA	\N	2026-01-02 15:23:54.645	2026-01-02 15:23:54.645
+1354	\N	221	3	2025-07-29 04:00:00	125.00	0.00	0.00	125.00	PAGADO	ENTREGADA	\N	2026-01-02 15:23:54.65	2026-01-02 15:23:54.65
+1355	\N	269	3	2025-07-31 04:00:00	45.00	0.00	0.00	45.00	PAGADO	ENTREGADA	\N	2026-01-02 15:23:54.659	2026-01-02 15:23:54.659
+1356	\N	221	3	2025-08-19 04:00:00	455.00	0.00	0.00	455.00	PAGADO	ENTREGADA	\N	2026-01-02 15:23:54.663	2026-01-02 15:23:54.663
+1357	\N	297	3	2025-11-10 03:00:00	320.00	0.00	0.00	320.00	PAGADO	ENTREGADA	\N	2026-01-02 15:23:54.668	2026-01-02 15:23:54.668
+1358	\N	297	3	2025-11-11 03:00:00	240.00	0.00	0.00	240.00	PAGADO	ENTREGADA	\N	2026-01-02 15:23:54.673	2026-01-02 15:23:54.673
+1359	\N	361	3	2025-11-11 03:00:00	90.00	0.00	0.00	90.00	PAGADO	ENTREGADA	\N	2026-01-02 15:23:54.678	2026-01-02 15:23:54.678
+1360	\N	261	3	2023-03-24 03:00:00	110.00	0.00	0.00	110.00	PAGADO	ENTREGADA	\N	2026-01-02 15:23:54.684	2026-01-02 15:23:54.684
+1361	\N	362	3	2023-07-31 04:00:00	110.00	0.00	0.00	110.00	PAGADO	ENTREGADA	\N	2026-01-02 15:23:54.688	2026-01-02 15:23:54.688
+1362	\N	363	3	2023-08-01 04:00:00	110.00	0.00	0.00	110.00	PAGADO	ENTREGADA	\N	2026-01-02 15:23:54.692	2026-01-02 15:23:54.692
+1363	\N	364	3	2023-09-26 03:00:00	110.00	0.00	0.00	110.00	PAGADO	ENTREGADA	\N	2026-01-02 15:23:54.697	2026-01-02 15:23:54.697
+1364	\N	313	3	2024-01-31 03:00:00	120.00	0.00	0.00	120.00	PAGADO	ENTREGADA	\N	2026-01-02 15:23:54.701	2026-01-02 15:23:54.701
+1365	\N	228	3	2024-03-25 03:00:00	120.00	0.00	0.00	120.00	PAGADO	ENTREGADA	\N	2026-01-02 15:23:54.706	2026-01-02 15:23:54.706
+1366	\N	245	3	2024-07-11 04:00:00	130.00	0.00	0.00	130.00	PAGADO	ENTREGADA	\N	2026-01-02 15:23:54.711	2026-01-02 15:23:54.711
+1367	\N	250	3	2025-01-21 03:00:00	135.00	0.00	0.00	135.00	PAGADO	ENTREGADA	\N	2026-01-02 15:23:54.716	2026-01-02 15:23:54.716
+1368	\N	350	3	2024-11-09 03:00:00	545.00	0.00	0.00	545.00	PAGADO	ENTREGADA	\N	2026-01-02 15:23:54.722	2026-01-02 15:23:54.722
+1369	\N	261	3	2025-07-01 04:00:00	140.00	0.00	0.00	140.00	PAGADO	ENTREGADA	\N	2026-01-02 15:23:54.728	2026-01-02 15:23:54.728
+1370	\N	221	3	2025-07-10 04:00:00	140.00	0.00	0.00	140.00	PAGADO	ENTREGADA	\N	2026-01-02 15:23:54.732	2026-01-02 15:23:54.732
+1371	\N	196	3	2025-07-29 04:00:00	140.00	0.00	0.00	140.00	PAGADO	ENTREGADA	\N	2026-01-02 15:23:54.735	2026-01-02 15:23:54.735
+1372	\N	311	3	2023-12-01 03:00:00	200.00	0.00	0.00	200.00	PAGADO	ENTREGADA	\N	2026-01-02 15:23:54.738	2026-01-02 15:23:54.738
+1373	\N	311	3	2023-12-13 03:00:00	200.00	0.00	0.00	200.00	PAGADO	ENTREGADA	\N	2026-01-02 15:23:54.742	2026-01-02 15:23:54.742
+1374	\N	221	3	2025-04-04 03:00:00	270.00	0.00	0.00	270.00	PAGADO	ENTREGADA	\N	2026-01-02 15:23:54.745	2026-01-02 15:23:54.745
+1375	\N	188	3	2023-05-31 04:00:00	120.00	0.00	0.00	120.00	PAGADO	ENTREGADA	\N	2026-01-02 15:23:54.752	2026-01-02 15:23:54.752
+1376	\N	292	3	2023-12-13 03:00:00	120.00	0.00	0.00	120.00	PAGADO	ENTREGADA	\N	2026-01-02 15:23:54.756	2026-01-02 15:23:54.756
+1377	\N	292	3	2024-02-05 03:00:00	40.00	0.00	0.00	40.00	PAGADO	ENTREGADA	\N	2026-01-02 15:23:54.76	2026-01-02 15:23:54.76
+1378	\N	296	3	2024-07-16 04:00:00	120.00	0.00	0.00	120.00	PAGADO	ENTREGADA	\N	2026-01-02 15:23:54.765	2026-01-02 15:23:54.765
+1379	\N	296	3	2024-08-27 04:00:00	120.00	0.00	0.00	120.00	PAGADO	ENTREGADA	\N	2026-01-02 15:23:54.771	2026-01-02 15:23:54.771
+1380	\N	235	3	2024-11-11 03:00:00	80.00	0.00	0.00	80.00	PAGADO	ENTREGADA	\N	2026-01-02 15:23:54.778	2026-01-02 15:23:54.778
+1381	\N	292	3	2024-01-16 03:00:00	80.00	0.00	0.00	80.00	PAGADO	ENTREGADA	\N	2026-01-02 15:23:54.784	2026-01-02 15:23:54.784
+1382	\N	292	3	2024-11-13 03:00:00	40.00	0.00	0.00	40.00	PAGADO	ENTREGADA	\N	2026-01-02 15:23:54.788	2026-01-02 15:23:54.788
+1383	\N	296	3	2024-12-10 03:00:00	80.00	0.00	0.00	80.00	PAGADO	ENTREGADA	\N	2026-01-02 15:23:54.792	2026-01-02 15:23:54.792
+1384	\N	296	3	2024-12-11 03:00:00	80.00	0.00	0.00	80.00	PAGADO	ENTREGADA	\N	2026-01-02 15:23:54.797	2026-01-02 15:23:54.797
+1385	\N	238	3	2025-09-11 03:00:00	80.00	0.00	0.00	80.00	PAGADO	ENTREGADA	\N	2026-01-02 15:23:54.802	2026-01-02 15:23:54.802
+1386	\N	270	3	2025-10-14 03:00:00	160.00	0.00	0.00	160.00	PAGADO	ENTREGADA	\N	2026-01-02 15:23:54.807	2026-01-02 15:23:54.807
+1387	\N	299	3	2025-11-17 03:00:00	80.00	0.00	0.00	80.00	PAGADO	ENTREGADA	\N	2026-01-02 15:23:54.814	2026-01-02 15:23:54.814
+1388	\N	299	3	2025-12-11 03:00:00	80.00	0.00	0.00	80.00	PAGADO	ENTREGADA	\N	2026-01-02 15:23:54.819	2026-01-02 15:23:54.819
+1389	\N	193	3	2024-02-07 03:00:00	480.00	0.00	0.00	480.00	PAGADO	ENTREGADA	\N	2026-01-02 15:23:54.824	2026-01-02 15:23:54.824
+1390	\N	293	3	2024-04-29 04:00:00	260.00	0.00	0.00	260.00	PAGADO	ENTREGADA	\N	2026-01-02 15:23:54.834	2026-01-02 15:23:54.834
+1391	\N	193	3	2024-09-09 03:00:00	480.00	0.00	0.00	480.00	PAGADO	ENTREGADA	\N	2026-01-02 15:23:54.841	2026-01-02 15:23:54.841
+1392	\N	250	3	2025-01-16 03:00:00	490.00	0.00	0.00	490.00	PAGADO	ENTREGADA	\N	2026-01-02 15:23:54.852	2026-01-02 15:23:54.852
+1393	\N	292	3	2024-02-27 03:00:00	828.00	0.00	0.00	828.00	PAGADO	ENTREGADA	\N	2026-01-02 15:23:54.858	2026-01-02 15:23:54.858
+1394	\N	367	3	2024-03-14 03:00:00	260.00	0.00	0.00	260.00	PAGADO	ENTREGADA	\N	2026-01-02 15:23:54.863	2026-01-02 15:23:54.863
+1395	\N	350	3	2025-07-30 04:00:00	260.00	0.00	0.00	260.00	PAGADO	ENTREGADA	\N	2026-01-02 15:23:54.869	2026-01-02 15:23:54.869
+1396	\N	193	3	2025-09-25 03:00:00	260.00	0.00	0.00	260.00	PAGADO	ENTREGADA	\N	2026-01-02 15:23:54.873	2026-01-02 15:23:54.873
+1397	\N	207	3	2025-12-05 03:00:00	260.00	0.00	0.00	260.00	PAGADO	ENTREGADA	\N	2026-01-02 15:23:54.879	2026-01-02 15:23:54.879
+1398	\N	193	3	2023-08-02 04:00:00	150.00	0.00	0.00	150.00	PAGADO	ENTREGADA	\N	2026-01-02 15:23:54.882	2026-01-02 15:23:54.882
+1399	\N	208	3	2023-08-07 04:00:00	280.00	0.00	0.00	280.00	PAGADO	ENTREGADA	\N	2026-01-02 15:23:54.891	2026-01-02 15:23:54.891
+1400	\N	350	3	2025-04-09 04:00:00	150.00	0.00	0.00	150.00	PAGADO	ENTREGADA	\N	2026-01-02 15:23:54.898	2026-01-02 15:23:54.898
+1401	\N	320	3	2024-05-22 04:00:00	150.00	0.00	0.00	150.00	PAGADO	ENTREGADA	\N	2026-01-02 15:23:54.903	2026-01-02 15:23:54.903
+1402	\N	296	3	2005-02-27 03:00:00	1176.00	0.00	0.00	1176.00	PAGADO	ENTREGADA	\N	2026-01-02 15:23:54.908	2026-01-02 15:23:54.908
+1403	\N	320	3	2025-09-25 03:00:00	150.00	0.00	0.00	150.00	PAGADO	ENTREGADA	\N	2026-01-02 15:23:54.914	2026-01-02 15:23:54.914
+1404	\N	193	3	2024-08-20 04:00:00	1245.00	0.00	0.00	1245.00	PAGADO	ENTREGADA	\N	2026-01-02 15:23:54.918	2026-01-02 15:23:54.918
+1405	\N	191	3	2023-09-01 04:00:00	220.00	0.00	0.00	220.00	PAGADO	ENTREGADA	\N	2026-01-02 15:23:54.923	2026-01-02 15:23:54.923
+1406	\N	191	3	2023-12-15 03:00:00	250.00	0.00	0.00	250.00	PAGADO	ENTREGADA	\N	2026-01-02 15:23:54.927	2026-01-02 15:23:54.927
+\.
+
+
+--
+-- Data for Name: ventas_detalle; Type: TABLE DATA; Schema: public; Owner: -
+--
+
+COPY public.ventas_detalle (id, venta_id, producto_id, cantidad, precio_unitario, costo_unitario, descuento, subtotal, serial) FROM stdin;
+2093	868	48	1	40.00	19.99	0.00	40.00	-71
+2094	868	48	1	40.00	19.99	0.00	40.00	-72
+2095	868	48	1	40.00	19.99	0.00	40.00	-73
+2096	869	30	1	35.00	23.38	0.00	35.00	-218
+2097	869	30	1	35.00	23.38	0.00	35.00	-219
+2098	870	30	1	35.00	23.38	0.00	35.00	-220
+2099	870	30	1	35.00	23.38	0.00	35.00	-221
+2100	871	30	1	35.00	23.38	0.00	35.00	-223
+2101	872	30	1	35.00	23.38	0.00	35.00	-226
+2102	872	30	1	35.00	23.38	0.00	35.00	-227
+2103	872	37	1	485.00	319.82	0.00	485.00	7879-009
+2104	873	30	1	35.00	23.38	0.00	35.00	-228
+2105	873	30	1	35.00	23.38	0.00	35.00	-229
+2106	873	42	1	515.00	310.31	0.00	515.00	7760-043
+2107	873	48	1	40.00	19.99	0.00	40.00	-040
+2108	873	48	1	40.00	19.99	0.00	40.00	-80
+2109	874	30	1	35.00	23.38	0.00	35.00	-240
+2110	874	30	1	35.00	23.38	0.00	35.00	-241
+2111	874	30	1	35.00	23.38	0.00	35.00	-242
+2112	874	30	1	35.00	23.38	0.00	35.00	-243
+2113	875	30	1	35.00	23.38	0.00	35.00	-244
+2114	875	30	1	35.00	23.38	0.00	35.00	-245
+2115	875	30	1	35.00	23.38	0.00	35.00	-246
+2116	876	30	1	35.00	23.38	0.00	35.00	-247
+2117	876	30	1	35.00	23.38	0.00	35.00	-248
+2118	877	30	1	35.00	23.38	0.00	35.00	-249
+2119	877	30	1	35.00	23.38	0.00	35.00	-250
+2120	878	30	1	35.00	23.38	0.00	35.00	-251
+2121	878	30	1	35.00	23.38	0.00	35.00	-252
+2122	878	38	1	450.00	267.47	0.00	450.00	7880-029
+2123	879	30	1	35.00	23.38	0.00	35.00	-253
+2124	879	37	1	475.00	319.82	0.00	475.00	7879-017
+2125	879	37	1	475.00	319.82	0.00	475.00	7879-018
+2126	879	38	1	435.00	267.47	0.00	435.00	7880-030
+2127	879	40	1	515.00	333.15	0.00	515.00	7890-005
+2128	879	40	1	515.00	333.15	0.00	515.00	7890-006
+2129	879	40	1	515.00	333.15	0.00	515.00	7890-007
+2130	879	40	1	515.00	333.15	0.00	515.00	7890-008
+2131	880	30	1	35.00	23.38	0.00	35.00	-254
+2132	880	30	1	35.00	23.38	0.00	35.00	-255
+2133	881	30	1	35.00	23.38	0.00	35.00	-256
+2134	881	30	1	35.00	23.38	0.00	35.00	-257
+2135	881	38	1	450.00	267.47	0.00	450.00	7880-031
+2136	882	30	1	35.00	23.38	0.00	35.00	-258
+2137	882	30	1	35.00	23.38	0.00	35.00	-259
+2138	882	42	1	515.00	310.31	0.00	515.00	7901-006
+2139	883	30	1	35.00	23.38	0.00	35.00	-260
+2140	883	30	1	35.00	23.38	0.00	35.00	-261
+2141	883	30	1	35.00	23.38	0.00	35.00	-262
+2142	883	30	1	35.00	23.38	0.00	35.00	-263
+2143	883	38	1	440.00	267.47	0.00	440.00	7880-032
+2144	884	30	1	35.00	23.38	0.00	35.00	-264
+2145	884	30	1	35.00	23.38	0.00	35.00	-265
+2146	885	30	1	35.00	23.38	0.00	35.00	-266
+2147	885	30	1	35.00	23.38	0.00	35.00	-267
+2148	885	30	1	35.00	23.38	0.00	35.00	-268
+2149	885	30	1	35.00	23.38	0.00	35.00	-269
+2150	885	30	1	35.00	23.38	0.00	35.00	-270
+2151	885	39	1	560.00	365.51	0.00	560.00	7785-139
+2152	886	30	1	35.00	23.38	0.00	35.00	-271
+2153	886	30	1	35.00	23.38	0.00	35.00	-272
+2154	887	30	1	35.00	23.38	0.00	35.00	-273
+2155	887	30	1	35.00	23.38	0.00	35.00	-274
+2156	887	40	1	535.00	333.15	0.00	535.00	7719-129
+2157	888	30	1	35.00	23.38	0.00	35.00	-275
+2158	889	30	1	35.00	23.38	0.00	35.00	-276
+2159	889	30	1	35.00	23.38	0.00	35.00	-277
+2160	889	37	1	490.00	319.82	0.00	490.00	8060-058
+2161	889	48	1	40.00	19.99	0.00	40.00	-81
+2162	890	30	1	35.00	23.38	0.00	35.00	-278
+2163	890	30	1	35.00	23.38	0.00	35.00	-279
+2164	890	31	1	40.00	21.21	0.00	40.00	-010
+2165	890	31	1	40.00	21.21	0.00	40.00	-011
+2166	891	30	1	35.00	23.38	0.00	35.00	-280
+2167	891	30	1	35.00	23.38	0.00	35.00	-281
+2168	892	30	1	35.00	23.38	0.00	35.00	-282
+2169	892	30	1	35.00	23.38	0.00	35.00	-283
+2170	892	30	1	35.00	23.38	0.00	35.00	-284
+2171	892	30	1	35.00	23.38	0.00	35.00	-285
+2172	892	31	1	40.00	21.21	0.00	40.00	-019
+2173	892	31	1	40.00	21.21	0.00	40.00	-020
+2174	892	38	1	440.00	267.47	0.00	440.00	7880-037
+2175	892	38	1	440.00	267.47	0.00	440.00	7880-038
+2176	892	38	1	440.00	267.47	0.00	440.00	7880-039
+2177	892	38	1	440.00	267.47	0.00	440.00	7880-040
+2178	892	40	1	520.00	333.15	0.00	520.00	7890-024
+2179	892	40	1	520.00	333.15	0.00	520.00	7890-025
+2180	893	30	1	35.00	23.38	0.00	35.00	-286
+2181	893	30	1	35.00	23.38	0.00	35.00	-287
+2182	893	42	1	515.00	310.31	0.00	515.00	7901-042
+2183	894	30	1	35.00	23.38	0.00	35.00	-288
+2184	894	30	1	35.00	23.38	0.00	35.00	-289
+2185	894	30	1	35.00	23.38	0.00	35.00	-290
+2186	894	30	1	35.00	23.38	0.00	35.00	-291
+2187	894	30	1	35.00	23.38	0.00	35.00	-292
+2188	894	30	1	35.00	23.38	0.00	35.00	-293
+2189	894	30	1	35.00	23.38	0.00	35.00	-294
+2190	894	30	1	35.00	23.38	0.00	35.00	-295
+2191	894	40	1	535.00	333.15	0.00	535.00	7890-029
+2192	894	40	1	535.00	333.15	0.00	535.00	7890-032
+2193	895	30	1	35.00	23.38	0.00	35.00	-296
+2194	895	30	1	35.00	23.38	0.00	35.00	-297
+2195	895	48	1	40.00	19.99	0.00	40.00	-86
+2196	895	48	1	40.00	19.99	0.00	40.00	-87
+2197	896	30	1	35.00	23.38	0.00	35.00	-298
+2198	897	30	1	35.00	23.38	0.00	35.00	-299
+2199	898	30	1	35.00	23.38	0.00	35.00	-300
+2200	898	30	1	35.00	23.38	0.00	35.00	-301
+2201	899	30	1	35.00	23.38	0.00	35.00	-302
+2202	899	30	1	35.00	23.38	0.00	35.00	-303
+2203	899	38	1	450.00	267.47	0.00	450.00	7880-041
+2204	900	30	1	35.00	23.38	0.00	35.00	-304
+2205	900	30	1	35.00	23.38	0.00	35.00	-305
+2206	900	30	1	35.00	23.38	0.00	35.00	-306
+2207	900	30	1	35.00	23.38	0.00	35.00	-307
+2208	901	30	1	35.00	23.38	0.00	35.00	-308
+2209	902	30	1	35.00	23.38	0.00	35.00	-309
+2210	902	30	1	35.00	23.38	0.00	35.00	-310
+2211	903	30	1	35.00	23.38	0.00	35.00	-311
+2212	903	30	1	35.00	23.38	0.00	35.00	-312
+2213	903	38	1	450.00	267.47	0.00	450.00	7880-046
+2214	904	30	1	35.00	23.38	0.00	35.00	-313
+2215	905	30	1	35.00	23.38	0.00	35.00	-314
+2216	905	30	1	35.00	23.38	0.00	35.00	-315
+2217	906	30	1	35.00	23.38	0.00	35.00	-316
+2218	906	30	1	35.00	23.38	0.00	35.00	-323
+2219	907	30	1	35.00	23.38	0.00	35.00	-317
+2220	907	30	1	35.00	23.38	0.00	35.00	-318
+2221	908	30	1	35.00	23.38	0.00	35.00	-319
+2222	908	30	1	35.00	23.38	0.00	35.00	-320
+2223	909	30	1	35.00	23.38	0.00	35.00	-321
+2224	909	30	1	35.00	23.38	0.00	35.00	-322
+2225	909	38	1	440.00	267.47	0.00	440.00	7880-054
+2226	910	30	1	35.00	23.38	0.00	35.00	-324
+2227	910	30	1	35.00	23.38	0.00	35.00	-325
+2228	910	30	1	35.00	23.38	0.00	35.00	-326
+2229	911	30	1	35.00	23.38	0.00	35.00	-327
+2230	911	30	1	35.00	23.38	0.00	35.00	-328
+2231	911	30	1	35.00	23.38	0.00	35.00	-329
+2232	911	30	1	35.00	23.38	0.00	35.00	-330
+2233	912	30	1	35.00	23.38	0.00	35.00	-331
+2234	912	30	1	35.00	23.38	0.00	35.00	-332
+2235	913	30	1	35.00	23.38	0.00	35.00	-333
+2236	913	30	1	35.00	23.38	0.00	35.00	-334
+2237	914	30	1	35.00	23.38	0.00	35.00	-335
+2238	914	30	1	35.00	23.38	0.00	35.00	-336
+2239	914	31	1	40.00	21.21	0.00	40.00	-021
+2240	914	31	1	40.00	21.21	0.00	40.00	-022
+2241	915	30	1	35.00	23.38	0.00	35.00	-337
+2242	915	30	1	35.00	23.38	0.00	35.00	-338
+2243	915	30	1	35.00	23.38	0.00	35.00	-339
+2244	915	30	1	35.00	23.38	0.00	35.00	-340
+2245	915	40	1	530.00	333.15	0.00	530.00	8064-054
+2246	915	40	1	530.00	333.15	0.00	530.00	8064-055
+2247	916	30	1	35.00	23.38	0.00	35.00	-341
+2248	916	30	1	35.00	23.38	0.00	35.00	-342
+2249	917	31	1	40.00	21.21	0.00	40.00	-001
+2250	917	31	1	40.00	21.21	0.00	40.00	-002
+2251	918	31	1	40.00	21.21	0.00	40.00	-003
+2252	918	31	1	40.00	21.21	0.00	40.00	-004
+2253	918	31	1	40.00	21.21	0.00	40.00	-005
+2254	919	31	1	40.00	21.21	0.00	40.00	-006
+2255	919	31	1	40.00	21.21	0.00	40.00	-007
+2256	920	31	1	40.00	21.21	0.00	40.00	-012
+2257	920	31	1	40.00	21.21	0.00	40.00	-013
+2258	920	40	1	535.00	333.15	0.00	535.00	7890-018
+2259	921	31	1	40.00	21.21	0.00	40.00	-014
+2260	921	31	1	40.00	21.21	0.00	40.00	-015
+2261	921	31	1	40.00	21.21	0.00	40.00	-016
+2262	921	31	1	40.00	21.21	0.00	40.00	-017
+2263	921	31	1	40.00	21.21	0.00	40.00	-018
+2264	921	40	1	520.00	333.15	0.00	520.00	7890-019
+2265	921	40	1	520.00	333.15	0.00	520.00	7890-020
+2266	922	32	1	160.00	124.07	0.00	160.00	6789-192
+2267	922	37	1	465.00	319.82	0.00	465.00	7034-89
+2268	922	37	1	465.00	319.82	0.00	465.00	7034-90
+2269	922	46	1	100.00	59.02	0.00	100.00	7261-2
+2270	923	32	1	155.00	124.07	0.00	155.00	6789-193
+2271	923	32	1	155.00	124.07	0.00	155.00	6789-194
+2272	924	36	1	270.00	164.67	0.00	270.00	7304-001
+2273	924	37	1	470.00	319.82	0.00	470.00	7034-83
+2274	924	38	1	430.00	267.47	0.00	430.00	7305-4
+2275	924	40	1	500.00	333.15	0.00	500.00	7019-186
+2276	925	36	1	280.00	164.67	0.00	280.00	7304-002
+2277	926	36	1	270.00	164.67	0.00	270.00	7304-003
+2278	927	36	1	270.00	164.67	0.00	270.00	7304-004
+2279	927	38	1	430.00	267.47	0.00	430.00	7305-9
+2280	927	38	1	430.00	267.47	0.00	430.00	7305-10
+2281	927	38	1	430.00	267.47	0.00	430.00	7305-11
+2282	928	36	1	280.00	164.67	0.00	280.00	7304-005
+2283	929	36	1	280.00	164.67	0.00	280.00	7304-006
+2284	930	36	1	265.00	164.67	0.00	265.00	7304-007
+2285	930	38	1	425.00	267.47	0.00	425.00	7305-14
+2286	931	36	1	280.00	164.67	0.00	280.00	7304-008
+2287	932	36	1	280.00	164.67	0.00	280.00	7304-009
+2288	932	48	1	40.00	19.99	0.00	40.00	-003
+2289	932	48	1	40.00	19.99	0.00	40.00	-004
+2290	933	36	1	280.00	164.67	0.00	280.00	7304-010
+2291	934	36	1	265.00	164.67	0.00	265.00	7301-025
+2292	935	36	1	280.00	164.67	0.00	280.00	7301-026
+2293	936	36	1	265.00	164.67	0.00	265.00	7301-027
+2294	937	36	1	265.00	164.67	0.00	265.00	7301-029
+2295	937	40	1	510.00	333.15	0.00	510.00	7282-0003
+2296	938	36	1	280.00	164.67	0.00	280.00	7301-030
+1531	721	28	1	70.00	42.42	0.00	70.00	7085-001
+1532	721	28	1	70.00	42.42	0.00	70.00	7085-002
+1533	721	28	1	70.00	42.42	0.00	70.00	7085-003
+1534	721	28	1	70.00	42.42	0.00	70.00	7085-004
+1535	721	28	1	70.00	42.42	0.00	70.00	7266-001
+1536	721	28	1	70.00	42.42	0.00	70.00	7266-002
+1537	721	28	1	70.00	42.42	0.00	70.00	7266-003
+1538	721	40	1	495.00	333.15	0.00	495.00	7019-184
+1539	721	40	1	495.00	333.15	0.00	495.00	7019-185
+1540	722	28	1	75.00	42.42	0.00	75.00	7266-004
+1541	722	28	1	75.00	42.42	0.00	75.00	7266-005
+1542	723	28	1	70.00	42.42	0.00	70.00	7266-006
+1543	723	28	1	70.00	42.42	0.00	70.00	7266-007
+1544	723	29	1	30.00	18.03	0.00	30.00	-003
+1545	723	40	1	495.00	333.15	0.00	495.00	7019-192
+1546	723	40	1	495.00	333.15	0.00	495.00	7019-193
+1547	723	41	1	500.00	342.67	0.00	500.00	7267-0055
+1548	724	28	1	75.00	42.42	0.00	75.00	7266-008
+1549	725	28	1	75.00	42.42	0.00	75.00	7266-009
+1550	725	29	1	30.00	18.03	0.00	30.00	-010
+1551	725	45	1	45.00	22.84	0.00	45.00	7292-006
+1552	725	45	1	45.00	22.84	0.00	45.00	7292-007
+1553	726	28	1	75.00	42.42	0.00	75.00	7266-010
+1554	727	28	1	75.00	42.42	0.00	75.00	7266-011
+1555	727	28	1	75.00	42.42	0.00	75.00	7266-012
+1556	727	28	1	75.00	42.42	0.00	75.00	7266-013
+1557	727	28	1	75.00	42.42	0.00	75.00	7266-014
+1558	727	28	1	75.00	42.42	0.00	75.00	7266-015
+1559	727	28	1	75.00	42.42	0.00	75.00	7266-016
+1560	727	28	1	75.00	42.42	0.00	75.00	7266-017
+1561	727	28	1	75.00	42.42	0.00	75.00	7266-018
+1562	727	37	1	480.00	319.82	0.00	480.00	7383-005
+1563	727	48	1	40.00	19.99	0.00	40.00	-012
+1564	727	48	1	40.00	19.99	0.00	40.00	-014
+1565	728	28	1	75.00	42.42	0.00	75.00	7266-019
+1566	728	28	1	75.00	42.42	0.00	75.00	7266-020
+1567	728	40	1	500.00	333.15	0.00	500.00	7282-0009
+1568	728	48	1	40.00	19.99	0.00	40.00	-016
+1569	728	48	1	40.00	19.99	0.00	40.00	-017
+1570	728	48	1	40.00	19.99	0.00	40.00	-018
+1571	728	48	1	40.00	19.99	0.00	40.00	-019
+1572	728	48	1	40.00	19.99	0.00	40.00	-020
+1573	729	28	1	75.00	42.42	0.00	75.00	7266-021
+1574	729	28	1	75.00	42.42	0.00	75.00	7266-022
+1575	729	42	1	470.00	310.31	0.00	470.00	7379-001
+1576	730	28	1	75.00	42.42	0.00	75.00	7266-023
+1577	731	28	1	75.00	42.42	0.00	75.00	7266-024
+1578	731	36	1	265.00	164.67	0.00	265.00	7301-043
+1579	732	28	1	70.00	42.42	0.00	70.00	7266-025
+1580	732	28	1	75.00	42.42	0.00	75.00	7266-026
+1581	732	36	1	265.00	164.67	0.00	265.00	7301-044
+1582	733	28	1	70.00	42.42	0.00	70.00	7266-027
+1583	733	28	1	70.00	42.42	0.00	70.00	7266-028
+1584	733	30	1	35.00	23.38	0.00	35.00	-049
+1585	733	38	1	420.00	267.47	0.00	420.00	7330-0037
+1586	733	40	1	490.00	333.15	0.00	490.00	7346-032
+1587	734	28	1	75.00	42.42	0.00	75.00	7266-029
+1588	735	28	1	70.00	42.42	0.00	70.00	7266-030
+1589	735	28	1	70.00	42.42	0.00	70.00	7266-031
+1590	735	28	1	70.00	42.42	0.00	70.00	7266-032
+1591	735	28	1	70.00	42.42	0.00	70.00	7266-033
+1592	736	28	1	75.00	42.42	0.00	75.00	7266-034
+1593	736	29	1	30.00	18.03	0.00	30.00	-011
+1594	736	30	1	35.00	23.38	0.00	35.00	-056
+1595	736	30	1	35.00	23.38	0.00	35.00	-057
+1596	736	40	1	520.00	333.15	0.00	520.00	7346-045
+1597	737	28	1	75.00	42.42	0.00	75.00	7266-035
+1598	738	28	1	70.00	42.42	0.00	70.00	7266-036
+1599	738	38	1	420.00	267.47	0.00	420.00	7330-0043
+1600	738	38	1	420.00	267.47	0.00	420.00	7330-0044
+1601	739	28	1	75.00	42.42	0.00	75.00	7642-001
+1602	739	38	1	440.00	267.47	0.00	440.00	7382-018
+1603	739	40	1	515.00	333.15	0.00	515.00	7633-015
+1604	740	28	1	75.00	42.42	0.00	75.00	7642-002
+1605	740	30	1	35.00	23.38	0.00	35.00	-116
+1606	740	30	1	35.00	23.38	0.00	35.00	-117
+1607	740	37	1	465.00	319.82	0.00	465.00	7487-94
+1608	740	38	1	425.00	267.47	0.00	425.00	7438-27
+1609	741	28	1	75.00	42.42	0.00	75.00	7642-003
+1610	741	28	1	75.00	42.42	0.00	75.00	7642-004
+1611	742	28	1	75.00	42.42	0.00	75.00	7642-005
+1612	742	28	1	75.00	42.42	0.00	75.00	7642-006
+1613	742	30	1	35.00	23.38	0.00	35.00	-163
+1614	742	30	1	35.00	23.38	0.00	35.00	-164
+1615	742	40	1	515.00	333.15	0.00	515.00	7633-046
+1616	742	40	1	515.00	333.15	0.00	515.00	7633-047
+1617	742	45	1	45.00	22.84	0.00	45.00	7292-031
+1618	742	45	1	45.00	22.84	0.00	45.00	7292-032
+1619	743	28	1	75.00	42.42	0.00	75.00	7642-007
+1620	743	28	1	75.00	42.42	0.00	75.00	7642-008
+1621	743	39	1	560.00	365.51	0.00	560.00	7523-081
+1622	744	28	1	75.00	42.42	0.00	75.00	7642-009
+1623	744	28	1	75.00	42.42	0.00	75.00	7642-010
+1624	744	28	1	75.00	42.42	0.00	75.00	7642-011
+1625	744	28	1	75.00	42.42	0.00	75.00	7642-012
+1626	744	28	1	75.00	42.42	0.00	75.00	7642-013
+1627	744	28	1	75.00	42.42	0.00	75.00	7642-014
+1628	744	28	1	75.00	42.42	0.00	75.00	7642-015
+1629	744	28	1	75.00	42.42	0.00	75.00	7642-016
+1630	744	28	1	75.00	42.42	0.00	75.00	7642-017
+1631	744	28	1	75.00	42.42	0.00	75.00	7642-018
+1632	744	28	1	75.00	42.42	0.00	75.00	7642-019
+1633	744	28	1	75.00	42.42	0.00	75.00	7642-020
+1634	745	28	1	75.00	42.42	0.00	75.00	7642-021
+1635	746	28	1	75.00	42.42	0.00	75.00	7642-022
+1636	746	28	1	75.00	42.42	0.00	75.00	7642-023
+1637	746	30	1	35.00	23.38	0.00	35.00	-203
+1638	746	30	1	35.00	23.38	0.00	35.00	-204
+1639	746	30	1	35.00	23.38	0.00	35.00	-205
+1640	747	28	1	75.00	42.42	0.00	75.00	7642-024
+1641	748	28	1	75.00	42.42	0.00	75.00	7642-025
+1642	748	28	1	75.00	42.42	0.00	75.00	7642-026
+1643	748	28	1	75.00	42.42	0.00	75.00	7642-027
+1644	748	28	1	75.00	42.42	0.00	75.00	7642-028
+1645	748	28	1	75.00	42.42	0.00	75.00	7642-029
+1646	748	28	1	75.00	42.42	0.00	75.00	7642-030
+1647	748	28	1	75.00	42.42	0.00	75.00	7642-031
+1648	748	28	1	75.00	42.42	0.00	75.00	7642-032
+1649	748	42	1	510.00	310.31	0.00	510.00	7760-039
+1650	748	48	1	40.00	19.99	0.00	40.00	-68
+1651	748	48	1	40.00	19.99	0.00	40.00	-69
+1652	749	28	1	75.00	42.42	0.00	75.00	7642-033
+1653	750	28	1	75.00	42.42	0.00	75.00	7642-034
+1654	750	28	1	75.00	42.42	0.00	75.00	7642-035
+1655	751	28	1	75.00	42.42	0.00	75.00	7642-036
+1656	751	28	1	75.00	42.42	0.00	75.00	7642-037
+1657	751	30	1	35.00	23.38	0.00	35.00	-224
+1658	751	30	1	35.00	23.38	0.00	35.00	-225
+1659	752	28	1	75.00	42.42	0.00	75.00	7642-038
+1660	752	28	1	75.00	42.42	0.00	75.00	7642-039
+1661	753	28	1	75.00	42.42	0.00	75.00	8139-001
+1662	753	28	1	75.00	42.42	0.00	75.00	8139-002
+1663	753	28	1	75.00	42.42	0.00	75.00	8139-003
+1664	753	28	1	75.00	42.42	0.00	75.00	8139-004
+1665	753	28	1	75.00	42.42	0.00	75.00	8139-005
+1666	753	48	1	40.00	19.99	0.00	40.00	-94
+1667	753	48	1	40.00	19.99	0.00	40.00	-95
+1668	754	50	1	80.00	44.74	0.00	80.00	7802-001
+1669	754	39	1	545.00	365.51	0.00	545.00	7785-102
+1670	754	40	1	510.00	333.15	0.00	510.00	7633-072
+1671	754	40	1	510.00	333.15	0.00	510.00	7633-073
+1672	754	40	1	510.00	333.15	0.00	510.00	7633-074
+1673	755	50	1	80.00	44.74	0.00	80.00	7802-002
+1674	755	50	1	80.00	44.74	0.00	80.00	7802-003
+1675	755	39	1	560.00	365.51	0.00	560.00	7785-103
+1676	756	50	1	80.00	44.74	0.00	80.00	7802-004
+1677	756	50	1	80.00	44.74	0.00	80.00	7802-005
+1678	756	50	1	80.00	44.74	0.00	80.00	7802-006
+1679	756	50	1	80.00	44.74	0.00	80.00	7802-007
+1680	757	50	1	80.00	44.74	0.00	80.00	7802-008
+1681	757	50	1	80.00	44.74	0.00	80.00	7802-009
+1682	757	50	1	80.00	44.74	0.00	80.00	7802-010
+1683	758	50	1	80.00	44.74	0.00	80.00	7802-011
+1684	758	50	1	80.00	44.74	0.00	80.00	7802-012
+1685	758	50	1	80.00	44.74	0.00	80.00	7802-013
+1686	759	50	1	80.00	44.74	0.00	80.00	7802-014
+1687	760	50	1	80.00	44.74	0.00	80.00	7802-015
+1688	760	50	1	80.00	44.74	0.00	80.00	7802-016
+1689	760	40	1	525.00	333.15	0.00	525.00	7633-088
+1690	761	50	1	80.00	44.74	0.00	80.00	7802-017
+1691	761	50	1	80.00	44.74	0.00	80.00	7802-018
+1692	761	40	1	525.00	333.15	0.00	525.00	7633-090
+1693	762	50	1	80.00	44.74	0.00	80.00	7802-019
+1694	762	50	1	80.00	44.74	0.00	80.00	7802-020
+1695	762	40	1	525.00	333.15	0.00	525.00	7719-078
+1696	762	48	1	40.00	19.99	0.00	40.00	-76
+1697	762	48	1	40.00	19.99	0.00	40.00	-77
+1698	763	50	1	80.00	44.74	0.00	80.00	7802-021
+1699	763	50	1	80.00	44.74	0.00	80.00	7802-022
+1700	763	30	1	35.00	23.38	0.00	35.00	-222
+1701	763	40	1	515.00	333.15	0.00	515.00	7719-080
+1702	763	40	1	515.00	333.15	0.00	515.00	7719-081
+1703	764	50	1	80.00	44.74	0.00	80.00	7802-023
+1704	764	50	1	80.00	44.74	0.00	80.00	7802-024
+1705	764	50	1	80.00	44.74	0.00	80.00	7802-025
+1706	764	50	1	80.00	44.74	0.00	80.00	7802-026
+1707	764	50	1	80.00	44.74	0.00	80.00	7802-027
+1708	764	50	1	80.00	44.74	0.00	80.00	7802-028
+1709	764	50	1	80.00	44.74	0.00	80.00	7802-029
+1710	764	50	1	80.00	44.74	0.00	80.00	7802-030
+1711	764	50	1	80.00	44.74	0.00	80.00	7802-031
+1712	764	50	1	80.00	44.74	0.00	80.00	7802-032
+1713	764	30	1	35.00	23.38	0.00	35.00	-230
+1714	764	30	1	35.00	23.38	0.00	35.00	-231
+1715	764	30	1	35.00	23.38	0.00	35.00	-232
+1716	764	30	1	35.00	23.38	0.00	35.00	-233
+1717	764	30	1	35.00	23.38	0.00	35.00	-234
+1718	764	30	1	35.00	23.38	0.00	35.00	-235
+1719	764	30	1	35.00	23.38	0.00	35.00	-236
+1720	764	30	1	35.00	23.38	0.00	35.00	-237
+1721	764	30	1	35.00	23.38	0.00	35.00	-238
+1722	764	30	1	35.00	23.38	0.00	35.00	-239
+1723	764	36	1	285.00	164.67	0.00	285.00	7797-040
+1724	764	36	1	285.00	164.67	0.00	285.00	7797-041
+1725	764	35	1	325.00	191.32	0.00	325.00	7793-032
+1726	764	35	1	325.00	191.32	0.00	325.00	7793-033
+1727	764	37	1	490.00	319.82	0.00	490.00	7879-012
+1728	764	37	1	490.00	319.82	0.00	490.00	7879-013
+1729	764	38	1	450.00	267.47	0.00	450.00	7880-018
+1730	764	38	1	450.00	267.47	0.00	450.00	7880-019
+1731	764	40	1	530.00	333.15	0.00	530.00	7719-116
+1732	764	40	1	530.00	333.15	0.00	530.00	7719-117
+1733	764	42	1	515.00	310.31	0.00	515.00	7760-048
+1734	764	42	1	515.00	310.31	0.00	515.00	7760-049
+1735	764	41	1	545.00	342.67	0.00	545.00	7690-014
+1736	764	41	1	545.00	342.67	0.00	545.00	7690-015
+1737	765	50	1	75.00	44.74	0.00	75.00	7802-033
+1738	765	50	1	75.00	44.74	0.00	75.00	7802-034
+1739	765	50	1	75.00	44.74	0.00	75.00	7802-035
+1740	765	50	1	75.00	44.74	0.00	75.00	7802-036
+1741	765	50	1	75.00	44.74	0.00	75.00	7802-037
+1742	765	50	1	75.00	44.74	0.00	75.00	7802-038
+1743	765	50	1	75.00	44.74	0.00	75.00	7802-039
+1744	765	50	1	75.00	44.74	0.00	75.00	7802-040
+1745	765	50	1	75.00	44.74	0.00	75.00	7802-041
+1746	765	50	1	75.00	44.74	0.00	75.00	7802-042
+1747	765	50	1	75.00	44.74	0.00	75.00	7802-043
+1748	766	50	1	80.00	44.74	0.00	80.00	7802-044
+1749	766	50	1	80.00	44.74	0.00	80.00	7802-045
+1750	766	38	1	450.00	267.47	0.00	450.00	7880-021
+1751	767	50	1	80.00	44.74	0.00	80.00	7802-046
+1752	767	50	1	80.00	44.74	0.00	80.00	7802-047
+1753	767	38	1	450.00	267.47	0.00	450.00	7880-020
+1754	768	50	1	80.00	44.74	0.00	80.00	7802-048
+1755	769	50	1	80.00	44.74	0.00	80.00	7802-049
+1756	769	50	1	80.00	44.74	0.00	80.00	7802-050
+1757	769	50	1	80.00	44.74	0.00	80.00	7802-051
+1758	769	40	1	515.00	333.15	0.00	515.00	7719-124
+1759	769	40	1	515.00	333.15	0.00	515.00	7719-125
+1760	770	50	1	80.00	44.74	0.00	80.00	7802-052
+1761	770	41	1	545.00	342.67	0.00	545.00	7816-067
+1762	770	41	1	545.00	342.67	0.00	545.00	7816-068
+1763	771	50	1	80.00	44.74	0.00	80.00	7802-053
+1764	772	50	1	80.00	44.74	0.00	80.00	7802-054
+1765	772	50	1	80.00	44.74	0.00	80.00	7802-055
+1766	773	50	1	80.00	44.74	0.00	80.00	7802-056
+1767	773	50	1	80.00	44.74	0.00	80.00	7802-057
+1768	773	41	1	545.00	342.67	0.00	545.00	7816-070
+1769	773	48	1	40.00	19.99	0.00	40.00	-84
+1770	773	48	1	40.00	19.99	0.00	40.00	-85
+1771	774	50	1	80.00	44.74	0.00	80.00	7802-058
+1772	774	50	1	80.00	44.74	0.00	80.00	7802-059
+1773	774	41	1	525.00	342.67	0.00	525.00	7816-071
+1774	775	50	1	80.00	44.74	0.00	80.00	7802-060
+1775	775	50	1	80.00	44.74	0.00	80.00	7802-061
+1776	776	50	1	80.00	44.74	0.00	80.00	7802-062
+1777	777	50	1	80.00	44.74	0.00	80.00	7802-063
+1778	778	50	1	80.00	44.74	0.00	80.00	7802-064
+1779	778	40	1	520.00	333.15	0.00	520.00	8064-075
+1780	778	40	1	520.00	333.15	0.00	520.00	8064-045
+1781	778	40	1	520.00	333.15	0.00	520.00	8064-046
+1782	779	50	1	80.00	44.74	0.00	80.00	7802-065
+1783	779	39	1	560.00	365.51	0.00	560.00	8063-069
+1784	779	39	1	560.00	365.51	0.00	560.00	8063-070
+1785	779	34	1	260.00	153.77	0.00	260.00	8160-20
+1786	780	29	1	32.00	18.03	0.00	32.00	-001
+1787	780	29	1	32.00	18.03	0.00	32.00	-002
+1788	780	37	1	480.00	319.82	0.00	480.00	7034-86
+1789	780	47	1	195.00	133.26	0.00	195.00	7255-110
+1790	781	29	1	30.00	18.03	0.00	30.00	-004
+1791	781	40	1	495.00	333.15	0.00	495.00	7019-197
+1792	782	29	1	30.00	18.03	0.00	30.00	-005
+1793	782	29	1	30.00	18.03	0.00	30.00	-006
+1794	782	29	1	30.00	18.03	0.00	30.00	-007
+1795	782	41	1	500.00	342.67	0.00	500.00	7267-0058
+1796	783	29	1	30.00	18.03	0.00	30.00	-008
+1797	783	29	1	30.00	18.03	0.00	30.00	-009
+1798	783	38	1	440.00	267.47	0.00	440.00	7305-20
+1799	783	39	1	560.00	365.51	0.00	560.00	7281-3
+1800	783	40	1	520.00	333.15	0.00	520.00	7019-199
+1801	784	29	1	30.00	18.03	0.00	30.00	-012
+1802	784	30	1	35.00	23.38	0.00	35.00	-090
+1803	784	38	1	450.00	267.47	0.00	450.00	7330-0055
+1804	785	29	1	30.00	18.03	0.00	30.00	-013
+1805	785	30	1	35.00	23.38	0.00	35.00	-158
+1806	785	30	1	35.00	23.38	0.00	35.00	-159
+1807	785	30	1	35.00	23.38	0.00	35.00	-160
+1808	786	29	1	30.00	18.03	0.00	30.00	-014
+1809	786	30	1	35.00	23.38	0.00	35.00	-171
+1810	787	29	1	30.00	18.03	0.00	30.00	-015
+1811	787	36	1	280.00	164.67	0.00	280.00	7797-033
+1812	788	29	1	30.00	18.03	0.00	30.00	-017
+1813	788	30	1	35.00	23.38	0.00	35.00	-206
+1814	788	30	1	35.00	23.38	0.00	35.00	-207
+1815	789	29	1	30.00	18.03	0.00	30.00	-018
+1816	790	29	1	30.00	18.03	0.00	30.00	-019
+1817	791	29	1	30.00	18.03	0.00	30.00	-020
+1818	792	29	1	30.00	18.03	0.00	30.00	-033
+1819	792	29	1	30.00	18.03	0.00	30.00	-034
+1820	792	29	1	30.00	18.03	0.00	30.00	-035
+1821	792	29	1	30.00	18.03	0.00	30.00	-036
+1822	792	29	1	30.00	18.03	0.00	30.00	-037
+1823	792	29	1	30.00	18.03	0.00	30.00	-038
+1824	792	29	1	30.00	18.03	0.00	30.00	-039
+1825	792	29	1	30.00	18.03	0.00	30.00	-040
+1826	793	30	1	35.00	23.38	0.00	35.00	-001
+1827	793	30	1	35.00	23.38	0.00	35.00	-002
+1828	793	40	1	500.00	333.15	0.00	500.00	7019-200
+1829	794	30	1	35.00	23.38	0.00	35.00	-003
+1830	794	30	1	35.00	23.38	0.00	35.00	-004
+1831	794	40	1	520.00	333.15	0.00	520.00	7282-0001
+1832	795	30	1	35.00	23.38	0.00	35.00	-005
+1833	795	30	1	35.00	23.38	0.00	35.00	-006
+1834	795	37	1	480.00	319.82	0.00	480.00	7383-002
+1835	796	30	1	35.00	23.38	0.00	35.00	-007
+1836	796	30	1	35.00	23.38	0.00	35.00	-008
+1837	797	30	1	35.00	23.38	0.00	35.00	-009
+1838	798	30	1	35.00	23.38	0.00	35.00	-010
+1839	798	30	1	35.00	23.38	0.00	35.00	-011
+1840	798	36	1	280.00	164.67	0.00	280.00	7301-028
+1841	798	38	1	440.00	267.47	0.00	440.00	7330-0027
+1842	799	30	1	35.00	23.38	0.00	35.00	-012
+1843	799	30	1	35.00	23.38	0.00	35.00	-013
+1844	799	40	1	495.00	333.15	0.00	495.00	7282-0004
+1845	800	30	1	35.00	23.38	0.00	35.00	-014
+1846	800	30	1	35.00	23.38	0.00	35.00	-015
+1847	800	37	1	480.00	319.82	0.00	480.00	7383-003
+1848	800	48	1	40.00	19.99	0.00	40.00	-010
+1849	800	48	1	40.00	19.99	0.00	40.00	-011
+1850	801	30	1	35.00	23.38	0.00	35.00	-016
+1851	801	30	1	35.00	23.38	0.00	35.00	-017
+1852	802	30	1	35.00	23.38	0.00	35.00	-018
+1853	803	30	1	35.00	23.38	0.00	35.00	-019
+1854	803	30	1	35.00	23.38	0.00	35.00	-020
+1855	803	30	1	35.00	23.38	0.00	35.00	-021
+1856	803	30	1	35.00	23.38	0.00	35.00	-022
+1857	803	37	1	470.00	319.82	0.00	470.00	7383-006
+1858	803	37	1	470.00	319.82	0.00	470.00	7383-007
+1859	804	30	1	35.00	23.38	0.00	35.00	-023
+1860	804	36	1	280.00	164.67	0.00	280.00	7301-038
+1861	805	30	1	35.00	23.38	0.00	35.00	-024
+1862	805	30	1	35.00	23.38	0.00	35.00	-025
+1863	805	37	1	480.00	319.82	0.00	480.00	7383-008
+1864	805	45	1	45.00	22.84	0.00	45.00	7292-010
+1865	805	46	1	120.00	59.02	0.00	120.00	7261-6
+1866	805	47	1	200.00	133.26	0.00	200.00	7255-123
+1867	806	30	1	35.00	23.38	0.00	35.00	-026
+1868	806	30	1	35.00	23.38	0.00	35.00	-027
+1869	807	30	1	35.00	23.38	0.00	35.00	-028
+1870	807	30	1	35.00	23.38	0.00	35.00	-029
+1871	807	38	1	440.00	267.47	0.00	440.00	7330-0032
+1872	807	45	1	45.00	22.84	0.00	45.00	7292-011
+1873	807	45	1	45.00	22.84	0.00	45.00	7292-012
+1874	808	30	1	35.00	23.38	0.00	35.00	-030
+1875	808	30	1	35.00	23.38	0.00	35.00	-031
+1876	809	30	1	35.00	23.38	0.00	35.00	-032
+1877	809	30	1	35.00	23.38	0.00	35.00	-033
+1878	809	40	1	520.00	333.15	0.00	520.00	7282-094
+1879	810	30	1	35.00	23.38	0.00	35.00	-034
+1880	811	30	1	35.00	23.38	0.00	35.00	-035
+1881	812	30	1	35.00	23.38	0.00	35.00	-036
+1882	812	38	1	440.00	267.47	0.00	440.00	7330-0034
+1883	812	39	1	530.00	365.51	0.00	530.00	7281-12
+1884	813	30	1	35.00	23.38	0.00	35.00	-037
+1885	813	30	1	35.00	23.38	0.00	35.00	-038
+1886	813	30	1	35.00	23.38	0.00	35.00	-039
+1887	813	30	1	35.00	23.38	0.00	35.00	-040
+1888	813	30	1	35.00	23.38	0.00	35.00	-041
+1889	813	30	1	35.00	23.38	0.00	35.00	-042
+1890	813	40	1	500.00	333.15	0.00	500.00	7346-026
+1891	814	30	1	35.00	23.38	0.00	35.00	-043
+1892	814	40	1	510.00	333.15	0.00	510.00	7346-027
+1893	815	30	1	35.00	23.38	0.00	35.00	-044
+1894	815	39	1	530.00	365.51	0.00	530.00	7281-11
+1895	816	30	1	35.00	23.38	0.00	35.00	-045
+1896	817	30	1	35.00	23.38	0.00	35.00	-046
+1897	817	39	1	530.00	365.51	0.00	530.00	7281-13
+1898	818	30	1	35.00	23.38	0.00	35.00	-047
+1899	818	30	1	35.00	23.38	0.00	35.00	-048
+1900	818	42	1	475.00	310.31	0.00	475.00	7379-004
+1901	819	30	1	35.00	23.38	0.00	35.00	-050
+1902	819	30	1	35.00	23.38	0.00	35.00	-051
+1903	819	40	1	500.00	333.15	0.00	500.00	7346-042
+1904	819	40	1	490.00	333.15	0.00	490.00	7346-046
+1905	819	40	1	490.00	333.15	0.00	490.00	7346-047
+1906	819	40	1	490.00	333.15	0.00	490.00	7346-048
+1907	820	30	1	35.00	23.38	0.00	35.00	-052
+1908	820	30	1	35.00	23.38	0.00	35.00	-053
+1909	820	42	1	490.00	310.31	0.00	490.00	7379-005
+1910	821	30	1	35.00	23.38	0.00	35.00	-054
+1911	821	30	1	35.00	23.38	0.00	35.00	-055
+1912	821	38	1	420.00	267.47	0.00	420.00	7330-0038
+1913	821	40	1	490.00	333.15	0.00	490.00	7346-044
+1914	822	30	1	35.00	23.38	0.00	35.00	-058
+1915	822	30	1	35.00	23.38	0.00	35.00	-059
+1916	823	30	1	35.00	23.38	0.00	35.00	-060
+1917	823	30	1	35.00	23.38	0.00	35.00	-061
+1918	823	30	1	35.00	23.38	0.00	35.00	-062
+1919	823	30	1	35.00	23.38	0.00	35.00	-063
+1920	823	30	1	35.00	23.38	0.00	35.00	-064
+1921	823	30	1	35.00	23.38	0.00	35.00	-065
+1922	823	30	1	35.00	23.38	0.00	35.00	-066
+1923	823	30	1	35.00	23.38	0.00	35.00	-067
+1924	823	30	1	35.00	23.38	0.00	35.00	-068
+1925	823	30	1	35.00	23.38	0.00	35.00	-069
+1926	823	30	1	35.00	23.38	0.00	35.00	-070
+1927	823	30	1	35.00	23.38	0.00	35.00	-071
+1928	823	30	1	35.00	23.38	0.00	35.00	-072
+1929	823	30	1	35.00	23.38	0.00	35.00	-073
+1930	823	30	1	35.00	23.38	0.00	35.00	-074
+1931	823	30	1	35.00	23.38	0.00	35.00	-075
+1932	823	30	1	35.00	23.38	0.00	35.00	-076
+1933	823	30	1	35.00	23.38	0.00	35.00	-077
+1934	823	30	1	35.00	23.38	0.00	35.00	-078
+1935	823	30	1	35.00	23.38	0.00	35.00	-079
+1936	824	30	1	35.00	23.38	0.00	35.00	-080
+1937	824	30	1	35.00	23.38	0.00	35.00	-081
+1938	824	30	1	35.00	23.38	0.00	35.00	-086
+1939	824	30	1	35.00	23.38	0.00	35.00	-087
+1940	824	30	1	35.00	23.38	0.00	35.00	-088
+1941	824	30	1	35.00	23.38	0.00	35.00	-089
+1942	824	36	1	265.00	164.67	0.00	265.00	7423-043
+1943	824	39	1	530.00	365.51	0.00	530.00	7412-003
+1944	825	30	1	35.00	23.38	0.00	35.00	-082
+1945	825	30	1	35.00	23.38	0.00	35.00	-083
+1946	825	30	1	35.00	23.38	0.00	35.00	-084
+1947	825	30	1	35.00	23.38	0.00	35.00	-085
+1948	826	30	1	35.00	23.38	0.00	35.00	-091
+1949	826	30	1	35.00	23.38	0.00	35.00	-092
+1950	826	38	1	425.00	267.47	0.00	425.00	7382-013
+1951	826	38	1	425.00	267.47	0.00	425.00	7382-014
+1952	827	30	1	35.00	23.38	0.00	35.00	-093
+1953	827	35	1	320.00	191.32	0.00	320.00	7629-43
+1954	827	35	1	320.00	191.32	0.00	320.00	7629-44
+1955	828	30	1	35.00	23.38	0.00	35.00	-094
+1956	828	30	1	35.00	23.38	0.00	35.00	-097
+1957	829	30	1	35.00	23.38	0.00	35.00	-095
+1958	829	30	1	35.00	23.38	0.00	35.00	-098
+1959	829	40	1	510.00	333.15	0.00	510.00	7633-021
+1960	830	30	1	35.00	23.38	0.00	35.00	-096
+1961	830	38	1	425.00	267.47	0.00	425.00	7382-015
+1962	831	30	1	35.00	23.38	0.00	35.00	-099
+1963	831	30	1	35.00	23.38	0.00	35.00	-100
+1964	831	38	1	425.00	267.47	0.00	425.00	7382-020
+1965	832	30	1	35.00	23.38	0.00	35.00	-101
+1966	832	30	1	35.00	23.38	0.00	35.00	-102
+1967	832	30	1	35.00	23.38	0.00	35.00	-103
+1968	832	30	1	35.00	23.38	0.00	35.00	-104
+1969	833	30	1	35.00	23.38	0.00	35.00	-105
+1970	833	30	1	35.00	23.38	0.00	35.00	-106
+1971	834	30	1	35.00	23.38	0.00	35.00	-107
+1972	834	30	1	35.00	23.38	0.00	35.00	-108
+1973	834	30	1	35.00	23.38	0.00	35.00	-109
+1974	834	30	1	35.00	23.38	0.00	35.00	-110
+1975	835	30	1	35.00	23.38	0.00	35.00	-111
+1976	835	30	1	35.00	23.38	0.00	35.00	-112
+1977	835	30	1	35.00	23.38	0.00	35.00	-113
+1978	835	30	1	35.00	23.38	0.00	35.00	-114
+1979	835	38	1	425.00	267.47	0.00	425.00	7438-24
+1980	835	38	1	425.00	267.47	0.00	425.00	7438-25
+1981	836	30	1	35.00	23.38	0.00	35.00	-115
+1982	837	30	1	35.00	23.38	0.00	35.00	-118
+1983	838	30	1	35.00	23.38	0.00	35.00	-119
+1984	838	30	1	35.00	23.38	0.00	35.00	-120
+1985	838	30	1	35.00	23.38	0.00	35.00	-121
+1986	838	30	1	35.00	23.38	0.00	35.00	-122
+1987	838	30	1	35.00	23.38	0.00	35.00	-123
+1988	838	30	1	35.00	23.38	0.00	35.00	-124
+1989	838	30	1	35.00	23.38	0.00	35.00	-125
+1990	838	30	1	35.00	23.38	0.00	35.00	-126
+1991	838	30	1	35.00	23.38	0.00	35.00	-127
+1992	838	30	1	35.00	23.38	0.00	35.00	-128
+1993	838	30	1	35.00	23.38	0.00	35.00	-129
+1994	838	30	1	35.00	23.38	0.00	35.00	-130
+1995	838	30	1	35.00	23.38	0.00	35.00	-131
+1996	838	30	1	35.00	23.38	0.00	35.00	-132
+1997	838	30	1	35.00	23.38	0.00	35.00	-133
+1998	839	30	1	35.00	23.38	0.00	35.00	-134
+1999	839	30	1	35.00	23.38	0.00	35.00	-135
+2000	839	30	1	35.00	23.38	0.00	35.00	-136
+2001	839	30	1	35.00	23.38	0.00	35.00	-137
+2002	839	30	1	35.00	23.38	0.00	35.00	-138
+2003	839	30	1	35.00	23.38	0.00	35.00	-139
+2004	839	30	1	35.00	23.38	0.00	35.00	-140
+2005	839	30	1	35.00	23.38	0.00	35.00	-141
+2006	839	30	1	35.00	23.38	0.00	35.00	-142
+2007	839	30	1	35.00	23.38	0.00	35.00	-143
+2008	840	30	1	35.00	23.38	0.00	35.00	-144
+2009	840	30	1	35.00	23.38	0.00	35.00	-145
+2010	840	30	1	35.00	23.38	0.00	35.00	-146
+2011	840	30	1	35.00	23.38	0.00	35.00	-147
+2012	840	30	1	35.00	23.38	0.00	35.00	-148
+2013	840	30	1	35.00	23.38	0.00	35.00	-149
+2014	840	30	1	35.00	23.38	0.00	35.00	-150
+2015	840	30	1	35.00	23.38	0.00	35.00	-151
+2016	840	30	1	35.00	23.38	0.00	35.00	-152
+2017	840	30	1	35.00	23.38	0.00	35.00	-153
+2018	840	39	1	545.00	365.51	0.00	545.00	7523-072
+2019	841	30	1	35.00	23.38	0.00	35.00	-154
+2020	841	30	1	35.00	23.38	0.00	35.00	-155
+2021	842	30	1	35.00	23.38	0.00	35.00	-156
+2022	842	37	1	465.00	319.82	0.00	465.00	7622-60
+2023	843	30	1	35.00	23.38	0.00	35.00	-157
+2024	843	32	1	170.00	124.07	0.00	170.00	6789-195
+2025	843	40	1	525.00	333.15	0.00	525.00	7633-043
+2026	844	30	1	35.00	23.38	0.00	35.00	-161
+2027	844	30	1	35.00	23.38	0.00	35.00	-162
+2028	845	30	1	35.00	23.38	0.00	35.00	-165
+2029	845	30	1	35.00	23.38	0.00	35.00	-166
+2030	845	30	1	35.00	23.38	0.00	35.00	-167
+2031	845	39	1	545.00	365.51	0.00	545.00	7523-075
+2032	846	30	1	35.00	23.38	0.00	35.00	-168
+2033	847	30	1	35.00	23.38	0.00	35.00	-169
+2034	847	30	1	35.00	23.38	0.00	35.00	-170
+2035	847	40	1	525.00	333.15	0.00	525.00	7633-048
+2036	848	30	1	35.00	23.38	0.00	35.00	-172
+2037	848	30	1	35.00	23.38	0.00	35.00	-173
+2038	848	30	1	35.00	23.38	0.00	35.00	-174
+2039	848	30	1	35.00	23.38	0.00	35.00	-175
+2040	848	30	1	35.00	23.38	0.00	35.00	-176
+2041	848	30	1	35.00	23.38	0.00	35.00	-177
+2042	849	30	1	35.00	23.38	0.00	35.00	-178
+2043	849	30	1	35.00	23.38	0.00	35.00	-179
+2044	850	30	1	35.00	23.38	0.00	35.00	-180
+2045	851	30	1	35.00	23.38	0.00	35.00	-181
+2046	851	30	1	35.00	23.38	0.00	35.00	-182
+2047	851	40	1	525.00	333.15	0.00	525.00	7633-062
+2048	852	30	1	35.00	23.38	0.00	35.00	-183
+2049	852	30	1	35.00	23.38	0.00	35.00	-184
+2050	852	40	1	525.00	333.15	0.00	525.00	7633-064
+2051	853	30	1	35.00	23.38	0.00	35.00	-185
+2052	853	30	1	35.00	23.38	0.00	35.00	-186
+2053	854	30	1	35.00	23.38	0.00	35.00	-187
+2054	854	30	1	35.00	23.38	0.00	35.00	-188
+2055	854	40	1	510.00	333.15	0.00	510.00	7633-063
+2056	855	30	1	35.00	23.38	0.00	35.00	-189
+2057	856	30	1	35.00	23.38	0.00	35.00	-190
+2058	856	30	1	35.00	23.38	0.00	35.00	-191
+2059	856	37	1	480.00	319.82	0.00	480.00	7879-002
+2060	856	37	1	480.00	319.82	0.00	480.00	7879-003
+2061	857	30	1	35.00	23.38	0.00	35.00	-192
+2062	857	30	1	35.00	23.38	0.00	35.00	-193
+2063	857	40	1	510.00	333.15	0.00	510.00	7633-071
+2064	857	48	1	40.00	19.99	0.00	40.00	-55
+2065	857	48	1	40.00	19.99	0.00	40.00	-56
+2066	858	30	1	35.00	23.38	0.00	35.00	-194
+2067	858	30	1	35.00	23.38	0.00	35.00	-195
+2068	859	30	1	35.00	23.38	0.00	35.00	-196
+2069	859	30	1	35.00	23.38	0.00	35.00	-197
+2070	859	36	1	280.00	164.67	0.00	280.00	7797-032
+2071	860	30	1	35.00	23.38	0.00	35.00	-198
+2072	861	30	1	35.00	23.38	0.00	35.00	-199
+2073	861	30	1	35.00	23.38	0.00	35.00	-200
+2074	861	40	1	525.00	333.15	0.00	525.00	7633-086
+2075	862	30	1	35.00	23.38	0.00	35.00	-201
+2076	862	30	1	35.00	23.38	0.00	35.00	-202
+2077	863	30	1	35.00	23.38	0.00	35.00	-208
+2078	863	30	1	35.00	23.38	0.00	35.00	-209
+2079	863	37	1	485.00	319.82	0.00	485.00	7879-007
+2080	864	30	1	35.00	23.38	0.00	35.00	-210
+2081	864	30	1	35.00	23.38	0.00	35.00	-211
+2082	864	40	1	525.00	333.15	0.00	525.00	7633-089
+2083	865	30	1	35.00	23.38	0.00	35.00	-212
+2084	865	30	1	35.00	23.38	0.00	35.00	-213
+2085	865	38	1	445.00	267.47	0.00	445.00	7880-013
+2086	866	30	1	35.00	23.38	0.00	35.00	-214
+2087	866	31	1	40.00	21.21	0.00	40.00	-008
+2088	866	31	1	40.00	21.21	0.00	40.00	-009
+2089	867	30	1	35.00	23.38	0.00	35.00	-215
+2090	868	30	1	35.00	23.38	0.00	35.00	-216
+2091	868	30	1	35.00	23.38	0.00	35.00	-217
+2092	868	48	1	40.00	19.99	0.00	40.00	-70
+2297	939	36	1	265.00	164.67	0.00	265.00	7301-031
+2298	939	35	1	300.00	191.32	0.00	300.00	7322-065
+2299	940	36	1	280.00	164.67	0.00	280.00	7301-032
+2300	940	36	1	280.00	164.67	0.00	280.00	7301-033
+2301	940	36	1	280.00	164.67	0.00	280.00	7301-034
+2302	940	36	1	280.00	164.67	0.00	280.00	7301-035
+2303	941	36	1	265.00	164.67	0.00	265.00	7301-036
+2304	941	36	1	265.00	164.67	0.00	265.00	7301-037
+2305	942	36	1	270.00	164.67	0.00	270.00	7301-039
+2306	943	36	1	280.00	164.67	0.00	280.00	7301-040
+2307	944	36	1	265.00	164.67	0.00	265.00	7301-041
+2308	945	36	1	280.00	164.67	0.00	280.00	7301-042
+2309	945	38	1	440.00	267.47	0.00	440.00	7330-0033
+2310	946	36	1	280.00	164.67	0.00	280.00	7423-035
+2311	947	36	1	280.00	164.67	0.00	280.00	7423-036
+2312	948	36	1	280.00	164.67	0.00	280.00	7423-037
+2313	949	36	1	265.00	164.67	0.00	265.00	7423-038
+2314	950	36	1	280.00	164.67	0.00	280.00	7423-039
+2315	951	36	1	265.00	164.67	0.00	265.00	7423-040
+2316	952	36	1	280.00	164.67	0.00	280.00	7423-041
+2317	952	38	1	440.00	267.47	0.00	440.00	7330-0042
+2318	953	36	1	280.00	164.67	0.00	280.00	7423-042
+2319	954	36	1	265.00	164.67	0.00	265.00	7423-044
+2320	954	38	1	420.00	267.47	0.00	420.00	7330-0047
+2321	955	36	1	280.00	164.67	0.00	280.00	7423-045
+2322	956	36	1	270.00	164.67	0.00	270.00	7423-046
+2323	956	40	1	515.00	333.15	0.00	515.00	7633-025
+2324	956	40	1	515.00	333.15	0.00	515.00	7633-026
+2325	957	36	1	280.00	164.67	0.00	280.00	7423-047
+2326	958	36	1	280.00	164.67	0.00	280.00	7423-048
+2327	959	36	1	280.00	164.67	0.00	280.00	7423-049
+2328	959	36	1	280.00	164.67	0.00	280.00	7630-018
+2329	959	36	1	280.00	164.67	0.00	280.00	7630-019
+2330	959	36	1	280.00	164.67	0.00	280.00	7630-020
+2331	959	41	1	530.00	342.67	0.00	530.00	7690-003
+2332	959	41	1	530.00	342.67	0.00	530.00	7690-004
+2333	960	36	1	280.00	164.67	0.00	280.00	7630-021
+2334	960	36	1	280.00	164.67	0.00	280.00	7630-023
+2335	960	48	1	40.00	19.99	0.00	40.00	-43
+2336	960	48	1	40.00	19.99	0.00	40.00	-44
+2337	960	33	1	150.00	78.47	0.00	150.00	7294-049
+2338	960	33	1	150.00	78.47	0.00	150.00	7294-050
+2339	961	36	1	265.00	164.67	0.00	265.00	7630-022
+2340	962	36	1	280.00	164.67	0.00	280.00	7630-024
+2341	963	36	1	280.00	164.67	0.00	280.00	7630-025
+2342	963	36	1	280.00	164.67	0.00	280.00	7630-026
+2343	964	36	1	280.00	164.67	0.00	280.00	7630-027
+2344	965	36	1	280.00	164.67	0.00	280.00	7797-031
+2345	965	42	1	510.00	310.31	0.00	510.00	7628-027
+2346	966	36	1	280.00	164.67	0.00	280.00	7797-034
+2347	967	36	1	280.00	164.67	0.00	280.00	7797-035
+2348	968	36	1	280.00	164.67	0.00	280.00	7797-036
+2349	969	36	1	280.00	164.67	0.00	280.00	7797-037
+2350	970	36	1	280.00	164.67	0.00	280.00	7797-038
+2351	971	36	1	280.00	164.67	0.00	280.00	7797-039
+2352	972	36	1	270.00	164.67	0.00	270.00	7797-042
+2353	973	36	1	270.00	164.67	0.00	270.00	7797-043
+2354	974	36	1	280.00	164.67	0.00	280.00	7797-044
+2355	975	36	1	285.00	164.67	0.00	285.00	7797-045
+2356	975	41	1	550.00	342.67	0.00	550.00	7816-069
+2357	975	44	1	290.00	159.07	0.00	290.00	7334-049
+2358	976	36	1	285.00	164.67	0.00	285.00	7797-046
+2359	977	36	1	280.00	164.67	0.00	280.00	7797-047
+2360	978	36	1	285.00	164.67	0.00	285.00	7797-048
+2361	979	36	1	285.00	164.67	0.00	285.00	7797-049
+2362	979	42	1	515.00	310.31	0.00	515.00	7901-043
+2363	980	36	1	285.00	164.67	0.00	285.00	7797-050
+2364	981	36	1	280.00	164.67	0.00	280.00	7929-001
+2365	981	36	1	280.00	164.67	0.00	280.00	7929-002
+2366	982	36	1	270.00	164.67	0.00	270.00	7929-003
+2367	982	36	1	270.00	164.67	0.00	270.00	7929-004
+2368	983	35	1	320.00	191.32	0.00	320.00	7322-064
+2369	984	35	1	320.00	191.32	0.00	320.00	7322-066
+2370	984	38	1	420.00	267.47	0.00	420.00	7330-0028
+2371	985	35	1	300.00	191.32	0.00	300.00	7322-067
+2372	985	35	1	300.00	191.32	0.00	300.00	7322-068
+2373	985	35	1	300.00	191.32	0.00	300.00	7322-069
+2374	985	39	1	530.00	365.51	0.00	530.00	7345-066
+2375	985	40	1	490.00	333.15	0.00	490.00	7346-028
+2376	986	35	1	320.00	191.32	0.00	320.00	7629-46
+2377	987	35	1	320.00	191.32	0.00	320.00	7629-47
+2378	988	35	1	320.00	191.32	0.00	320.00	7629-48
+2379	989	35	1	320.00	191.32	0.00	320.00	7629-49
+2380	990	35	1	325.00	191.32	0.00	325.00	7793-034
+2381	991	37	1	480.00	319.82	0.00	480.00	7034-85
+2382	992	37	1	480.00	319.82	0.00	480.00	7034-87
+2383	993	37	1	480.00	319.82	0.00	480.00	7034-88
+2384	994	37	1	480.00	319.82	0.00	480.00	7034-91
+2385	995	37	1	474.00	319.82	0.00	474.00	7034-92
+2386	995	45	1	45.00	22.84	0.00	45.00	7292-001
+2387	995	45	1	45.00	22.84	0.00	45.00	7292-002
+2388	995	47	1	185.00	133.26	0.00	185.00	7255-120
+2389	995	48	1	40.00	19.99	0.00	40.00	-001
+2390	995	48	1	40.00	19.99	0.00	40.00	-002
+2391	996	37	1	480.00	319.82	0.00	480.00	7034-93
+2392	997	37	1	480.00	319.82	0.00	480.00	7383-001
+2393	998	37	1	480.00	319.82	0.00	480.00	7383-004
+2394	999	37	1	480.00	319.82	0.00	480.00	7383-009
+2395	1000	37	1	460.00	319.82	0.00	460.00	7383-010
+2396	1000	48	1	40.00	19.99	0.00	40.00	-030
+2397	1000	48	1	40.00	19.99	0.00	40.00	-031
+2398	1001	37	1	480.00	319.82	0.00	480.00	7487-75
+2399	1002	37	1	480.00	319.82	0.00	480.00	7487-76
+2400	1003	37	1	485.00	319.82	0.00	485.00	7487-77
+2401	1004	37	1	490.00	319.82	0.00	490.00	7487-78
+2402	1005	37	1	485.00	319.82	0.00	485.00	7487-79
+2403	1006	37	1	475.00	319.82	0.00	475.00	7487-80
+2404	1007	37	1	485.00	319.82	0.00	485.00	7487-81
+2405	1008	37	1	485.00	319.82	0.00	485.00	7487-82
+2406	1009	37	1	465.00	319.82	0.00	465.00	7487-83
+2407	1010	37	1	485.00	319.82	0.00	485.00	7487-95
+2408	1011	37	1	485.00	319.82	0.00	485.00	7487-96
+2409	1012	37	1	470.00	319.82	0.00	470.00	7487-97
+2410	1012	37	1	470.00	319.82	0.00	470.00	7487-98
+2411	1013	37	1	470.00	319.82	0.00	470.00	7622-57
+2412	1014	37	1	465.00	319.82	0.00	465.00	7622-58
+2413	1014	39	1	545.00	365.51	0.00	545.00	7523-069
+2414	1015	37	1	485.00	319.82	0.00	485.00	7622-59
+2415	1016	37	1	470.00	319.82	0.00	470.00	7879-001
+2416	1016	38	1	430.00	267.47	0.00	430.00	7880-002
+2417	1017	37	1	490.00	319.82	0.00	490.00	7879-004
+2418	1018	37	1	470.00	319.82	0.00	470.00	7879-005
+2419	1018	37	1	470.00	319.82	0.00	470.00	7879-006
+2420	1018	38	1	430.00	267.47	0.00	430.00	7880-015
+2421	1018	38	1	430.00	267.47	0.00	430.00	7880-016
+2422	1018	38	1	430.00	267.47	0.00	430.00	7880-017
+2423	1019	37	1	480.00	319.82	0.00	480.00	7879-008
+2424	1020	37	1	490.00	319.82	0.00	490.00	7879-010
+2425	1020	46	1	140.00	59.02	0.00	140.00	7547-001
+2426	1020	46	1	140.00	59.02	0.00	140.00	8026-001
+2427	1021	37	1	470.00	319.82	0.00	470.00	7879-011
+2428	1021	38	1	430.00	267.47	0.00	430.00	7880-025
+2429	1021	39	1	545.00	365.51	0.00	545.00	7785-131
+2430	1021	39	1	545.00	365.51	0.00	545.00	7785-132
+2431	1021	40	1	515.00	333.15	0.00	515.00	7719-089
+2432	1021	40	1	515.00	333.15	0.00	515.00	7719-115
+2433	1021	42	1	500.00	310.31	0.00	500.00	7760-042
+2434	1021	42	1	500.00	310.31	0.00	500.00	7760-045
+2435	1022	37	1	485.00	319.82	0.00	485.00	7879-014
+2436	1023	37	1	485.00	319.82	0.00	485.00	7879-015
+2437	1024	37	1	485.00	319.82	0.00	485.00	7879-016
+2438	1025	37	1	485.00	319.82	0.00	485.00	7879-019
+2439	1025	40	1	530.00	333.15	0.00	530.00	7890-009
+2440	1026	37	1	490.00	319.82	0.00	490.00	7879-020
+2441	1027	37	1	480.00	319.82	0.00	480.00	8060-056
+2442	1027	37	1	480.00	319.82	0.00	480.00	8060-057
+2443	1027	38	1	440.00	267.47	0.00	440.00	7880-034
+2444	1028	37	1	490.00	319.82	0.00	490.00	8060-060
+2445	1029	37	1	480.00	319.82	0.00	480.00	8060-061
+2446	1029	37	1	480.00	319.82	0.00	480.00	8060-062
+2447	1030	38	1	440.00	267.47	0.00	440.00	7305-2
+2448	1031	38	1	440.00	267.47	0.00	440.00	7305-3
+2449	1032	38	1	410.00	267.47	0.00	410.00	7305-5
+2450	1033	38	1	430.00	267.47	0.00	430.00	7305-6
+2451	1033	38	1	430.00	267.47	0.00	430.00	7305-7
+2452	1033	38	1	430.00	267.47	0.00	430.00	7305-8
+2453	1034	38	1	430.00	267.47	0.00	430.00	7305-12
+2454	1034	40	1	510.00	333.15	0.00	510.00	7019-187
+2455	1034	47	1	190.00	133.26	0.00	190.00	7255-119
+2456	1035	38	1	430.00	267.47	0.00	430.00	7305-13
+2457	1035	40	1	500.00	333.15	0.00	500.00	7019-188
+2458	1035	40	1	500.00	333.15	0.00	500.00	7019-189
+2459	1036	38	1	415.00	267.47	0.00	415.00	7305-15
+2460	1036	38	1	415.00	267.47	0.00	415.00	7305-16
+2461	1037	38	1	425.00	267.47	0.00	425.00	7305-17
+2462	1038	38	1	430.00	267.47	0.00	430.00	7305-18
+2463	1039	38	1	425.00	267.47	0.00	425.00	7305-19
+2464	1040	38	1	440.00	267.47	0.00	440.00	7305-21
+2465	1041	38	1	420.00	267.47	0.00	420.00	7330-0026
+2466	1042	38	1	400.00	267.47	0.00	400.00	7330-0029
+2467	1043	38	1	440.00	267.47	0.00	440.00	7330-0030
+2468	1043	38	1	440.00	267.47	0.00	440.00	7330-0031
+2469	1044	38	1	420.00	267.47	0.00	420.00	7330-0035
+2470	1045	38	1	440.00	267.47	0.00	440.00	7330-0036
+2471	1046	38	1	420.00	267.47	0.00	420.00	7330-0039
+2472	1046	38	1	420.00	267.47	0.00	420.00	7330-0040
+2473	1047	38	1	420.00	267.47	0.00	420.00	7330-0041
+2474	1048	38	1	440.00	267.47	0.00	440.00	7330-0045
+2475	1049	38	1	440.00	267.47	0.00	440.00	7330-0046
+2476	1050	38	1	440.00	267.47	0.00	440.00	7330-0048
+2477	1051	38	1	440.00	267.47	0.00	440.00	7330-0049
+2478	1052	38	1	425.00	267.47	0.00	425.00	7330-0050
+2479	1053	38	1	445.00	267.47	0.00	445.00	7330-0051
+2480	1054	38	1	425.00	267.47	0.00	425.00	7330-0052
+2481	1054	38	1	425.00	267.47	0.00	425.00	7382-002
+2482	1054	40	1	510.00	333.15	0.00	510.00	7633-013
+2483	1055	38	1	450.00	267.47	0.00	450.00	7330-0053
+2484	1056	38	1	450.00	267.47	0.00	450.00	7330-0054
+2485	1056	45	1	45.00	22.84	0.00	45.00	7292-017
+2486	1057	38	1	430.00	267.47	0.00	430.00	7382-001
+2487	1058	38	1	400.00	267.47	0.00	400.00	7382-003
+2488	1058	38	1	400.00	267.47	0.00	400.00	7382-004
+2489	1058	38	1	400.00	267.47	0.00	400.00	7382-005
+2490	1058	38	1	400.00	267.47	0.00	400.00	7382-006
+2491	1058	38	1	400.00	267.47	0.00	400.00	7382-007
+2492	1058	38	1	400.00	267.47	0.00	400.00	7382-008
+2493	1058	38	1	400.00	267.47	0.00	400.00	7382-009
+2494	1058	38	1	400.00	267.47	0.00	400.00	7382-010
+2495	1058	38	1	400.00	267.47	0.00	400.00	7382-011
+2496	1058	38	1	400.00	267.47	0.00	400.00	7382-012
+2497	1059	38	1	425.00	267.47	0.00	425.00	7382-016
+2498	1059	38	1	425.00	267.47	0.00	425.00	7382-017
+2499	1060	38	1	440.00	267.47	0.00	440.00	7438-22
+2500	1061	38	1	425.00	267.47	0.00	425.00	7438-23
+2501	1062	38	1	425.00	267.47	0.00	425.00	7438-26
+2502	1063	38	1	445.00	267.47	0.00	445.00	7438-28
+2503	1064	38	1	460.00	267.47	0.00	460.00	7880-001
+2504	1065	38	1	430.00	267.47	0.00	430.00	7880-003
+2505	1066	38	1	440.00	267.47	0.00	440.00	7880-004
+2506	1067	38	1	450.00	267.47	0.00	450.00	7880-005
+2507	1068	38	1	450.00	267.47	0.00	450.00	7880-006
+2508	1069	38	1	445.00	267.47	0.00	445.00	7880-007
+2509	1070	38	1	450.00	267.47	0.00	450.00	7880-008
+2510	1071	38	1	445.00	267.47	0.00	445.00	7880-009
+2511	1072	38	1	430.00	267.47	0.00	430.00	7880-010
+2512	1072	38	1	430.00	267.47	0.00	430.00	7880-011
+2513	1073	38	1	430.00	267.47	0.00	430.00	7880-012
+2514	1074	38	1	445.00	267.47	0.00	445.00	7880-014
+2515	1074	48	1	40.00	19.99	0.00	40.00	-78
+2516	1074	48	1	40.00	19.99	0.00	40.00	-79
+2517	1075	38	1	450.00	267.47	0.00	450.00	7880-022
+2518	1076	38	1	445.00	267.47	0.00	445.00	7880-023
+2519	1076	48	1	40.00	19.99	0.00	40.00	-74
+2520	1076	48	1	40.00	19.99	0.00	40.00	-75
+2521	1077	38	1	430.00	267.47	0.00	430.00	7880-024
+2522	1077	38	1	430.00	267.47	0.00	430.00	7880-026
+2523	1078	38	1	450.00	267.47	0.00	450.00	7880-027
+2524	1079	38	1	440.00	267.47	0.00	440.00	7880-028
+2525	1080	38	1	445.00	267.47	0.00	445.00	7880-033
+2526	1081	38	1	440.00	267.47	0.00	440.00	7880-035
+2527	1082	38	1	450.00	267.47	0.00	450.00	7880-036
+2528	1083	38	1	450.00	267.47	0.00	450.00	7880-042
+2529	1084	38	1	450.00	267.47	0.00	450.00	7880-043
+2530	1085	38	1	440.00	267.47	0.00	440.00	7880-044
+2531	1086	38	1	450.00	267.47	0.00	450.00	7880-045
+2532	1087	38	1	440.00	267.47	0.00	440.00	7880-047
+2533	1087	38	1	440.00	267.47	0.00	440.00	7880-048
+2534	1088	38	1	440.00	267.47	0.00	440.00	7880-049
+2535	1088	38	1	440.00	267.47	0.00	440.00	7880-050
+2536	1089	38	1	450.00	267.47	0.00	450.00	7880-051
+2537	1090	38	1	450.00	267.47	0.00	450.00	7880-052
+2538	1091	38	1	450.00	267.47	0.00	450.00	7880-053
+2539	1092	38	1	440.00	267.47	0.00	440.00	7880-055
+2540	1092	38	1	440.00	267.47	0.00	440.00	7880-056
+2541	1093	38	1	450.00	267.47	0.00	450.00	7880-057
+2542	1094	38	1	450.00	267.47	0.00	450.00	7880-059
+2543	1095	39	1	535.00	365.51	0.00	535.00	7241-24
+2544	1096	39	1	535.00	365.51	0.00	535.00	7241-25
+2545	1097	39	1	540.00	365.51	0.00	540.00	7241-26
+2546	1098	39	1	616.00	365.51	0.00	616.00	7241-27
+2547	1099	39	1	540.00	365.51	0.00	540.00	7241-28
+2548	1100	39	1	540.00	365.51	0.00	540.00	7241-29
+2549	1101	39	1	560.00	365.51	0.00	560.00	7241-30
+2550	1102	39	1	560.00	365.51	0.00	560.00	7281-1
+2551	1103	39	1	540.00	365.51	0.00	540.00	7281-2
+2552	1104	39	1	560.00	365.51	0.00	560.00	7281-4
+2553	1104	39	1	560.00	365.51	0.00	560.00	7281-5
+2554	1105	39	1	540.00	365.51	0.00	540.00	7281-6
+2555	1106	39	1	540.00	365.51	0.00	540.00	7281-7
+2556	1106	40	1	520.00	333.15	0.00	520.00	7282-0008
+2557	1107	39	1	560.00	365.51	0.00	560.00	7281-8
+2558	1107	39	1	560.00	365.51	0.00	560.00	7281-9
+2559	1108	39	1	540.00	365.51	0.00	540.00	7281-10
+2560	1109	39	1	540.00	365.51	0.00	540.00	7345-067
+2561	1109	39	1	540.00	365.51	0.00	540.00	7345-068
+2562	1110	39	1	530.00	365.51	0.00	530.00	7345-069
+2563	1110	40	1	490.00	333.15	0.00	490.00	7346-043
+2564	1111	39	1	560.00	365.51	0.00	560.00	7345-070
+2565	1112	39	1	530.00	365.51	0.00	530.00	7345-071
+2566	1113	39	1	530.00	365.51	0.00	530.00	7345-072
+2567	1114	39	1	560.00	365.51	0.00	560.00	7345-073
+2568	1115	39	1	560.00	365.51	0.00	560.00	7345-074
+2569	1115	39	1	560.00	365.51	0.00	560.00	7412-002
+2570	1116	39	1	530.00	365.51	0.00	530.00	7345-075
+2571	1116	39	1	530.00	365.51	0.00	530.00	7412-001
+2572	1116	41	1	490.00	342.67	0.00	490.00	7338-043
+2573	1116	41	1	490.00	342.67	0.00	490.00	7338-044
+2574	1117	39	1	560.00	365.51	0.00	560.00	7412-004
+2575	1118	39	1	560.00	365.51	0.00	560.00	7412-005
+2576	1118	39	1	560.00	365.51	0.00	560.00	7412-006
+2577	1118	39	1	560.00	365.51	0.00	560.00	7412-007
+2578	1118	39	1	560.00	365.51	0.00	560.00	7412-008
+2579	1118	39	1	560.00	365.51	0.00	560.00	7412-009
+2580	1119	39	1	560.00	365.51	0.00	560.00	7412-010
+2581	1120	39	1	545.00	365.51	0.00	545.00	7523-066
+2582	1121	39	1	560.00	365.51	0.00	560.00	7523-067
+2583	1122	39	1	545.00	365.51	0.00	545.00	7523-068
+2594	1126	39	1	560.00	365.51	0.00	560.00	7523-077
+2595	1127	39	1	560.00	365.51	0.00	560.00	7523-078
+2596	1127	39	1	560.00	365.51	0.00	560.00	7523-079
+2597	1128	39	1	545.00	365.51	0.00	545.00	7523-080
+2598	1129	39	1	560.00	365.51	0.00	560.00	7523-082
+2599	1130	39	1	560.00	365.51	0.00	560.00	7523-083
+2600	1131	39	1	545.00	365.51	0.00	545.00	7523-084
+2601	1132	39	1	550.00	365.51	0.00	550.00	7523-085
+2602	1133	39	1	535.00	365.51	0.00	535.00	7785-101
+2603	1134	39	1	550.00	365.51	0.00	550.00	7785-104
+2604	1135	39	1	545.00	365.51	0.00	545.00	7785-105
+2605	1136	39	1	560.00	365.51	0.00	560.00	7785-106
+2606	1137	39	1	545.00	365.51	0.00	545.00	7785-107
+2607	1138	39	1	545.00	365.51	0.00	545.00	7785-108
+2608	1139	39	1	550.00	365.51	0.00	550.00	7785-128
+2609	1139	51	1	450.00	214.17	0.00	450.00	7562-009
+2610	1140	39	1	565.00	365.51	0.00	565.00	7785-129
+2611	1141	39	1	570.00	365.51	0.00	570.00	7785-130
+2612	1142	39	1	560.00	365.51	0.00	560.00	7785-133
+2613	1143	39	1	550.00	365.51	0.00	550.00	7785-134
+2614	1143	39	1	550.00	365.51	0.00	550.00	7785-135
+2615	1144	39	1	565.00	365.51	0.00	565.00	7785-136
+2616	1145	39	1	565.00	365.51	0.00	565.00	7785-137
+2617	1146	39	1	565.00	365.51	0.00	565.00	7785-138
+2618	1147	39	1	565.00	365.51	0.00	565.00	8063-062
+2619	1147	39	1	565.00	365.51	0.00	565.00	8063-063
+2620	1148	39	1	550.00	365.51	0.00	550.00	8063-064
+2621	1149	39	1	555.00	365.51	0.00	555.00	8063-065
+2622	1150	39	1	555.00	365.51	0.00	555.00	8063-066
+2623	1151	39	1	570.00	365.51	0.00	570.00	8063-067
+2624	1152	39	1	560.00	365.51	0.00	560.00	8063-068
+2625	1153	40	1	500.00	333.15	0.00	500.00	7019-183
+2626	1154	40	1	500.00	333.15	0.00	500.00	7019-190
+2627	1155	40	1	500.00	333.15	0.00	500.00	7019-191
+2584	1123	39	1	545.00	365.51	0.00	545.00	7523-070
+2585	1123	39	1	545.00	365.51	0.00	545.00	7523-071
+2586	1124	39	1	545.00	365.51	0.00	545.00	7523-073
+2587	1124	39	1	545.00	365.51	0.00	545.00	7523-074
+2588	1124	40	1	510.00	333.15	0.00	510.00	7633-040
+2589	1124	40	1	510.00	333.15	0.00	510.00	7633-041
+2590	1124	40	1	510.00	333.15	0.00	510.00	7633-042
+2591	1124	42	1	500.00	310.31	0.00	500.00	7628-022
+2592	1124	42	1	500.00	310.31	0.00	500.00	7628-023
+2593	1125	39	1	560.00	365.51	0.00	560.00	7523-076
+3039	1407	44	1	290.00	159.07	0.00	290.00	7334-048
+3040	1408	44	1	290.00	159.07	0.00	290.00	7409-20
+3041	1409	44	1	290.00	159.07	0.00	290.00	7409-21
+3042	1410	44	1	290.00	159.07	0.00	290.00	7409-24
+2628	1156	40	1	500.00	333.15	0.00	500.00	7019-194
+2629	1157	40	1	520.00	333.15	0.00	520.00	7019-195
+2630	1158	40	1	520.00	333.15	0.00	520.00	7019-196
+2631	1159	40	1	520.00	333.15	0.00	520.00	7019-198
+2632	1160	40	1	520.00	333.15	0.00	520.00	7282-0002
+2633	1161	40	1	510.00	333.15	0.00	510.00	7282-0005
+2634	1161	40	1	500.00	333.15	0.00	500.00	7282-0006
+2635	1161	34	1	260.00	153.77	0.00	260.00	7406-002
+2636	1161	34	1	260.00	153.77	0.00	260.00	7406-003
+2637	1162	40	1	480.00	333.15	0.00	480.00	7282-0007
+2638	1163	40	1	500.00	333.15	0.00	500.00	7282-0010
+2639	1164	40	1	520.00	333.15	0.00	520.00	7282-0011
+2640	1165	40	1	520.00	333.15	0.00	520.00	7282-0012
+2641	1165	43	1	395.00	280.80	0.00	395.00	7381-005
+2642	1166	40	1	520.00	333.15	0.00	520.00	7282-095
+2643	1167	40	1	490.00	333.15	0.00	490.00	7282-096
+2644	1167	40	1	490.00	333.15	0.00	490.00	7282-097
+2645	1168	40	1	520.00	333.15	0.00	520.00	7282-098
+2646	1169	40	1	490.00	333.15	0.00	490.00	7346-021
+2647	1170	40	1	520.00	333.15	0.00	520.00	7346-022
+2648	1171	40	1	500.00	333.15	0.00	500.00	7346-023
+2649	1171	40	1	500.00	333.15	0.00	500.00	7346-024
+2650	1172	40	1	490.00	333.15	0.00	490.00	7346-025
+2651	1173	40	1	490.00	333.15	0.00	490.00	7346-029
+2652	1173	40	1	490.00	333.15	0.00	490.00	7346-030
+2653	1174	40	1	520.00	333.15	0.00	520.00	7346-031
+2654	1175	40	1	520.00	333.15	0.00	520.00	7346-033
+2655	1176	40	1	490.00	333.15	0.00	490.00	7346-034
+2656	1177	40	1	520.00	333.15	0.00	520.00	7346-035
+2657	1177	40	1	520.00	333.15	0.00	520.00	7346-037
+2658	1178	40	1	490.00	333.15	0.00	490.00	7346-036
+2659	1179	40	1	520.00	333.15	0.00	520.00	7346-038
+2660	1180	40	1	490.00	333.15	0.00	490.00	7346-039
+2661	1180	40	1	490.00	333.15	0.00	490.00	7346-040
+2662	1181	40	1	520.00	333.15	0.00	520.00	7346-041
+2663	1182	40	1	500.00	333.15	0.00	500.00	7346-049
+2664	1182	40	1	500.00	333.15	0.00	500.00	7346-050
+2665	1182	40	1	510.00	333.15	0.00	510.00	7346-055
+2666	1183	40	1	520.00	333.15	0.00	520.00	7346-051
+2667	1184	40	1	520.00	333.15	0.00	520.00	7346-052
+2668	1185	40	1	520.00	333.15	0.00	520.00	7346-053
+2669	1185	41	1	510.00	342.67	0.00	510.00	7267-0067
+2670	1185	48	1	40.00	19.99	0.00	40.00	-035
+2671	1185	48	1	40.00	19.99	0.00	40.00	-036
+2672	1186	40	1	520.00	333.15	0.00	520.00	7346-054
+2673	1187	40	1	525.00	333.15	0.00	525.00	7633-011
+2674	1188	40	1	525.00	333.15	0.00	525.00	7633-012
+2675	1189	40	1	525.00	333.15	0.00	525.00	7633-014
+2676	1190	40	1	510.00	333.15	0.00	510.00	7633-016
+2677	1191	40	1	525.00	333.15	0.00	525.00	7633-017
+2678	1192	40	1	520.00	333.15	0.00	520.00	7633-018
+2679	1193	40	1	525.00	333.15	0.00	525.00	7633-020
+2680	1194	40	1	510.00	333.15	0.00	510.00	7633-022
+2681	1194	40	1	510.00	333.15	0.00	510.00	7633-023
+2682	1194	40	1	510.00	333.15	0.00	510.00	7633-024
+2683	1194	42	1	500.00	310.31	0.00	500.00	7379-013
+2684	1195	40	1	525.00	333.15	0.00	525.00	7633-027
+2685	1196	40	1	525.00	333.15	0.00	525.00	7633-028
+2686	1197	40	1	510.00	333.15	0.00	510.00	7633-029
+2687	1197	34	1	240.00	153.77	0.00	240.00	7406-007
+2688	1198	40	1	525.00	333.15	0.00	525.00	7633-030
+2689	1199	40	1	510.00	333.15	0.00	510.00	7633-031
+2690	1199	40	1	510.00	333.15	0.00	510.00	7633-032
+2691	1200	40	1	525.00	333.15	0.00	525.00	7633-033
+2692	1201	40	1	525.00	333.15	0.00	525.00	7633-034
+2693	1202	40	1	525.00	333.15	0.00	525.00	7633-035
+2694	1202	44	1	290.00	159.07	0.00	290.00	7334-46
+2695	1203	40	1	520.00	333.15	0.00	520.00	7633-036
+2696	1204	40	1	525.00	333.15	0.00	525.00	7633-037
+2697	1205	40	1	525.00	333.15	0.00	525.00	7633-038
+2698	1206	40	1	525.00	333.15	0.00	525.00	7633-039
+2699	1207	40	1	525.00	333.15	0.00	525.00	7633-044
+2700	1208	40	1	525.00	333.15	0.00	525.00	7633-045
+2701	1209	40	1	525.00	333.15	0.00	525.00	7633-049
+2702	1210	40	1	525.00	333.15	0.00	525.00	7633-050
+2703	1211	40	1	515.00	333.15	0.00	515.00	7633-051
+2704	1212	40	1	515.00	333.15	0.00	515.00	7633-052
+2705	1213	40	1	525.00	333.15	0.00	525.00	7633-053
+2706	1214	40	1	525.00	333.15	0.00	525.00	7633-054
+2707	1215	40	1	510.00	333.15	0.00	510.00	7633-055
+2708	1215	40	1	510.00	333.15	0.00	510.00	7633-056
+2709	1216	40	1	525.00	333.15	0.00	525.00	7633-057
+2710	1217	40	1	525.00	333.15	0.00	525.00	7633-058
+2711	1218	40	1	525.00	333.15	0.00	525.00	7633-059
+2712	1218	40	1	525.00	333.15	0.00	525.00	7633-060
+2713	1219	40	1	510.00	333.15	0.00	510.00	7633-061
+2714	1220	40	1	525.00	333.15	0.00	525.00	7633-065
+2715	1221	40	1	525.00	333.15	0.00	525.00	7633-066
+2716	1222	40	1	525.00	333.15	0.00	525.00	7633-067
+2717	1223	40	1	525.00	333.15	0.00	525.00	7633-068
+2718	1224	40	1	515.00	333.15	0.00	515.00	7633-069
+2719	1225	40	1	525.00	333.15	0.00	525.00	7633-070
+2720	1226	40	1	525.00	333.15	0.00	525.00	7633-075
+2721	1227	40	1	525.00	333.15	0.00	525.00	7633-076
+2722	1228	40	1	525.00	333.15	0.00	525.00	7633-077
+2723	1228	42	1	510.00	310.31	0.00	510.00	7628-029
+2724	1229	40	1	525.00	333.15	0.00	525.00	7633-078
+2725	1230	40	1	525.00	333.15	0.00	525.00	7633-079
+2726	1231	40	1	510.00	333.15	0.00	510.00	7633-080
+2727	1232	40	1	510.00	333.15	0.00	510.00	7633-081
+2728	1232	40	1	510.00	333.15	0.00	510.00	7633-082
+2729	1233	40	1	525.00	333.15	0.00	525.00	7633-083
+2730	1234	40	1	525.00	333.15	0.00	525.00	7633-084
+2731	1235	40	1	525.00	333.15	0.00	525.00	7633-085
+2732	1236	40	1	525.00	333.15	0.00	525.00	7633-087
+2733	1237	40	1	525.00	333.15	0.00	525.00	7719-079
+2734	1238	40	1	515.00	333.15	0.00	515.00	7719-082
+2735	1239	40	1	515.00	333.15	0.00	515.00	7719-083
+2736	1239	40	1	515.00	333.15	0.00	515.00	7719-084
+2737	1240	40	1	515.00	333.15	0.00	515.00	7719-085
+2738	1241	40	1	525.00	333.15	0.00	525.00	7719-086
+2739	1242	40	1	525.00	333.15	0.00	525.00	7719-087
+2740	1243	40	1	525.00	333.15	0.00	525.00	7719-088
+2741	1244	40	1	530.00	333.15	0.00	530.00	7719-118
+2742	1245	40	1	530.00	333.15	0.00	530.00	7719-119
+2743	1246	40	1	530.00	333.15	0.00	530.00	7719-120
+2744	1246	40	1	530.00	333.15	0.00	530.00	7719-123
+2745	1247	40	1	515.00	333.15	0.00	515.00	7719-121
+2746	1247	40	1	515.00	333.15	0.00	515.00	7719-122
+2747	1248	40	1	530.00	333.15	0.00	530.00	7719-126
+2748	1249	40	1	530.00	333.15	0.00	530.00	7719-127
+2749	1250	40	1	530.00	333.15	0.00	530.00	7719-128
+2750	1251	40	1	520.00	333.15	0.00	520.00	7719-130
+2751	1251	40	1	520.00	333.15	0.00	520.00	7890-004
+2752	1252	40	1	515.00	333.15	0.00	515.00	7890-001
+2753	1252	40	1	515.00	333.15	0.00	515.00	7890-002
+2754	1253	40	1	530.00	333.15	0.00	530.00	7890-003
+2755	1254	40	1	530.00	333.15	0.00	530.00	7890-010
+2756	1255	40	1	515.00	333.15	0.00	515.00	7890-011
+2757	1255	40	1	515.00	333.15	0.00	515.00	7890-012
+2758	1256	40	1	530.00	333.15	0.00	530.00	7890-013
+2759	1257	40	1	535.00	333.15	0.00	535.00	7890-014
+2760	1258	40	1	535.00	333.15	0.00	535.00	7890-015
+2761	1258	40	1	535.00	333.15	0.00	535.00	7890-016
+2762	1259	40	1	535.00	333.15	0.00	535.00	7890-017
+2763	1260	40	1	535.00	333.15	0.00	535.00	7890-021
+2764	1261	40	1	535.00	333.15	0.00	535.00	7890-022
+2765	1262	40	1	535.00	333.15	0.00	535.00	7890-023
+2766	1263	40	1	520.00	333.15	0.00	520.00	7890-026
+2767	1263	40	1	520.00	333.15	0.00	520.00	7890-027
+2768	1264	40	1	535.00	333.15	0.00	535.00	7890-028
+2769	1265	40	1	535.00	333.15	0.00	535.00	7890-030
+2770	1266	40	1	520.00	333.15	0.00	520.00	7890-031
+2771	1266	40	1	520.00	333.15	0.00	520.00	8020-071
+2772	1267	40	1	520.00	333.15	0.00	520.00	8020-072
+2773	1268	40	1	535.00	333.15	0.00	535.00	8020-073
+2774	1269	40	1	535.00	333.15	0.00	535.00	8020-074
+2775	1270	40	1	535.00	333.15	0.00	535.00	8064-047
+2776	1271	40	1	530.00	333.15	0.00	530.00	8064-051
+2777	1272	40	1	540.00	333.15	0.00	540.00	8064-052
+2778	1273	40	1	540.00	333.15	0.00	540.00	8064-053
+2779	1274	40	1	530.00	333.15	0.00	530.00	8064-056
+2780	1275	40	1	540.00	333.15	0.00	540.00	8064-057
+2781	1276	40	1	540.00	333.15	0.00	540.00	8064-058
+2782	1277	40	1	540.00	333.15	0.00	540.00	8064-059
+2783	1278	40	1	540.00	333.15	0.00	540.00	8064-060
+2784	1279	42	1	490.00	310.31	0.00	490.00	7379-002
+2785	1280	42	1	490.00	310.31	0.00	490.00	7379-003
+2786	1281	42	1	500.00	310.31	0.00	500.00	7379-006
+2787	1281	41	1	520.00	342.67	0.00	520.00	7267-0066
+2788	1282	42	1	500.00	310.31	0.00	500.00	7379-007
+2789	1283	42	1	500.00	310.31	0.00	500.00	7379-008
+2790	1284	42	1	500.00	310.31	0.00	500.00	7379-009
+2791	1285	42	1	500.00	310.31	0.00	500.00	7379-010
+2792	1285	45	1	45.00	22.84	0.00	45.00	7292-023
+2793	1285	45	1	45.00	22.84	0.00	45.00	7292-024
+2794	1286	42	1	500.00	310.31	0.00	500.00	7379-011
+2795	1287	42	1	495.00	310.31	0.00	495.00	7379-012
+2796	1288	42	1	510.00	310.31	0.00	510.00	7379-014
+2797	1288	48	1	40.00	19.99	0.00	40.00	-41
+2798	1288	48	1	40.00	19.99	0.00	40.00	-42
+2799	1289	42	1	510.00	310.31	0.00	510.00	7379-015
+2800	1290	42	1	510.00	310.31	0.00	510.00	7628-016
+2801	1290	44	1	290.00	159.07	0.00	290.00	7334-047
+2802	1291	42	1	510.00	310.31	0.00	510.00	7628-017
+2803	1291	42	1	510.00	310.31	0.00	510.00	7628-018
+2804	1291	42	1	510.00	310.31	0.00	510.00	7628-019
+2805	1291	42	1	510.00	310.31	0.00	510.00	7628-020
+2806	1291	42	1	510.00	310.31	0.00	510.00	7628-021
+2807	1292	42	1	500.00	310.31	0.00	500.00	7628-024
+2808	1293	42	1	510.00	310.31	0.00	510.00	7628-025
+2809	1293	48	1	40.00	19.99	0.00	40.00	-48
+2810	1293	48	1	40.00	19.99	0.00	40.00	-49
+2811	1294	42	1	510.00	310.31	0.00	510.00	7628-026
+2812	1295	42	1	510.00	310.31	0.00	510.00	7628-028
+2813	1296	42	1	510.00	310.31	0.00	510.00	7628-030
+2814	1296	48	1	40.00	19.99	0.00	40.00	-62
+2815	1296	48	1	40.00	19.99	0.00	40.00	-63
+2816	1297	42	1	510.00	310.31	0.00	510.00	7760-040
+2817	1298	42	1	500.00	310.31	0.00	500.00	7760-041
+2818	1299	42	1	510.00	310.31	0.00	510.00	7760-044
+2819	1299	42	1	510.00	310.31	0.00	510.00	7760-046
+2820	1299	42	1	510.00	310.31	0.00	510.00	7760-047
+2821	1299	41	1	540.00	342.67	0.00	540.00	7816-062
+2822	1299	41	1	540.00	342.67	0.00	540.00	7816-063
+2823	1300	42	1	515.00	310.31	0.00	515.00	7760-050
+2824	1301	42	1	515.00	310.31	0.00	515.00	7901-001
+2825	1301	42	1	515.00	310.31	0.00	515.00	7901-002
+2826	1302	42	1	510.00	310.31	0.00	510.00	7901-003
+2827	1302	42	1	510.00	310.31	0.00	510.00	7901-004
+2828	1303	42	1	515.00	310.31	0.00	515.00	7901-005
+2829	1304	42	1	515.00	310.31	0.00	515.00	7901-007
+2830	1305	42	1	515.00	310.31	0.00	515.00	7901-008
+2831	1306	42	1	515.00	310.31	0.00	515.00	7901-040
+2832	1307	42	1	515.00	310.31	0.00	515.00	7901-041
+2833	1308	42	1	520.00	310.31	0.00	520.00	7901-044
+2834	1308	48	1	40.00	19.99	0.00	40.00	-98
+2835	1308	48	1	40.00	19.99	0.00	40.00	-99
+2836	1308	48	1	40.00	19.99	0.00	40.00	-100
+2837	1308	48	1	40.00	19.99	0.00	40.00	-101
+2838	1309	42	1	520.00	310.31	0.00	520.00	7901-045
+2839	1310	42	1	520.00	310.31	0.00	520.00	7901-046
+2840	1311	42	1	505.00	310.31	0.00	505.00	7901-047
+2841	1311	42	1	505.00	310.31	0.00	505.00	7901-048
+2842	1312	41	1	500.00	342.67	0.00	500.00	7267-0053
+2843	1313	41	1	510.00	342.67	0.00	510.00	7267-0054
+2844	1314	41	1	460.00	342.67	0.00	460.00	7267-0056
+2845	1315	41	1	490.00	342.67	0.00	490.00	7267-0057
+2846	1315	45	1	45.00	22.84	0.00	45.00	7292-003
+2847	1315	45	1	45.00	22.84	0.00	45.00	7292-004
+2848	1316	41	1	510.00	342.67	0.00	510.00	7267-0059
+2849	1316	48	1	40.00	19.99	0.00	40.00	-005
+2850	1316	48	1	40.00	19.99	0.00	40.00	-006
+2851	1317	41	1	510.00	342.67	0.00	510.00	7267-0060
+2852	1317	48	1	40.00	19.99	0.00	40.00	-013
+2853	1317	48	1	40.00	19.99	0.00	40.00	-015
+2854	1318	41	1	510.00	342.67	0.00	510.00	7267-0061
+2855	1319	41	1	510.00	342.67	0.00	510.00	7267-0062
+2856	1319	48	1	40.00	19.99	0.00	40.00	-024
+2857	1319	48	1	40.00	19.99	0.00	40.00	-025
+2858	1319	48	1	40.00	19.99	0.00	40.00	-026
+2859	1319	33	1	140.00	78.47	0.00	140.00	7294-035
+2860	1319	33	1	140.00	78.47	0.00	140.00	7294-036
+2861	1320	41	1	510.00	342.67	0.00	510.00	7267-0063
+2862	1321	41	1	500.00	342.67	0.00	500.00	7267-0064
+2863	1321	41	1	500.00	342.67	0.00	500.00	7267-0065
+2864	1321	48	1	40.00	19.99	0.00	40.00	-022
+2865	1321	48	1	40.00	19.99	0.00	40.00	-023
+2866	1321	48	1	40.00	19.99	0.00	40.00	-027
+2867	1321	48	1	40.00	19.99	0.00	40.00	-029
+2868	1321	33	1	140.00	78.47	0.00	140.00	7294-037
+2869	1321	33	1	140.00	78.47	0.00	140.00	7294-039
+2870	1321	33	1	140.00	78.47	0.00	140.00	7294-047
+2871	1321	33	1	140.00	78.47	0.00	140.00	7294-048
+2872	1322	41	1	530.00	342.67	0.00	530.00	7338-029
+2873	1323	41	1	515.00	342.67	0.00	515.00	7338-045
+2874	1323	48	1	40.00	19.99	0.00	40.00	-038
+2875	1323	48	1	40.00	19.99	0.00	40.00	-039
+2876	1323	33	1	145.00	78.47	0.00	145.00	7294-044
+2877	1323	33	1	145.00	78.47	0.00	145.00	7294-045
+2878	1324	41	1	510.00	342.67	0.00	510.00	7338-077
+2879	1324	41	1	510.00	342.67	0.00	510.00	7690-001
+2880	1325	41	1	515.00	342.67	0.00	515.00	7690-002
+2881	1326	41	1	520.00	342.67	0.00	520.00	7690-005
+2882	1327	41	1	520.00	342.67	0.00	520.00	7690-006
+2883	1328	41	1	520.00	342.67	0.00	520.00	7690-007
+2884	1329	41	1	520.00	342.67	0.00	520.00	7690-008
+2885	1330	41	1	540.00	342.67	0.00	540.00	7690-009
+2886	1331	41	1	520.00	342.67	0.00	520.00	7690-010
+2887	1331	48	1	40.00	19.99	0.00	40.00	-53
+2888	1331	48	1	40.00	19.99	0.00	40.00	-54
+2889	1331	33	1	146.00	78.47	0.00	146.00	7294-056
+2890	1331	33	1	146.00	78.47	0.00	146.00	7294-058
+2891	1332	41	1	520.00	342.67	0.00	520.00	7690-011
+2892	1332	41	1	520.00	342.67	0.00	520.00	7690-013
+2893	1333	41	1	540.00	342.67	0.00	540.00	7690-012
+2894	1334	41	1	530.00	342.67	0.00	530.00	7816-064
+2895	1335	41	1	545.00	342.67	0.00	545.00	7816-065
+2896	1335	41	1	545.00	342.67	0.00	545.00	7816-066
+2897	1335	34	1	253.50	153.77	0.00	253.50	7406-12
+2898	1335	34	1	253.50	153.77	0.00	253.50	7406-13
+2899	1335	34	1	253.50	153.77	0.00	253.50	7406-14
+2900	1335	34	1	253.50	153.77	0.00	253.50	7406-15
+2901	1336	41	1	550.00	342.67	0.00	550.00	8110-046
+2902	1337	41	1	550.00	342.67	0.00	550.00	8110-047
+2903	1337	41	1	550.00	342.67	0.00	550.00	8110-048
+2904	1338	41	1	550.00	342.67	0.00	550.00	8110-049
+2905	1339	41	1	550.00	342.67	0.00	550.00	8110-050
+2906	1340	45	1	45.00	22.84	0.00	45.00	7292-005
+2907	1341	45	1	45.00	22.84	0.00	45.00	7292-008
+2908	1341	45	1	45.00	22.84	0.00	45.00	7292-009
+2909	1342	45	1	45.00	22.84	0.00	45.00	7292-013
+2910	1343	45	1	45.00	22.84	0.00	45.00	7292-014
+2911	1344	45	1	45.00	22.84	0.00	45.00	7292-015
+2912	1345	45	1	40.00	22.84	0.00	40.00	7292-016
+2913	1345	45	1	40.00	22.84	0.00	40.00	7292-018
+2914	1345	45	1	40.00	22.84	0.00	40.00	7292-019
+2915	1345	45	1	40.00	22.84	0.00	40.00	7292-020
+2916	1345	45	1	40.00	22.84	0.00	40.00	7292-021
+2917	1345	45	1	40.00	22.84	0.00	40.00	7292-022
+2918	1346	45	1	45.00	22.84	0.00	45.00	7292-025
+2919	1346	45	1	45.00	22.84	0.00	45.00	7292-026
+2920	1347	45	1	45.00	22.84	0.00	45.00	7292-027
+2921	1348	45	1	42.00	22.84	0.00	42.00	7292-028
+2922	1348	45	1	42.00	22.84	0.00	42.00	7292-029
+2923	1348	45	1	42.00	22.84	0.00	42.00	7292-030
+2924	1348	45	1	42.00	22.84	0.00	42.00	7292-033
+2925	1348	45	1	42.00	22.84	0.00	42.00	7292-034
+2926	1349	45	1	45.00	22.84	0.00	45.00	7292-035
+2927	1350	45	1	45.00	22.84	0.00	45.00	7292-036
+2928	1350	45	1	45.00	22.84	0.00	45.00	7292-037
+2929	1351	45	1	45.00	22.84	0.00	45.00	7292-038
+2930	1352	45	1	45.00	22.84	0.00	45.00	7292-039
+2931	1353	45	1	45.00	22.84	0.00	45.00	7292-040
+2932	1353	45	1	45.00	22.84	0.00	45.00	7812-041
+2933	1354	45	1	45.00	22.84	0.00	45.00	7812-042
+2934	1354	48	1	40.00	19.99	0.00	40.00	-82
+2935	1354	48	1	40.00	19.99	0.00	40.00	-83
+2936	1355	45	1	45.00	22.84	0.00	45.00	7812-043
+2937	1356	45	1	45.00	22.84	0.00	45.00	7812-044
+2938	1356	34	1	260.00	153.77	0.00	260.00	8160-27
+2939	1356	33	1	150.00	78.47	0.00	150.00	7294-064
+2940	1357	45	1	40.00	22.84	0.00	40.00	7812-045
+2941	1357	45	1	40.00	22.84	0.00	40.00	7812-046
+2942	1357	45	1	40.00	22.84	0.00	40.00	7812-047
+2943	1357	45	1	40.00	22.84	0.00	40.00	7812-048
+2944	1357	45	1	40.00	22.84	0.00	40.00	7812-049
+2945	1357	45	1	40.00	22.84	0.00	40.00	7812-050
+2946	1357	45	1	40.00	22.84	0.00	40.00	7812-051
+2947	1357	45	1	40.00	22.84	0.00	40.00	7812-052
+2948	1358	45	1	40.00	22.84	0.00	40.00	7812-053
+2949	1358	45	1	40.00	22.84	0.00	40.00	7812-054
+2950	1358	45	1	40.00	22.84	0.00	40.00	7812-055
+2951	1358	45	1	40.00	22.84	0.00	40.00	7812-056
+2952	1358	45	1	40.00	22.84	0.00	40.00	7812-057
+2953	1358	45	1	40.00	22.84	0.00	40.00	7812-058
+2954	1359	45	1	45.00	22.84	0.00	45.00	7812-059
+2955	1359	45	1	45.00	22.84	0.00	45.00	7812-060
+2956	1360	46	1	110.00	59.02	0.00	110.00	7261-1
+2957	1361	46	1	110.00	59.02	0.00	110.00	7261-3
+2958	1362	46	1	110.00	59.02	0.00	110.00	7261-4
+2959	1363	46	1	110.00	59.02	0.00	110.00	7261-5
+2960	1364	46	1	120.00	59.02	0.00	120.00	7261-7
+2961	1365	46	1	120.00	59.02	0.00	120.00	7377-001
+2962	1366	46	1	130.00	59.02	0.00	130.00	7377-002
+2963	1367	46	1	135.00	59.02	0.00	135.00	7377-003
+2964	1368	46	1	135.00	59.02	0.00	135.00	7377-004
+2965	1368	34	1	260.00	153.77	0.00	260.00	7406-011
+2966	1368	33	1	150.00	78.47	0.00	150.00	7294-051
+2967	1369	46	1	140.00	59.02	0.00	140.00	8026-002
+2968	1370	46	1	140.00	59.02	0.00	140.00	8026-003
+2969	1371	46	1	140.00	59.02	0.00	140.00	8026-004
+2970	1372	47	1	200.00	133.26	0.00	200.00	7520-162
+2971	1373	47	1	200.00	133.26	0.00	200.00	7520-163
+2972	1374	47	1	270.00	133.26	0.00	270.00	7520-165
+2973	1375	48	1	40.00	19.99	0.00	40.00	-007
+2974	1375	48	1	40.00	19.99	0.00	40.00	-008
+2975	1375	48	1	40.00	19.99	0.00	40.00	-009
+2976	1376	48	1	40.00	19.99	0.00	40.00	-032
+2977	1376	48	1	40.00	19.99	0.00	40.00	-033
+2978	1376	48	1	40.00	19.99	0.00	40.00	-034
+2979	1377	48	1	40.00	19.99	0.00	40.00	-037
+2980	1378	48	1	40.00	19.99	0.00	40.00	-45
+2981	1378	48	1	40.00	19.99	0.00	40.00	-46
+2982	1378	48	1	40.00	19.99	0.00	40.00	-47
+2983	1379	48	1	40.00	19.99	0.00	40.00	-50
+2984	1379	48	1	40.00	19.99	0.00	40.00	-51
+2985	1379	48	1	40.00	19.99	0.00	40.00	-52
+2986	1380	48	1	40.00	19.99	0.00	40.00	-57
+2987	1380	48	1	40.00	19.99	0.00	40.00	-58
+2988	1381	48	1	40.00	19.99	0.00	40.00	-59
+2989	1381	48	1	40.00	19.99	0.00	40.00	-60
+2990	1382	48	1	40.00	19.99	0.00	40.00	-61
+2991	1383	48	1	40.00	19.99	0.00	40.00	-64
+2992	1383	48	1	40.00	19.99	0.00	40.00	-65
+2993	1384	48	1	40.00	19.99	0.00	40.00	-66
+2994	1384	48	1	40.00	19.99	0.00	40.00	-67
+2995	1385	48	1	40.00	19.99	0.00	40.00	-88
+2996	1385	48	1	40.00	19.99	0.00	40.00	-89
+2997	1386	48	1	40.00	19.99	0.00	40.00	-90
+2998	1386	48	1	40.00	19.99	0.00	40.00	-91
+2999	1386	48	1	40.00	19.99	0.00	40.00	-92
+3000	1386	48	1	40.00	19.99	0.00	40.00	-93
+3001	1387	48	1	40.00	19.99	0.00	40.00	-96
+3002	1387	48	1	40.00	19.99	0.00	40.00	-97
+3003	1388	48	1	40.00	19.99	0.00	40.00	-102
+3004	1388	48	1	40.00	19.99	0.00	40.00	-103
+3005	1389	34	1	240.00	153.77	0.00	240.00	7406-004
+3006	1389	34	1	240.00	153.77	0.00	240.00	7406-005
+3007	1390	34	1	260.00	153.77	0.00	260.00	7406-006
+3008	1391	34	1	240.00	153.77	0.00	240.00	7406-008
+3009	1391	34	1	240.00	153.77	0.00	240.00	7406-009
+3010	1392	34	1	245.00	153.77	0.00	245.00	7406-010
+3011	1392	34	1	245.00	153.77	0.00	245.00	7406-21
+3012	1393	34	1	256.00	153.77	0.00	256.00	7406-16
+3013	1393	33	1	143.00	78.47	0.00	143.00	7294-040
+3014	1393	33	1	143.00	78.47	0.00	143.00	7294-041
+3015	1393	33	1	143.00	78.47	0.00	143.00	7294-042
+3016	1393	33	1	143.00	78.47	0.00	143.00	7294-043
+3017	1394	34	1	260.00	153.77	0.00	260.00	7406-17
+3018	1395	34	1	260.00	153.77	0.00	260.00	7406-20
+3019	1396	34	1	260.00	153.77	0.00	260.00	8160-18
+3020	1397	34	1	260.00	153.77	0.00	260.00	8160-19
+3021	1398	33	1	150.00	78.47	0.00	150.00	7294-032
+3022	1399	33	1	140.00	78.47	0.00	140.00	7294-033
+3023	1399	33	1	140.00	78.47	0.00	140.00	7294-034
+3024	1400	33	1	150.00	78.47	0.00	150.00	7294-038
+3025	1401	33	1	150.00	78.47	0.00	150.00	7294-046
+3026	1402	33	1	147.00	78.47	0.00	147.00	7294-052
+3027	1402	33	1	147.00	78.47	0.00	147.00	7294-053
+3028	1402	33	1	147.00	78.47	0.00	147.00	7294-054
+3029	1402	33	1	147.00	78.47	0.00	147.00	7294-055
+3030	1402	33	1	147.00	78.47	0.00	147.00	7294-057
+3031	1402	33	1	147.00	78.47	0.00	147.00	7294-061
+3032	1402	33	1	147.00	78.47	0.00	147.00	7294-062
+3033	1402	33	1	147.00	78.47	0.00	147.00	7294-063
+3034	1403	33	1	150.00	78.47	0.00	150.00	7294-065
+3035	1404	43	1	450.00	280.80	0.00	450.00	7381-006
+3036	1404	49	1	795.00	527.33	0.00	795.00	7539-001
+3037	1405	44	1	220.00	159.07	0.00	220.00	7334-44
+3038	1406	44	1	250.00	159.07	0.00	250.00	7334-45
+\.
+
+
+--
+-- Data for Name: ventas_pagos; Type: TABLE DATA; Schema: public; Owner: -
+--
+
+COPY public.ventas_pagos (id, venta_id, metodo_pago, monto, moneda, tasa_cambio, monto_bs, referencia, created_at) FROM stdin;
+738	721	EFECTIVO_USD	1480.00	USD	\N	\N	\N	2026-01-02 15:23:50.863
+739	722	MIXTO	150.00	USD	\N	\N	\N	2026-01-02 15:23:50.873
+740	723	EFECTIVO_USD	1660.00	USD	\N	\N	\N	2026-01-02 15:23:50.878
+741	724	EFECTIVO_USD	75.00	USD	\N	\N	\N	2026-01-02 15:23:50.884
+742	725	EFECTIVO_USD	195.00	USD	\N	\N	\N	2026-01-02 15:23:50.888
+743	726	EFECTIVO_USD	75.00	USD	\N	\N	\N	2026-01-02 15:23:50.894
+744	727	TRANSFERENCIA_BS	1160.00	USD	\N	\N	\N	2026-01-02 15:23:50.9
+745	728	EFECTIVO_USD	850.00	USD	\N	\N	\N	2026-01-02 15:23:50.905
+746	729	EFECTIVO_USD	620.00	USD	\N	\N	\N	2026-01-02 15:23:50.91
+747	730	EFECTIVO_USD	75.00	USD	\N	\N	\N	2026-01-02 15:23:50.914
+748	731	EFECTIVO_USD	340.00	USD	\N	\N	\N	2026-01-02 15:23:50.918
+749	732	EFECTIVO_USD	335.00	USD	\N	\N	\N	2026-01-02 15:23:50.927
+750	732	TRANSFERENCIA_BS	75.00	USD	\N	\N	\N	2026-01-02 15:23:50.927
+751	733	EFECTIVO_USD	1085.00	USD	\N	\N	\N	2026-01-02 15:23:50.933
+752	734	EFECTIVO_USD	75.00	USD	\N	\N	\N	2026-01-02 15:23:50.938
+753	735	EFECTIVO_USD	280.00	USD	\N	\N	\N	2026-01-02 15:23:50.942
+754	736	EFECTIVO_USD	695.00	USD	\N	\N	\N	2026-01-02 15:23:50.948
+755	737	EFECTIVO_USD	75.00	USD	\N	\N	\N	2026-01-02 15:23:50.953
+756	738	EFECTIVO_USD	910.00	USD	\N	\N	\N	2026-01-02 15:23:50.96
+757	739	TRANSFERENCIA_BS	1030.00	USD	\N	\N	\N	2026-01-02 15:23:50.966
+758	740	EFECTIVO_USD	1035.00	USD	\N	\N	\N	2026-01-02 15:23:50.97
+759	741	EFECTIVO_USD	150.00	USD	\N	\N	\N	2026-01-02 15:23:50.975
+760	742	EFECTIVO_USD	1340.00	USD	\N	\N	\N	2026-01-02 15:23:50.979
+761	743	ZELLE	710.00	USD	\N	\N	\N	2026-01-02 15:23:50.985
+762	744	TRANSFERENCIA_BS	900.00	USD	\N	\N	\N	2026-01-02 15:23:50.99
+763	745	EFECTIVO_USD	75.00	USD	\N	\N	\N	2026-01-02 15:23:50.995
+764	746	EFECTIVO_USD	255.00	USD	\N	\N	\N	2026-01-02 15:23:50.999
+765	747	EFECTIVO_USD	75.00	USD	\N	\N	\N	2026-01-02 15:23:51.004
+766	748	ZELLE	1190.00	USD	\N	\N	\N	2026-01-02 15:23:51.008
+767	749	EFECTIVO_USD	75.00	USD	\N	\N	\N	2026-01-02 15:23:51.012
+768	750	EFECTIVO_USD	150.00	USD	\N	\N	\N	2026-01-02 15:23:51.017
+769	751	EFECTIVO_USD	220.00	USD	\N	\N	\N	2026-01-02 15:23:51.021
+770	752	EFECTIVO_USD	150.00	USD	\N	\N	\N	2026-01-02 15:23:51.026
+771	753	EFECTIVO_USD	455.00	USD	\N	\N	\N	2026-01-02 15:23:51.032
+772	754	EFECTIVO_USD	2155.00	USD	\N	\N	\N	2026-01-02 15:23:51.037
+773	755	EFECTIVO_USD	720.00	USD	\N	\N	\N	2026-01-02 15:23:51.044
+774	756	EFECTIVO_USD	320.00	USD	\N	\N	\N	2026-01-02 15:23:51.05
+775	757	EFECTIVO_USD	240.00	USD	\N	\N	\N	2026-01-02 15:23:51.054
+776	758	ZELLE	240.00	USD	\N	\N	\N	2026-01-02 15:23:51.059
+777	759	EFECTIVO_USD	80.00	USD	\N	\N	\N	2026-01-02 15:23:51.067
+778	760	EFECTIVO_USD	685.00	USD	\N	\N	\N	2026-01-02 15:23:51.071
+779	761	EFECTIVO_USD	685.00	USD	\N	\N	\N	2026-01-02 15:23:51.077
+780	762	EFECTIVO_USD	765.00	USD	\N	\N	\N	2026-01-02 15:23:51.082
+781	763	EFECTIVO_USD	1225.00	USD	\N	\N	\N	2026-01-02 15:23:51.086
+782	764	EFECTIVO_USD	1825.00	USD	\N	\N	\N	2026-01-02 15:23:51.092
+783	764	TRANSFERENCIA_BS	1150.00	USD	\N	\N	\N	2026-01-02 15:23:51.092
+784	765	EFECTIVO_USD	825.00	USD	\N	\N	\N	2026-01-02 15:23:51.099
+785	766	TRANSFERENCIA_BS	610.00	USD	\N	\N	\N	2026-01-02 15:23:51.109
+786	767	EFECTIVO_USD	610.00	USD	\N	\N	\N	2026-01-02 15:23:51.114
+787	768	ZELLE	80.00	USD	\N	\N	\N	2026-01-02 15:23:51.119
+788	769	EFECTIVO_USD	1270.00	USD	\N	\N	\N	2026-01-02 15:23:51.122
+789	770	ZELLE	1170.00	USD	\N	\N	\N	2026-01-02 15:23:51.128
+790	771	EFECTIVO_USD	80.00	USD	\N	\N	\N	2026-01-02 15:23:51.133
+791	772	EFECTIVO_USD	160.00	USD	\N	\N	\N	2026-01-02 15:23:51.137
+792	773	EFECTIVO_USD	785.00	USD	\N	\N	\N	2026-01-02 15:23:51.142
+793	774	EFECTIVO_USD	685.00	USD	\N	\N	\N	2026-01-02 15:23:51.146
+794	775	EFECTIVO_USD	160.00	USD	\N	\N	\N	2026-01-02 15:23:51.151
+795	776	EFECTIVO_USD	80.00	USD	\N	\N	\N	2026-01-02 15:23:51.155
+796	777	EFECTIVO_USD	80.00	USD	\N	\N	\N	2026-01-02 15:23:51.158
+797	778	EFECTIVO_USD	80.00	USD	\N	\N	\N	2026-01-02 15:23:51.162
+798	779	EFECTIVO_USD	1460.00	USD	\N	\N	\N	2026-01-02 15:23:51.166
+799	780	ZELLE	739.00	USD	\N	\N	\N	2026-01-02 15:23:51.17
+800	781	EFECTIVO_USD	525.00	USD	\N	\N	\N	2026-01-02 15:23:51.175
+801	782	EFECTIVO_USD	590.00	USD	\N	\N	\N	2026-01-02 15:23:51.18
+802	783	TRANSFERENCIA_BS	1580.00	USD	\N	\N	\N	2026-01-02 15:23:51.188
+803	784	EFECTIVO_USD	515.00	USD	\N	\N	\N	2026-01-02 15:23:51.194
+804	785	EFECTIVO_USD	100.00	USD	\N	\N	\N	2026-01-02 15:23:51.199
+805	785	MIXTO	35.00	USD	\N	\N	\N	2026-01-02 15:23:51.199
+806	786	TRANSFERENCIA_BS	65.00	USD	\N	\N	\N	2026-01-02 15:23:51.205
+807	787	EFECTIVO_USD	310.00	USD	\N	\N	\N	2026-01-02 15:23:51.21
+808	788	EFECTIVO_USD	100.00	USD	\N	\N	\N	2026-01-02 15:23:51.215
+809	789	ZELLE	30.00	USD	\N	\N	\N	2026-01-02 15:23:51.221
+810	790	EFECTIVO_USD	30.00	USD	\N	\N	\N	2026-01-02 15:23:51.226
+811	791	EFECTIVO_USD	30.00	USD	\N	\N	\N	2026-01-02 15:23:51.23
+812	792	EFECTIVO_USD	240.00	USD	\N	\N	\N	2026-01-02 15:23:51.235
+813	793	EFECTIVO_USD	570.00	USD	\N	\N	\N	2026-01-02 15:23:51.241
+814	794	EFECTIVO_USD	70.00	USD	\N	\N	\N	2026-01-02 15:23:51.246
+815	794	TRANSFERENCIA_BS	520.00	USD	\N	\N	\N	2026-01-02 15:23:51.246
+816	795	EFECTIVO_USD	550.00	USD	\N	\N	\N	2026-01-02 15:23:51.251
+817	796	TRANSFERENCIA_BS	70.00	USD	\N	\N	\N	2026-01-02 15:23:51.255
+818	797	EFECTIVO_USD	35.00	USD	\N	\N	\N	2026-01-02 15:23:51.261
+819	798	EFECTIVO_USD	790.00	USD	\N	\N	\N	2026-01-02 15:23:51.265
+820	799	EFECTIVO_USD	565.00	USD	\N	\N	\N	2026-01-02 15:23:51.27
+821	800	EFECTIVO_USD	630.00	USD	\N	\N	\N	2026-01-02 15:23:51.275
+822	801	EFECTIVO_USD	70.00	USD	\N	\N	\N	2026-01-02 15:23:51.281
+823	802	EFECTIVO_USD	35.00	USD	\N	\N	\N	2026-01-02 15:23:51.287
+824	803	EFECTIVO_USD	1080.00	USD	\N	\N	\N	2026-01-02 15:23:51.292
+825	804	EFECTIVO_USD	315.00	USD	\N	\N	\N	2026-01-02 15:23:51.296
+826	805	EFECTIVO_USD	915.00	USD	\N	\N	\N	2026-01-02 15:23:51.3
+827	806	EFECTIVO_USD	70.00	USD	\N	\N	\N	2026-01-02 15:23:51.306
+828	807	EFECTIVO_USD	600.00	USD	\N	\N	\N	2026-01-02 15:23:51.311
+829	808	EFECTIVO_USD	70.00	USD	\N	\N	\N	2026-01-02 15:23:51.316
+830	809	EFECTIVO_USD	590.00	USD	\N	\N	\N	2026-01-02 15:23:51.321
+831	810	EFECTIVO_USD	35.00	USD	\N	\N	\N	2026-01-02 15:23:51.326
+832	811	EFECTIVO_USD	35.00	USD	\N	\N	\N	2026-01-02 15:23:51.331
+833	812	EFECTIVO_USD	1005.00	USD	\N	\N	\N	2026-01-02 15:23:51.335
+834	813	EFECTIVO_USD	710.00	USD	\N	\N	\N	2026-01-02 15:23:51.34
+835	814	EFECTIVO_USD	545.00	USD	\N	\N	\N	2026-01-02 15:23:51.345
+836	815	EFECTIVO_USD	565.00	USD	\N	\N	\N	2026-01-02 15:23:51.35
+837	816	EFECTIVO_USD	35.00	USD	\N	\N	\N	2026-01-02 15:23:51.355
+838	817	EFECTIVO_USD	565.00	USD	\N	\N	\N	2026-01-02 15:23:51.36
+839	818	EFECTIVO_USD	545.00	USD	\N	\N	\N	2026-01-02 15:23:51.365
+840	819	EFECTIVO_USD	2040.00	USD	\N	\N	\N	2026-01-02 15:23:51.37
+841	820	EFECTIVO_USD	560.00	USD	\N	\N	\N	2026-01-02 15:23:51.375
+842	821	EFECTIVO_USD	980.00	USD	\N	\N	\N	2026-01-02 15:23:51.38
+843	822	EFECTIVO_USD	70.00	USD	\N	\N	\N	2026-01-02 15:23:51.39
+844	823	EFECTIVO_USD	700.00	USD	\N	\N	\N	2026-01-02 15:23:51.4
+845	824	EFECTIVO_USD	1005.00	USD	\N	\N	\N	2026-01-02 15:23:51.408
+846	825	EFECTIVO_USD	140.00	USD	\N	\N	\N	2026-01-02 15:23:51.415
+847	826	EFECTIVO_USD	920.00	USD	\N	\N	\N	2026-01-02 15:23:51.421
+848	827	TRANSFERENCIA_BS	675.00	USD	\N	\N	\N	2026-01-02 15:23:51.427
+849	828	EFECTIVO_USD	70.00	USD	\N	\N	\N	2026-01-02 15:23:51.432
+850	829	EFECTIVO_USD	580.00	USD	\N	\N	\N	2026-01-02 15:23:51.437
+851	830	EFECTIVO_USD	460.00	USD	\N	\N	\N	2026-01-02 15:23:51.445
+852	831	EFECTIVO_USD	495.00	USD	\N	\N	\N	2026-01-02 15:23:51.451
+853	832	EFECTIVO_USD	140.00	USD	\N	\N	\N	2026-01-02 15:23:51.46
+854	833	EFECTIVO_USD	70.00	USD	\N	\N	\N	2026-01-02 15:23:51.47
+855	834	EFECTIVO_USD	140.00	USD	\N	\N	\N	2026-01-02 15:23:51.476
+856	835	EFECTIVO_USD	990.00	USD	\N	\N	\N	2026-01-02 15:23:51.517
+857	836	EFECTIVO_USD	35.00	USD	\N	\N	\N	2026-01-02 15:23:51.524
+858	837	EFECTIVO_USD	35.00	USD	\N	\N	\N	2026-01-02 15:23:51.53
+859	838	EFECTIVO_USD	525.00	USD	\N	\N	\N	2026-01-02 15:23:51.579
+860	839	EFECTIVO_USD	350.00	USD	\N	\N	\N	2026-01-02 15:23:51.587
+861	840	EFECTIVO_USD	895.00	USD	\N	\N	\N	2026-01-02 15:23:51.593
+862	841	EFECTIVO_USD	70.00	USD	\N	\N	\N	2026-01-02 15:23:51.601
+863	842	EFECTIVO_USD	500.00	USD	\N	\N	\N	2026-01-02 15:23:51.612
+864	843	ZELLE	560.00	USD	\N	\N	\N	2026-01-02 15:23:51.618
+865	843	TRANSFERENCIA_BS	170.00	USD	\N	\N	\N	2026-01-02 15:23:51.618
+866	844	EFECTIVO_USD	70.00	USD	\N	\N	\N	2026-01-02 15:23:51.623
+867	845	ZELLE	105.00	USD	\N	\N	\N	2026-01-02 15:23:51.628
+868	845	MIXTO	545.00	USD	\N	\N	\N	2026-01-02 15:23:51.628
+869	846	TRANSFERENCIA_BS	35.00	USD	\N	\N	\N	2026-01-02 15:23:51.634
+870	847	EFECTIVO_USD	595.00	USD	\N	\N	\N	2026-01-02 15:23:51.64
+871	848	ZELLE	210.00	USD	\N	\N	\N	2026-01-02 15:23:51.644
+872	849	EFECTIVO_USD	70.00	USD	\N	\N	\N	2026-01-02 15:23:51.654
+873	850	EFECTIVO_USD	35.00	USD	\N	\N	\N	2026-01-02 15:23:51.663
+874	851	EFECTIVO_USD	595.00	USD	\N	\N	\N	2026-01-02 15:23:51.669
+875	852	EFECTIVO_USD	595.00	USD	\N	\N	\N	2026-01-02 15:23:51.673
+876	853	EFECTIVO_USD	70.00	USD	\N	\N	\N	2026-01-02 15:23:51.679
+877	854	EFECTIVO_USD	580.00	USD	\N	\N	\N	2026-01-02 15:23:51.684
+878	855	TRANSFERENCIA_BS	35.00	USD	\N	\N	\N	2026-01-02 15:23:51.69
+879	856	EFECTIVO_USD	1030.00	USD	\N	\N	\N	2026-01-02 15:23:51.696
+880	857	EFECTIVO_USD	660.00	USD	\N	\N	\N	2026-01-02 15:23:51.701
+881	858	EFECTIVO_USD	70.00	USD	\N	\N	\N	2026-01-02 15:23:51.707
+882	859	EFECTIVO_USD	350.00	USD	\N	\N	\N	2026-01-02 15:23:51.728
+883	860	EFECTIVO_USD	35.00	USD	\N	\N	\N	2026-01-02 15:23:51.735
+884	861	EFECTIVO_USD	595.00	USD	\N	\N	\N	2026-01-02 15:23:51.743
+885	862	TRANSFERENCIA_BS	70.00	USD	\N	\N	\N	2026-01-02 15:23:51.753
+886	863	EFECTIVO_USD	555.00	USD	\N	\N	\N	2026-01-02 15:23:51.759
+887	864	ZELLE	595.00	USD	\N	\N	\N	2026-01-02 15:23:51.767
+888	865	EFECTIVO_USD	515.00	USD	\N	\N	\N	2026-01-02 15:23:51.772
+889	866	EFECTIVO_USD	115.00	USD	\N	\N	\N	2026-01-02 15:23:51.779
+890	867	EFECTIVO_USD	35.00	USD	\N	\N	\N	2026-01-02 15:23:51.785
+891	868	EFECTIVO_USD	230.00	USD	\N	\N	\N	2026-01-02 15:23:51.79
+892	869	EFECTIVO_USD	70.00	USD	\N	\N	\N	2026-01-02 15:23:51.796
+893	870	EFECTIVO_USD	70.00	USD	\N	\N	\N	2026-01-02 15:23:51.802
+894	871	EFECTIVO_USD	35.00	USD	\N	\N	\N	2026-01-02 15:23:51.808
+895	872	EFECTIVO_USD	555.00	USD	\N	\N	\N	2026-01-02 15:23:51.817
+896	873	ZELLE	585.00	USD	\N	\N	\N	2026-01-02 15:23:51.823
+897	873	EFECTIVO_USD	80.00	USD	\N	\N	\N	2026-01-02 15:23:51.823
+898	874	EFECTIVO_USD	140.00	USD	\N	\N	\N	2026-01-02 15:23:51.83
+899	875	EFECTIVO_USD	105.00	USD	\N	\N	\N	2026-01-02 15:23:51.838
+900	876	EFECTIVO_USD	70.00	USD	\N	\N	\N	2026-01-02 15:23:51.853
+901	877	EFECTIVO_USD	70.00	USD	\N	\N	\N	2026-01-02 15:23:51.861
+902	878	EFECTIVO_USD	520.00	USD	\N	\N	\N	2026-01-02 15:23:51.871
+903	879	EFECTIVO_USD	3480.00	USD	\N	\N	\N	2026-01-02 15:23:51.876
+904	880	EFECTIVO_USD	70.00	USD	\N	\N	\N	2026-01-02 15:23:51.883
+905	881	EFECTIVO_USD	520.00	USD	\N	\N	\N	2026-01-02 15:23:51.889
+906	882	EFECTIVO_USD	585.00	USD	\N	\N	\N	2026-01-02 15:23:51.898
+907	883	EFECTIVO_USD	580.00	USD	\N	\N	\N	2026-01-02 15:23:51.906
+908	884	EFECTIVO_USD	70.00	USD	\N	\N	\N	2026-01-02 15:23:51.914
+909	885	EFECTIVO_USD	735.00	USD	\N	\N	\N	2026-01-02 15:23:51.933
+910	886	EFECTIVO_USD	70.00	USD	\N	\N	\N	2026-01-02 15:23:51.945
+911	887	EFECTIVO_USD	605.00	USD	\N	\N	\N	2026-01-02 15:23:51.952
+912	888	EFECTIVO_USD	35.00	USD	\N	\N	\N	2026-01-02 15:23:51.958
+913	889	EFECTIVO_USD	600.00	USD	\N	\N	\N	2026-01-02 15:23:51.964
+914	890	EFECTIVO_USD	150.00	USD	\N	\N	\N	2026-01-02 15:23:51.972
+915	891	EFECTIVO_USD	70.00	USD	\N	\N	\N	2026-01-02 15:23:51.978
+916	892	EFECTIVO_USD	2140.00	USD	\N	\N	\N	2026-01-02 15:23:51.982
+917	893	EFECTIVO_USD	585.00	USD	\N	\N	\N	2026-01-02 15:23:51.988
+918	894	EFECTIVO_USD	1350.00	USD	\N	\N	\N	2026-01-02 15:23:51.993
+919	895	EFECTIVO_USD	150.00	USD	\N	\N	\N	2026-01-02 15:23:51.997
+920	896	EFECTIVO_USD	35.00	USD	\N	\N	\N	2026-01-02 15:23:52.005
+921	897	EFECTIVO_USD	35.00	USD	\N	\N	\N	2026-01-02 15:23:52.01
+922	898	EFECTIVO_USD	70.00	USD	\N	\N	\N	2026-01-02 15:23:52.015
+923	899	EFECTIVO_USD	520.00	USD	\N	\N	\N	2026-01-02 15:23:52.021
+924	900	EFECTIVO_USD	140.00	USD	\N	\N	\N	2026-01-02 15:23:52.028
+925	901	EFECTIVO_USD	35.00	USD	\N	\N	\N	2026-01-02 15:23:52.034
+926	902	EFECTIVO_USD	70.00	USD	\N	\N	\N	2026-01-02 15:23:52.038
+927	903	EFECTIVO_USD	520.00	USD	\N	\N	\N	2026-01-02 15:23:52.043
+928	904	EFECTIVO_USD	35.00	USD	\N	\N	\N	2026-01-02 15:23:52.048
+929	905	EFECTIVO_USD	70.00	USD	\N	\N	\N	2026-01-02 15:23:52.052
+930	906	EFECTIVO_USD	70.00	USD	\N	\N	\N	2026-01-02 15:23:52.056
+931	907	EFECTIVO_USD	70.00	USD	\N	\N	\N	2026-01-02 15:23:52.06
+932	908	EFECTIVO_USD	70.00	USD	\N	\N	\N	2026-01-02 15:23:52.064
+933	909	EFECTIVO_USD	510.00	USD	\N	\N	\N	2026-01-02 15:23:52.068
+934	910	EFECTIVO_USD	105.00	USD	\N	\N	\N	2026-01-02 15:23:52.073
+935	911	EFECTIVO_USD	140.00	USD	\N	\N	\N	2026-01-02 15:23:52.077
+936	912	EFECTIVO_USD	70.00	USD	\N	\N	\N	2026-01-02 15:23:52.082
+937	913	EFECTIVO_USD	70.00	USD	\N	\N	\N	2026-01-02 15:23:52.086
+938	914	EFECTIVO_USD	150.00	USD	\N	\N	\N	2026-01-02 15:23:52.09
+939	915	EFECTIVO_USD	1200.00	USD	\N	\N	\N	2026-01-02 15:23:52.095
+940	916	EFECTIVO_USD	70.00	USD	\N	\N	\N	2026-01-02 15:23:52.099
+941	917	EFECTIVO_USD	80.00	USD	\N	\N	\N	2026-01-02 15:23:52.103
+942	918	EFECTIVO_USD	120.00	USD	\N	\N	\N	2026-01-02 15:23:52.106
+943	919	EFECTIVO_USD	80.00	USD	\N	\N	\N	2026-01-02 15:23:52.11
+944	920	EFECTIVO_USD	615.00	USD	\N	\N	\N	2026-01-02 15:23:52.115
+945	921	EFECTIVO_USD	1240.00	USD	\N	\N	\N	2026-01-02 15:23:52.119
+946	922	EFECTIVO_USD	725.00	USD	\N	\N	\N	2026-01-02 15:23:52.123
+947	922	ZELLE	465.00	USD	\N	\N	\N	2026-01-02 15:23:52.123
+948	923	EFECTIVO_USD	310.00	USD	\N	\N	\N	2026-01-02 15:23:52.128
+949	924	EFECTIVO_USD	1670.00	USD	\N	\N	\N	2026-01-02 15:23:52.133
+950	925	ZELLE	280.00	USD	\N	\N	\N	2026-01-02 15:23:52.137
+951	926	EFECTIVO_USD	270.00	USD	\N	\N	\N	2026-01-02 15:23:52.141
+952	927	EFECTIVO_USD	1560.00	USD	\N	\N	\N	2026-01-02 15:23:52.145
+953	928	ZELLE	280.00	USD	\N	\N	\N	2026-01-02 15:23:52.15
+954	929	EFECTIVO_USD	280.00	USD	\N	\N	\N	2026-01-02 15:23:52.157
+955	930	EFECTIVO_USD	690.00	USD	\N	\N	\N	2026-01-02 15:23:52.162
+956	931	EFECTIVO_USD	280.00	USD	\N	\N	\N	2026-01-02 15:23:52.167
+957	932	EFECTIVO_USD	360.00	USD	\N	\N	\N	2026-01-02 15:23:52.171
+958	933	EFECTIVO_USD	280.00	USD	\N	\N	\N	2026-01-02 15:23:52.175
+959	934	EFECTIVO_USD	265.00	USD	\N	\N	\N	2026-01-02 15:23:52.181
+960	935	TRANSFERENCIA_BS	280.00	USD	\N	\N	\N	2026-01-02 15:23:52.184
+961	936	EFECTIVO_USD	265.00	USD	\N	\N	\N	2026-01-02 15:23:52.188
+962	937	EFECTIVO_USD	775.00	USD	\N	\N	\N	2026-01-02 15:23:52.192
+963	938	EFECTIVO_USD	280.00	USD	\N	\N	\N	2026-01-02 15:23:52.196
+964	939	EFECTIVO_USD	565.00	USD	\N	\N	\N	2026-01-02 15:23:52.2
+965	940	EFECTIVO_USD	1120.00	USD	\N	\N	\N	2026-01-02 15:23:52.206
+966	941	EFECTIVO_USD	530.00	USD	\N	\N	\N	2026-01-02 15:23:52.211
+967	942	EFECTIVO_USD	270.00	USD	\N	\N	\N	2026-01-02 15:23:52.216
+968	943	EFECTIVO_USD	280.00	USD	\N	\N	\N	2026-01-02 15:23:52.221
+969	944	EFECTIVO_USD	265.00	USD	\N	\N	\N	2026-01-02 15:23:52.225
+970	945	TRANSFERENCIA_BS	280.00	USD	\N	\N	\N	2026-01-02 15:23:52.23
+971	945	EFECTIVO_USD	440.00	USD	\N	\N	\N	2026-01-02 15:23:52.23
+972	946	EFECTIVO_USD	280.00	USD	\N	\N	\N	2026-01-02 15:23:52.235
+973	947	EFECTIVO_USD	280.00	USD	\N	\N	\N	2026-01-02 15:23:52.239
+974	948	EFECTIVO_USD	280.00	USD	\N	\N	\N	2026-01-02 15:23:52.244
+975	949	EFECTIVO_USD	265.00	USD	\N	\N	\N	2026-01-02 15:23:52.248
+976	950	EFECTIVO_USD	280.00	USD	\N	\N	\N	2026-01-02 15:23:52.253
+977	951	EFECTIVO_USD	265.00	USD	\N	\N	\N	2026-01-02 15:23:52.26
+978	952	EFECTIVO_USD	720.00	USD	\N	\N	\N	2026-01-02 15:23:52.267
+979	953	EFECTIVO_USD	280.00	USD	\N	\N	\N	2026-01-02 15:23:52.273
+980	954	EFECTIVO_USD	685.00	USD	\N	\N	\N	2026-01-02 15:23:52.28
+981	955	EFECTIVO_USD	280.00	USD	\N	\N	\N	2026-01-02 15:23:52.286
+982	956	EFECTIVO_USD	1300.00	USD	\N	\N	\N	2026-01-02 15:23:52.291
+983	957	EFECTIVO_USD	280.00	USD	\N	\N	\N	2026-01-02 15:23:52.297
+984	958	EFECTIVO_USD	280.00	USD	\N	\N	\N	2026-01-02 15:23:52.301
+985	959	EFECTIVO_USD	2180.00	USD	\N	\N	\N	2026-01-02 15:23:52.305
+986	960	TRANSFERENCIA_BS	940.00	USD	\N	\N	\N	2026-01-02 15:23:52.31
+987	961	EFECTIVO_USD	265.00	USD	\N	\N	\N	2026-01-02 15:23:52.316
+988	962	TRANSFERENCIA_BS	280.00	USD	\N	\N	\N	2026-01-02 15:23:52.321
+989	963	EFECTIVO_USD	560.00	USD	\N	\N	\N	2026-01-02 15:23:52.326
+990	964	TRANSFERENCIA_BS	280.00	USD	\N	\N	\N	2026-01-02 15:23:52.331
+991	965	EFECTIVO_USD	790.00	USD	\N	\N	\N	2026-01-02 15:23:52.335
+992	966	EFECTIVO_USD	280.00	USD	\N	\N	\N	2026-01-02 15:23:52.342
+993	967	EFECTIVO_USD	280.00	USD	\N	\N	\N	2026-01-02 15:23:52.347
+994	968	EFECTIVO_USD	280.00	USD	\N	\N	\N	2026-01-02 15:23:52.352
+995	969	EFECTIVO_USD	280.00	USD	\N	\N	\N	2026-01-02 15:23:52.356
+996	970	EFECTIVO_USD	280.00	USD	\N	\N	\N	2026-01-02 15:23:52.36
+997	971	EFECTIVO_USD	280.00	USD	\N	\N	\N	2026-01-02 15:23:52.364
+998	972	EFECTIVO_USD	270.00	USD	\N	\N	\N	2026-01-02 15:23:52.368
+999	973	EFECTIVO_USD	270.00	USD	\N	\N	\N	2026-01-02 15:23:52.373
+1000	974	EFECTIVO_USD	280.00	USD	\N	\N	\N	2026-01-02 15:23:52.379
+1001	975	ZELLE	1125.00	USD	\N	\N	\N	2026-01-02 15:23:52.384
+1002	976	EFECTIVO_USD	285.00	USD	\N	\N	\N	2026-01-02 15:23:52.389
+1003	977	EFECTIVO_USD	280.00	USD	\N	\N	\N	2026-01-02 15:23:52.394
+1004	978	EFECTIVO_USD	285.00	USD	\N	\N	\N	2026-01-02 15:23:52.399
+1005	979	EFECTIVO_USD	800.00	USD	\N	\N	\N	2026-01-02 15:23:52.403
+1006	980	EFECTIVO_USD	285.00	USD	\N	\N	\N	2026-01-02 15:23:52.41
+1007	981	EFECTIVO_USD	560.00	USD	\N	\N	\N	2026-01-02 15:23:52.415
+1008	982	EFECTIVO_USD	540.00	USD	\N	\N	\N	2026-01-02 15:23:52.422
+1009	983	EFECTIVO_USD	320.00	USD	\N	\N	\N	2026-01-02 15:23:52.427
+1010	984	TRANSFERENCIA_BS	320.00	USD	\N	\N	\N	2026-01-02 15:23:52.431
+1011	984	EFECTIVO_USD	420.00	USD	\N	\N	\N	2026-01-02 15:23:52.431
+1012	985	EFECTIVO_USD	1920.00	USD	\N	\N	\N	2026-01-02 15:23:52.436
+1013	986	EFECTIVO_USD	320.00	USD	\N	\N	\N	2026-01-02 15:23:52.441
+1014	987	TRANSFERENCIA_BS	320.00	USD	\N	\N	\N	2026-01-02 15:23:52.445
+1015	988	EFECTIVO_USD	320.00	USD	\N	\N	\N	2026-01-02 15:23:52.449
+1016	989	EFECTIVO_USD	320.00	USD	\N	\N	\N	2026-01-02 15:23:52.453
+1017	990	ZELLE	325.00	USD	\N	\N	\N	2026-01-02 15:23:52.457
+1018	991	EFECTIVO_USD	480.00	USD	\N	\N	\N	2026-01-02 15:23:52.462
+1019	992	TRANSFERENCIA_USD	480.00	USD	\N	\N	\N	2026-01-02 15:23:52.466
+1020	993	EFECTIVO_USD	480.00	USD	\N	\N	\N	2026-01-02 15:23:52.471
+1021	994	TRANSFERENCIA_BS	480.00	USD	\N	\N	\N	2026-01-02 15:23:52.476
+1022	995	EFECTIVO_USD	829.00	USD	\N	\N	\N	2026-01-02 15:23:52.481
+1023	996	EFECTIVO_USD	480.00	USD	\N	\N	\N	2026-01-02 15:23:52.486
+1024	997	EFECTIVO_USD	480.00	USD	\N	\N	\N	2026-01-02 15:23:52.489
+1025	998	EFECTIVO_USD	480.00	USD	\N	\N	\N	2026-01-02 15:23:52.493
+1026	999	TRANSFERENCIA_BS	480.00	USD	\N	\N	\N	2026-01-02 15:23:52.498
+1027	1000	EFECTIVO_USD	540.00	USD	\N	\N	\N	2026-01-02 15:23:52.502
+1028	1001	EFECTIVO_USD	480.00	USD	\N	\N	\N	2026-01-02 15:23:52.507
+1029	1002	EFECTIVO_USD	480.00	USD	\N	\N	\N	2026-01-02 15:23:52.512
+1030	1003	EFECTIVO_USD	485.00	USD	\N	\N	\N	2026-01-02 15:23:52.516
+1031	1004	EFECTIVO_USD	490.00	USD	\N	\N	\N	2026-01-02 15:23:52.52
+1032	1005	EFECTIVO_USD	485.00	USD	\N	\N	\N	2026-01-02 15:23:52.524
+1033	1006	EFECTIVO_USD	475.00	USD	\N	\N	\N	2026-01-02 15:23:52.528
+1034	1007	EFECTIVO_USD	485.00	USD	\N	\N	\N	2026-01-02 15:23:52.532
+1035	1008	EFECTIVO_USD	485.00	USD	\N	\N	\N	2026-01-02 15:23:52.536
+1036	1009	EFECTIVO_USD	465.00	USD	\N	\N	\N	2026-01-02 15:23:52.54
+1037	1010	EFECTIVO_USD	485.00	USD	\N	\N	\N	2026-01-02 15:23:52.544
+1038	1011	EFECTIVO_USD	485.00	USD	\N	\N	\N	2026-01-02 15:23:52.549
+1039	1012	EFECTIVO_USD	940.00	USD	\N	\N	\N	2026-01-02 15:23:52.554
+1040	1013	EFECTIVO_USD	470.00	USD	\N	\N	\N	2026-01-02 15:23:52.559
+1041	1014	MIXTO	465.00	USD	\N	\N	\N	2026-01-02 15:23:52.562
+1042	1014	EFECTIVO_USD	545.00	USD	\N	\N	\N	2026-01-02 15:23:52.562
+1043	1015	TRANSFERENCIA_BS	485.00	USD	\N	\N	\N	2026-01-02 15:23:52.567
+1044	1016	EFECTIVO_USD	900.00	USD	\N	\N	\N	2026-01-02 15:23:52.571
+1045	1017	ZELLE	490.00	USD	\N	\N	\N	2026-01-02 15:23:52.576
+1046	1018	EFECTIVO_USD	2230.00	USD	\N	\N	\N	2026-01-02 15:23:52.582
+1047	1019	EFECTIVO_USD	480.00	USD	\N	\N	\N	2026-01-02 15:23:52.587
+1048	1020	EFECTIVO_USD	770.00	USD	\N	\N	\N	2026-01-02 15:23:52.591
+1049	1021	EFECTIVO_USD	3020.00	USD	\N	\N	\N	2026-01-02 15:23:52.598
+1050	1022	ZELLE	485.00	USD	\N	\N	\N	2026-01-02 15:23:52.603
+1051	1023	EFECTIVO_USD	485.00	USD	\N	\N	\N	2026-01-02 15:23:52.609
+1052	1024	EFECTIVO_USD	485.00	USD	\N	\N	\N	2026-01-02 15:23:52.613
+1053	1025	EFECTIVO_USD	1015.00	USD	\N	\N	\N	2026-01-02 15:23:52.617
+1054	1026	EFECTIVO_USD	490.00	USD	\N	\N	\N	2026-01-02 15:23:52.622
+1055	1027	EFECTIVO_USD	440.00	USD	\N	\N	\N	2026-01-02 15:23:52.628
+1056	1028	EFECTIVO_USD	490.00	USD	\N	\N	\N	2026-01-02 15:23:52.633
+1057	1029	EFECTIVO_USD	960.00	USD	\N	\N	\N	2026-01-02 15:23:52.639
+1058	1030	EFECTIVO_USD	440.00	USD	\N	\N	\N	2026-01-02 15:23:52.646
+1059	1031	EFECTIVO_USD	440.00	USD	\N	\N	\N	2026-01-02 15:23:52.654
+1060	1032	EFECTIVO_USD	410.00	USD	\N	\N	\N	2026-01-02 15:23:52.659
+1061	1033	EFECTIVO_USD	1290.00	USD	\N	\N	\N	2026-01-02 15:23:52.664
+1062	1034	MIXTO	1130.00	USD	\N	\N	\N	2026-01-02 15:23:52.67
+1063	1035	MIXTO	430.00	USD	\N	\N	\N	2026-01-02 15:23:52.676
+1064	1035	EFECTIVO_USD	1000.00	USD	\N	\N	\N	2026-01-02 15:23:52.676
+1065	1036	EFECTIVO_USD	830.00	USD	\N	\N	\N	2026-01-02 15:23:52.681
+1066	1037	TRANSFERENCIA_BS	425.00	USD	\N	\N	\N	2026-01-02 15:23:52.686
+1067	1038	EFECTIVO_USD	430.00	USD	\N	\N	\N	2026-01-02 15:23:52.691
+1068	1039	EFECTIVO_USD	425.00	USD	\N	\N	\N	2026-01-02 15:23:52.696
+1069	1040	TRANSFERENCIA_BS	440.00	USD	\N	\N	\N	2026-01-02 15:23:52.702
+1070	1041	EFECTIVO_USD	420.00	USD	\N	\N	\N	2026-01-02 15:23:52.707
+1071	1042	EFECTIVO_USD	400.00	USD	\N	\N	\N	2026-01-02 15:23:52.713
+1072	1043	EFECTIVO_USD	880.00	USD	\N	\N	\N	2026-01-02 15:23:52.722
+1073	1044	EFECTIVO_USD	420.00	USD	\N	\N	\N	2026-01-02 15:23:52.731
+1074	1045	EFECTIVO_USD	440.00	USD	\N	\N	\N	2026-01-02 15:23:52.737
+1075	1046	EFECTIVO_USD	840.00	USD	\N	\N	\N	2026-01-02 15:23:52.743
+1076	1047	EFECTIVO_USD	420.00	USD	\N	\N	\N	2026-01-02 15:23:52.749
+1077	1048	EFECTIVO_USD	440.00	USD	\N	\N	\N	2026-01-02 15:23:52.758
+1078	1049	EFECTIVO_USD	440.00	USD	\N	\N	\N	2026-01-02 15:23:52.766
+1079	1050	EFECTIVO_USD	440.00	USD	\N	\N	\N	2026-01-02 15:23:52.772
+1080	1051	EFECTIVO_USD	440.00	USD	\N	\N	\N	2026-01-02 15:23:52.78
+1081	1052	EFECTIVO_USD	425.00	USD	\N	\N	\N	2026-01-02 15:23:52.785
+1082	1053	EFECTIVO_USD	445.00	USD	\N	\N	\N	2026-01-02 15:23:52.79
+1083	1054	EFECTIVO_USD	1360.00	USD	\N	\N	\N	2026-01-02 15:23:52.795
+1084	1055	EFECTIVO_USD	450.00	USD	\N	\N	\N	2026-01-02 15:23:52.801
+1085	1056	EFECTIVO_USD	495.00	USD	\N	\N	\N	2026-01-02 15:23:52.806
+1086	1057	EFECTIVO_USD	430.00	USD	\N	\N	\N	2026-01-02 15:23:52.811
+1087	1058	TRANSFERENCIA_USD	4000.00	USD	\N	\N	\N	2026-01-02 15:23:52.816
+1088	1059	EFECTIVO_USD	850.00	USD	\N	\N	\N	2026-01-02 15:23:52.822
+1089	1060	EFECTIVO_USD	440.00	USD	\N	\N	\N	2026-01-02 15:23:52.827
+1090	1061	EFECTIVO_USD	425.00	USD	\N	\N	\N	2026-01-02 15:23:52.832
+1091	1062	MIXTO	425.00	USD	\N	\N	\N	2026-01-02 15:23:52.837
+1092	1063	EFECTIVO_USD	445.00	USD	\N	\N	\N	2026-01-02 15:23:52.843
+1093	1064	EFECTIVO_USD	460.00	USD	\N	\N	\N	2026-01-02 15:23:52.848
+1094	1065	EFECTIVO_USD	430.00	USD	\N	\N	\N	2026-01-02 15:23:52.854
+1095	1066	ZELLE	440.00	USD	\N	\N	\N	2026-01-02 15:23:52.859
+1096	1067	EFECTIVO_USD	450.00	USD	\N	\N	\N	2026-01-02 15:23:52.863
+1097	1068	MIXTO	450.00	USD	\N	\N	\N	2026-01-02 15:23:52.87
+1098	1069	MIXTO	445.00	USD	\N	\N	\N	2026-01-02 15:23:52.878
+1099	1070	EFECTIVO_USD	450.00	USD	\N	\N	\N	2026-01-02 15:23:52.884
+1100	1071	ZELLE	445.00	USD	\N	\N	\N	2026-01-02 15:23:52.891
+1101	1072	EFECTIVO_USD	860.00	USD	\N	\N	\N	2026-01-02 15:23:52.898
+1102	1073	EFECTIVO_USD	430.00	USD	\N	\N	\N	2026-01-02 15:23:52.905
+1103	1074	EFECTIVO_USD	525.00	USD	\N	\N	\N	2026-01-02 15:23:52.912
+1104	1075	EFECTIVO_USD	450.00	USD	\N	\N	\N	2026-01-02 15:23:52.921
+1105	1076	EFECTIVO_USD	525.00	USD	\N	\N	\N	2026-01-02 15:23:52.927
+1106	1077	EFECTIVO_USD	860.00	USD	\N	\N	\N	2026-01-02 15:23:52.933
+1107	1078	ZELLE	450.00	USD	\N	\N	\N	2026-01-02 15:23:52.941
+1108	1079	EFECTIVO_USD	440.00	USD	\N	\N	\N	2026-01-02 15:23:52.946
+1109	1080	EFECTIVO_USD	445.00	USD	\N	\N	\N	2026-01-02 15:23:52.951
+1110	1081	EFECTIVO_USD	440.00	USD	\N	\N	\N	2026-01-02 15:23:52.957
+1111	1082	EFECTIVO_USD	450.00	USD	\N	\N	\N	2026-01-02 15:23:52.962
+1112	1083	EFECTIVO_USD	450.00	USD	\N	\N	\N	2026-01-02 15:23:52.968
+1113	1084	EFECTIVO_USD	450.00	USD	\N	\N	\N	2026-01-02 15:23:52.974
+1114	1085	EFECTIVO_USD	440.00	USD	\N	\N	\N	2026-01-02 15:23:52.984
+1115	1086	EFECTIVO_USD	450.00	USD	\N	\N	\N	2026-01-02 15:23:52.99
+1116	1087	EFECTIVO_USD	880.00	USD	\N	\N	\N	2026-01-02 15:23:52.999
+1117	1088	EFECTIVO_USD	880.00	USD	\N	\N	\N	2026-01-02 15:23:53.008
+1118	1089	EFECTIVO_USD	450.00	USD	\N	\N	\N	2026-01-02 15:23:53.016
+1119	1090	EFECTIVO_USD	450.00	USD	\N	\N	\N	2026-01-02 15:23:53.021
+1120	1091	EFECTIVO_USD	450.00	USD	\N	\N	\N	2026-01-02 15:23:53.025
+1121	1092	EFECTIVO_USD	880.00	USD	\N	\N	\N	2026-01-02 15:23:53.032
+1122	1093	EFECTIVO_USD	450.00	USD	\N	\N	\N	2026-01-02 15:23:53.041
+1123	1094	EFECTIVO_USD	450.00	USD	\N	\N	\N	2026-01-02 15:23:53.051
+1124	1095	EFECTIVO_USD	535.00	USD	\N	\N	\N	2026-01-02 15:23:53.057
+1125	1096	MIXTO	535.00	USD	\N	\N	\N	2026-01-02 15:23:53.063
+1126	1097	EFECTIVO_USD	540.00	USD	\N	\N	\N	2026-01-02 15:23:53.071
+1127	1098	MIXTO	616.00	USD	\N	\N	\N	2026-01-02 15:23:53.08
+1128	1099	EFECTIVO_USD	540.00	USD	\N	\N	\N	2026-01-02 15:23:53.087
+1129	1100	EFECTIVO_USD	540.00	USD	\N	\N	\N	2026-01-02 15:23:53.092
+1130	1101	MIXTO	560.00	USD	\N	\N	\N	2026-01-02 15:23:53.1
+1131	1102	EFECTIVO_USD	560.00	USD	\N	\N	\N	2026-01-02 15:23:53.105
+1132	1103	MIXTO	540.00	USD	\N	\N	\N	2026-01-02 15:23:53.111
+1133	1104	TRANSFERENCIA_BS	1120.00	USD	\N	\N	\N	2026-01-02 15:23:53.116
+1134	1105	EFECTIVO_USD	540.00	USD	\N	\N	\N	2026-01-02 15:23:53.121
+1135	1106	EFECTIVO_USD	1060.00	USD	\N	\N	\N	2026-01-02 15:23:53.128
+1136	1107	EFECTIVO_USD	1120.00	USD	\N	\N	\N	2026-01-02 15:23:53.135
+1137	1108	EFECTIVO_USD	540.00	USD	\N	\N	\N	2026-01-02 15:23:53.142
+1138	1109	EFECTIVO_USD	1080.00	USD	\N	\N	\N	2026-01-02 15:23:53.148
+1139	1110	EFECTIVO_USD	1020.00	USD	\N	\N	\N	2026-01-02 15:23:53.156
+1140	1111	EFECTIVO_USD	560.00	USD	\N	\N	\N	2026-01-02 15:23:53.161
+1141	1112	EFECTIVO_USD	530.00	USD	\N	\N	\N	2026-01-02 15:23:53.166
+1142	1113	EFECTIVO_USD	530.00	USD	\N	\N	\N	2026-01-02 15:23:53.171
+1143	1114	EFECTIVO_USD	560.00	USD	\N	\N	\N	2026-01-02 15:23:53.183
+1144	1115	EFECTIVO_USD	1120.00	USD	\N	\N	\N	2026-01-02 15:23:53.191
+1145	1116	EFECTIVO_USD	2040.00	USD	\N	\N	\N	2026-01-02 15:23:53.197
+1146	1117	EFECTIVO_USD	560.00	USD	\N	\N	\N	2026-01-02 15:23:53.202
+1147	1118	TRANSFERENCIA_BS	2240.00	USD	\N	\N	\N	2026-01-02 15:23:53.207
+1148	1118	EFECTIVO_USD	560.00	USD	\N	\N	\N	2026-01-02 15:23:53.207
+1149	1119	EFECTIVO_USD	560.00	USD	\N	\N	\N	2026-01-02 15:23:53.214
+1150	1120	EFECTIVO_USD	545.00	USD	\N	\N	\N	2026-01-02 15:23:53.219
+1151	1121	TRANSFERENCIA_USD	560.00	USD	\N	\N	\N	2026-01-02 15:23:53.237
+1152	1122	EFECTIVO_USD	545.00	USD	\N	\N	\N	2026-01-02 15:23:53.243
+1156	1126	TRANSFERENCIA_USD	560.00	USD	\N	\N	\N	2026-01-02 15:23:53.274
+1157	1127	EFECTIVO_USD	1120.00	USD	\N	\N	\N	2026-01-02 15:23:53.286
+1158	1128	EFECTIVO_USD	545.00	USD	\N	\N	\N	2026-01-02 15:23:53.293
+1159	1129	EFECTIVO_USD	560.00	USD	\N	\N	\N	2026-01-02 15:23:53.304
+1160	1130	MIXTO	560.00	USD	\N	\N	\N	2026-01-02 15:23:53.311
+1161	1131	EFECTIVO_USD	545.00	USD	\N	\N	\N	2026-01-02 15:23:53.318
+1162	1132	EFECTIVO_USD	550.00	USD	\N	\N	\N	2026-01-02 15:23:53.322
+1163	1133	EFECTIVO_USD	535.00	USD	\N	\N	\N	2026-01-02 15:23:53.327
+1164	1134	EFECTIVO_USD	550.00	USD	\N	\N	\N	2026-01-02 15:23:53.331
+1165	1135	EFECTIVO_USD	545.00	USD	\N	\N	\N	2026-01-02 15:23:53.337
+1166	1136	ZELLE	560.00	USD	\N	\N	\N	2026-01-02 15:23:53.342
+1167	1137	EFECTIVO_USD	545.00	USD	\N	\N	\N	2026-01-02 15:23:53.347
+1168	1138	EFECTIVO_USD	545.00	USD	\N	\N	\N	2026-01-02 15:23:53.354
+1169	1139	EFECTIVO_USD	1000.00	USD	\N	\N	\N	2026-01-02 15:23:53.36
+1170	1140	EFECTIVO_USD	565.00	USD	\N	\N	\N	2026-01-02 15:23:53.366
+1171	1141	EFECTIVO_USD	570.00	USD	\N	\N	\N	2026-01-02 15:23:53.371
+1172	1142	MIXTO	560.00	USD	\N	\N	\N	2026-01-02 15:23:53.378
+1173	1144	EFECTIVO_USD	565.00	USD	\N	\N	\N	2026-01-02 15:23:53.388
+1174	1145	EFECTIVO_USD	565.00	USD	\N	\N	\N	2026-01-02 15:23:53.397
+1175	1146	ZELLE	565.00	USD	\N	\N	\N	2026-01-02 15:23:53.403
+1176	1147	EFECTIVO_USD	1130.00	USD	\N	\N	\N	2026-01-02 15:23:53.41
+1177	1148	EFECTIVO_USD	550.00	USD	\N	\N	\N	2026-01-02 15:23:53.42
+1178	1149	EFECTIVO_USD	555.00	USD	\N	\N	\N	2026-01-02 15:23:53.426
+1179	1150	EFECTIVO_USD	555.00	USD	\N	\N	\N	2026-01-02 15:23:53.433
+1180	1151	EFECTIVO_USD	570.00	USD	\N	\N	\N	2026-01-02 15:23:53.438
+1181	1152	EFECTIVO_USD	560.00	USD	\N	\N	\N	2026-01-02 15:23:53.445
+1182	1153	EFECTIVO_USD	500.00	USD	\N	\N	\N	2026-01-02 15:23:53.449
+1183	1154	EFECTIVO_USD	500.00	USD	\N	\N	\N	2026-01-02 15:23:53.456
+1184	1155	EFECTIVO_USD	500.00	USD	\N	\N	\N	2026-01-02 15:23:53.461
+1185	1156	EFECTIVO_USD	500.00	USD	\N	\N	\N	2026-01-02 15:23:53.467
+1186	1157	TRANSFERENCIA_BS	520.00	USD	\N	\N	\N	2026-01-02 15:23:53.472
+1187	1158	TRANSFERENCIA_BS	520.00	USD	\N	\N	\N	2026-01-02 15:23:53.478
+1188	1159	EFECTIVO_USD	520.00	USD	\N	\N	\N	2026-01-02 15:23:53.483
+1189	1160	EFECTIVO_USD	520.00	USD	\N	\N	\N	2026-01-02 15:23:53.489
+1190	1161	EFECTIVO_USD	1530.00	USD	\N	\N	\N	2026-01-02 15:23:53.496
+1191	1162	EFECTIVO_USD	480.00	USD	\N	\N	\N	2026-01-02 15:23:53.502
+1192	1163	EFECTIVO_USD	500.00	USD	\N	\N	\N	2026-01-02 15:23:53.508
+1193	1164	EFECTIVO_USD	520.00	USD	\N	\N	\N	2026-01-02 15:23:53.515
+1194	1165	EFECTIVO_USD	915.00	USD	\N	\N	\N	2026-01-02 15:23:53.521
+1195	1166	EFECTIVO_USD	520.00	USD	\N	\N	\N	2026-01-02 15:23:53.527
+1196	1167	EFECTIVO_USD	980.00	USD	\N	\N	\N	2026-01-02 15:23:53.536
+1197	1168	EFECTIVO_USD	520.00	USD	\N	\N	\N	2026-01-02 15:23:53.544
+1198	1169	EFECTIVO_USD	490.00	USD	\N	\N	\N	2026-01-02 15:23:53.552
+1199	1170	TRANSFERENCIA_BS	520.00	USD	\N	\N	\N	2026-01-02 15:23:53.561
+1200	1171	EFECTIVO_USD	1000.00	USD	\N	\N	\N	2026-01-02 15:23:53.57
+1201	1172	EFECTIVO_USD	490.00	USD	\N	\N	\N	2026-01-02 15:23:53.577
+1202	1173	EFECTIVO_USD	980.00	USD	\N	\N	\N	2026-01-02 15:23:53.582
+1203	1174	EFECTIVO_USD	520.00	USD	\N	\N	\N	2026-01-02 15:23:53.588
+1204	1175	EFECTIVO_USD	520.00	USD	\N	\N	\N	2026-01-02 15:23:53.592
+1205	1176	EFECTIVO_USD	490.00	USD	\N	\N	\N	2026-01-02 15:23:53.602
+1206	1177	EFECTIVO_USD	1040.00	USD	\N	\N	\N	2026-01-02 15:23:53.607
+1207	1178	EFECTIVO_USD	490.00	USD	\N	\N	\N	2026-01-02 15:23:53.62
+1208	1179	EFECTIVO_USD	520.00	USD	\N	\N	\N	2026-01-02 15:23:53.626
+1209	1180	EFECTIVO_USD	980.00	USD	\N	\N	\N	2026-01-02 15:23:53.633
+1210	1181	EFECTIVO_USD	520.00	USD	\N	\N	\N	2026-01-02 15:23:53.639
+1211	1182	EFECTIVO_USD	1510.00	USD	\N	\N	\N	2026-01-02 15:23:53.644
+1212	1183	EFECTIVO_USD	520.00	USD	\N	\N	\N	2026-01-02 15:23:53.649
+1213	1184	EFECTIVO_USD	520.00	USD	\N	\N	\N	2026-01-02 15:23:53.653
+1153	1123	EFECTIVO_USD	1090.00	USD	\N	\N	\N	2026-01-02 15:23:53.251
+1154	1124	EFECTIVO_USD	3620.00	USD	\N	\N	\N	2026-01-02 15:23:53.258
+1155	1125	EFECTIVO_USD	560.00	USD	\N	\N	\N	2026-01-02 15:23:53.267
+1440	1407	EFECTIVO_USD	290.00	USD	\N	\N	\N	2026-01-02 15:23:54.933
+1441	1408	EFECTIVO_USD	290.00	USD	\N	\N	\N	2026-01-02 15:23:54.937
+1442	1409	EFECTIVO_USD	290.00	USD	\N	\N	\N	2026-01-02 15:23:54.942
+1443	1410	EFECTIVO_USD	290.00	USD	\N	\N	\N	2026-01-02 15:23:54.954
+1214	1185	EFECTIVO_USD	1110.00	USD	\N	\N	\N	2026-01-02 15:23:53.657
+1215	1186	EFECTIVO_USD	520.00	USD	\N	\N	\N	2026-01-02 15:23:53.664
+1216	1187	EFECTIVO_USD	525.00	USD	\N	\N	\N	2026-01-02 15:23:53.668
+1217	1188	EFECTIVO_USD	525.00	USD	\N	\N	\N	2026-01-02 15:23:53.672
+1218	1189	EFECTIVO_USD	525.00	USD	\N	\N	\N	2026-01-02 15:23:53.677
+1219	1190	EFECTIVO_USD	510.00	USD	\N	\N	\N	2026-01-02 15:23:53.683
+1220	1191	EFECTIVO_USD	525.00	USD	\N	\N	\N	2026-01-02 15:23:53.687
+1221	1192	EFECTIVO_USD	520.00	USD	\N	\N	\N	2026-01-02 15:23:53.693
+1222	1193	EFECTIVO_USD	525.00	USD	\N	\N	\N	2026-01-02 15:23:53.702
+1223	1194	EFECTIVO_USD	2030.00	USD	\N	\N	\N	2026-01-02 15:23:53.709
+1224	1195	EFECTIVO_USD	525.00	USD	\N	\N	\N	2026-01-02 15:23:53.716
+1225	1196	EFECTIVO_USD	525.00	USD	\N	\N	\N	2026-01-02 15:23:53.724
+1226	1197	EFECTIVO_USD	750.00	USD	\N	\N	\N	2026-01-02 15:23:53.73
+1227	1198	EFECTIVO_USD	525.00	USD	\N	\N	\N	2026-01-02 15:23:53.736
+1228	1199	EFECTIVO_USD	1020.00	USD	\N	\N	\N	2026-01-02 15:23:53.742
+1229	1200	EFECTIVO_USD	525.00	USD	\N	\N	\N	2026-01-02 15:23:53.747
+1230	1201	EFECTIVO_USD	525.00	USD	\N	\N	\N	2026-01-02 15:23:53.753
+1231	1202	EFECTIVO_USD	815.00	USD	\N	\N	\N	2026-01-02 15:23:53.761
+1232	1203	EFECTIVO_USD	520.00	USD	\N	\N	\N	2026-01-02 15:23:53.766
+1233	1204	EFECTIVO_USD	525.00	USD	\N	\N	\N	2026-01-02 15:23:53.77
+1234	1205	EFECTIVO_USD	525.00	USD	\N	\N	\N	2026-01-02 15:23:53.776
+1235	1206	EFECTIVO_USD	525.00	USD	\N	\N	\N	2026-01-02 15:23:53.781
+1236	1207	EFECTIVO_USD	525.00	USD	\N	\N	\N	2026-01-02 15:23:53.785
+1237	1208	EFECTIVO_USD	525.00	USD	\N	\N	\N	2026-01-02 15:23:53.79
+1238	1209	MIXTO	525.00	USD	\N	\N	\N	2026-01-02 15:23:53.794
+1239	1210	EFECTIVO_USD	525.00	USD	\N	\N	\N	2026-01-02 15:23:53.798
+1240	1211	MIXTO	515.00	USD	\N	\N	\N	2026-01-02 15:23:53.802
+1241	1212	EFECTIVO_USD	515.00	USD	\N	\N	\N	2026-01-02 15:23:53.811
+1242	1213	EFECTIVO_USD	525.00	USD	\N	\N	\N	2026-01-02 15:23:53.817
+1243	1214	MIXTO	525.00	USD	\N	\N	\N	2026-01-02 15:23:53.823
+1244	1215	EFECTIVO_USD	1020.00	USD	\N	\N	\N	2026-01-02 15:23:53.827
+1245	1216	MIXTO	525.00	USD	\N	\N	\N	2026-01-02 15:23:53.833
+1246	1217	EFECTIVO_USD	525.00	USD	\N	\N	\N	2026-01-02 15:23:53.839
+1247	1218	EFECTIVO_USD	525.00	USD	\N	\N	\N	2026-01-02 15:23:53.843
+1248	1218	MIXTO	525.00	USD	\N	\N	\N	2026-01-02 15:23:53.843
+1249	1219	EFECTIVO_USD	510.00	USD	\N	\N	\N	2026-01-02 15:23:53.847
+1250	1220	EFECTIVO_USD	525.00	USD	\N	\N	\N	2026-01-02 15:23:53.857
+1251	1221	TRANSFERENCIA_BS	525.00	USD	\N	\N	\N	2026-01-02 15:23:53.863
+1252	1222	EFECTIVO_USD	525.00	USD	\N	\N	\N	2026-01-02 15:23:53.869
+1253	1223	MIXTO	525.00	USD	\N	\N	\N	2026-01-02 15:23:53.875
+1254	1224	EFECTIVO_USD	515.00	USD	\N	\N	\N	2026-01-02 15:23:53.886
+1255	1225	MIXTO	525.00	USD	\N	\N	\N	2026-01-02 15:23:53.89
+1256	1226	EFECTIVO_USD	525.00	USD	\N	\N	\N	2026-01-02 15:23:53.895
+1257	1227	EFECTIVO_USD	525.00	USD	\N	\N	\N	2026-01-02 15:23:53.899
+1258	1228	EFECTIVO_USD	1035.00	USD	\N	\N	\N	2026-01-02 15:23:53.908
+1259	1229	EFECTIVO_USD	525.00	USD	\N	\N	\N	2026-01-02 15:23:53.914
+1260	1230	EFECTIVO_USD	525.00	USD	\N	\N	\N	2026-01-02 15:23:53.92
+1261	1231	EFECTIVO_USD	510.00	USD	\N	\N	\N	2026-01-02 15:23:53.926
+1262	1232	EFECTIVO_USD	1020.00	USD	\N	\N	\N	2026-01-02 15:23:53.93
+1263	1233	EFECTIVO_USD	525.00	USD	\N	\N	\N	2026-01-02 15:23:53.934
+1264	1234	ZELLE	525.00	USD	\N	\N	\N	2026-01-02 15:23:53.938
+1265	1235	EFECTIVO_USD	525.00	USD	\N	\N	\N	2026-01-02 15:23:53.943
+1266	1236	EFECTIVO_USD	525.00	USD	\N	\N	\N	2026-01-02 15:23:53.947
+1267	1237	EFECTIVO_USD	525.00	USD	\N	\N	\N	2026-01-02 15:23:53.951
+1268	1238	EFECTIVO_USD	515.00	USD	\N	\N	\N	2026-01-02 15:23:53.957
+1269	1239	EFECTIVO_USD	1030.00	USD	\N	\N	\N	2026-01-02 15:23:53.962
+1270	1240	EFECTIVO_USD	515.00	USD	\N	\N	\N	2026-01-02 15:23:53.967
+1271	1241	EFECTIVO_USD	525.00	USD	\N	\N	\N	2026-01-02 15:23:53.971
+1272	1242	EFECTIVO_USD	525.00	USD	\N	\N	\N	2026-01-02 15:23:53.977
+1273	1243	EFECTIVO_USD	525.00	USD	\N	\N	\N	2026-01-02 15:23:53.982
+1274	1244	ZELLE	530.00	USD	\N	\N	\N	2026-01-02 15:23:53.986
+1275	1245	EFECTIVO_USD	530.00	USD	\N	\N	\N	2026-01-02 15:23:53.991
+1276	1246	EFECTIVO_USD	1060.00	USD	\N	\N	\N	2026-01-02 15:23:53.998
+1277	1247	EFECTIVO_USD	1030.00	USD	\N	\N	\N	2026-01-02 15:23:54.002
+1278	1248	EFECTIVO_USD	530.00	USD	\N	\N	\N	2026-01-02 15:23:54.01
+1279	1249	EFECTIVO_USD	530.00	USD	\N	\N	\N	2026-01-02 15:23:54.017
+1280	1250	EFECTIVO_USD	530.00	USD	\N	\N	\N	2026-01-02 15:23:54.024
+1281	1251	EFECTIVO_USD	1040.00	USD	\N	\N	\N	2026-01-02 15:23:54.029
+1282	1252	EFECTIVO_USD	1030.00	USD	\N	\N	\N	2026-01-02 15:23:54.034
+1283	1253	EFECTIVO_USD	530.00	USD	\N	\N	\N	2026-01-02 15:23:54.038
+1284	1254	EFECTIVO_USD	530.00	USD	\N	\N	\N	2026-01-02 15:23:54.042
+1285	1255	EFECTIVO_USD	1030.00	USD	\N	\N	\N	2026-01-02 15:23:54.047
+1286	1256	EFECTIVO_USD	530.00	USD	\N	\N	\N	2026-01-02 15:23:54.055
+1287	1257	EFECTIVO_USD	535.00	USD	\N	\N	\N	2026-01-02 15:23:54.06
+1288	1258	BINANCE	535.00	USD	\N	\N	\N	2026-01-02 15:23:54.066
+1289	1258	MIXTO	535.00	USD	\N	\N	\N	2026-01-02 15:23:54.066
+1290	1259	EFECTIVO_USD	535.00	USD	\N	\N	\N	2026-01-02 15:23:54.073
+1291	1260	EFECTIVO_USD	535.00	USD	\N	\N	\N	2026-01-02 15:23:54.079
+1292	1261	EFECTIVO_USD	535.00	USD	\N	\N	\N	2026-01-02 15:23:54.086
+1293	1262	EFECTIVO_USD	535.00	USD	\N	\N	\N	2026-01-02 15:23:54.091
+1294	1263	EFECTIVO_USD	1040.00	USD	\N	\N	\N	2026-01-02 15:23:54.098
+1295	1264	EFECTIVO_USD	535.00	USD	\N	\N	\N	2026-01-02 15:23:54.105
+1296	1265	EFECTIVO_USD	535.00	USD	\N	\N	\N	2026-01-02 15:23:54.11
+1297	1266	EFECTIVO_USD	1040.00	USD	\N	\N	\N	2026-01-02 15:23:54.118
+1298	1267	EFECTIVO_USD	520.00	USD	\N	\N	\N	2026-01-02 15:23:54.13
+1299	1268	EFECTIVO_USD	535.00	USD	\N	\N	\N	2026-01-02 15:23:54.136
+1300	1269	EFECTIVO_USD	535.00	USD	\N	\N	\N	2026-01-02 15:23:54.141
+1301	1270	EFECTIVO_USD	535.00	USD	\N	\N	\N	2026-01-02 15:23:54.152
+1302	1271	EFECTIVO_USD	530.00	USD	\N	\N	\N	2026-01-02 15:23:54.157
+1303	1272	EFECTIVO_USD	540.00	USD	\N	\N	\N	2026-01-02 15:23:54.161
+1304	1273	EFECTIVO_USD	540.00	USD	\N	\N	\N	2026-01-02 15:23:54.165
+1305	1274	EFECTIVO_USD	530.00	USD	\N	\N	\N	2026-01-02 15:23:54.177
+1306	1275	EFECTIVO_USD	540.00	USD	\N	\N	\N	2026-01-02 15:23:54.183
+1307	1276	EFECTIVO_USD	540.00	USD	\N	\N	\N	2026-01-02 15:23:54.188
+1308	1277	EFECTIVO_USD	540.00	USD	\N	\N	\N	2026-01-02 15:23:54.197
+1309	1278	EFECTIVO_USD	540.00	USD	\N	\N	\N	2026-01-02 15:23:54.202
+1310	1279	EFECTIVO_USD	490.00	USD	\N	\N	\N	2026-01-02 15:23:54.21
+1311	1280	EFECTIVO_USD	490.00	USD	\N	\N	\N	2026-01-02 15:23:54.214
+1312	1281	EFECTIVO_USD	1020.00	USD	\N	\N	\N	2026-01-02 15:23:54.218
+1313	1282	EFECTIVO_USD	500.00	USD	\N	\N	\N	2026-01-02 15:23:54.222
+1314	1283	EFECTIVO_USD	500.00	USD	\N	\N	\N	2026-01-02 15:23:54.226
+1315	1284	EFECTIVO_USD	500.00	USD	\N	\N	\N	2026-01-02 15:23:54.23
+1316	1285	EFECTIVO_USD	590.00	USD	\N	\N	\N	2026-01-02 15:23:54.234
+1317	1286	EFECTIVO_USD	500.00	USD	\N	\N	\N	2026-01-02 15:23:54.239
+1318	1287	EFECTIVO_USD	495.00	USD	\N	\N	\N	2026-01-02 15:23:54.244
+1319	1288	EFECTIVO_USD	590.00	USD	\N	\N	\N	2026-01-02 15:23:54.249
+1320	1289	EFECTIVO_USD	510.00	USD	\N	\N	\N	2026-01-02 15:23:54.255
+1321	1290	EFECTIVO_USD	800.00	USD	\N	\N	\N	2026-01-02 15:23:54.264
+1322	1291	EFECTIVO_USD	2550.00	USD	\N	\N	\N	2026-01-02 15:23:54.271
+1323	1292	EFECTIVO_USD	500.00	USD	\N	\N	\N	2026-01-02 15:23:54.281
+1324	1293	EFECTIVO_USD	590.00	USD	\N	\N	\N	2026-01-02 15:23:54.286
+1325	1294	EFECTIVO_USD	510.00	USD	\N	\N	\N	2026-01-02 15:23:54.292
+1326	1295	EFECTIVO_USD	510.00	USD	\N	\N	\N	2026-01-02 15:23:54.3
+1327	1296	ZELLE	590.00	USD	\N	\N	\N	2026-01-02 15:23:54.306
+1328	1297	EFECTIVO_USD	510.00	USD	\N	\N	\N	2026-01-02 15:23:54.312
+1329	1298	EFECTIVO_USD	500.00	USD	\N	\N	\N	2026-01-02 15:23:54.316
+1330	1299	TRANSFERENCIA_USD	2610.00	USD	\N	\N	\N	2026-01-02 15:23:54.323
+1331	1300	EFECTIVO_USD	515.00	USD	\N	\N	\N	2026-01-02 15:23:54.332
+1332	1301	EFECTIVO_USD	1030.00	USD	\N	\N	\N	2026-01-02 15:23:54.341
+1333	1302	ZELLE	1020.00	USD	\N	\N	\N	2026-01-02 15:23:54.35
+1334	1303	EFECTIVO_USD	515.00	USD	\N	\N	\N	2026-01-02 15:23:54.357
+1335	1304	EFECTIVO_USD	515.00	USD	\N	\N	\N	2026-01-02 15:23:54.362
+1336	1305	EFECTIVO_USD	515.00	USD	\N	\N	\N	2026-01-02 15:23:54.365
+1337	1306	EFECTIVO_USD	515.00	USD	\N	\N	\N	2026-01-02 15:23:54.37
+1338	1307	EFECTIVO_USD	515.00	USD	\N	\N	\N	2026-01-02 15:23:54.374
+1339	1308	EFECTIVO_USD	680.00	USD	\N	\N	\N	2026-01-02 15:23:54.385
+1340	1309	EFECTIVO_USD	520.00	USD	\N	\N	\N	2026-01-02 15:23:54.39
+1341	1310	EFECTIVO_USD	520.00	USD	\N	\N	\N	2026-01-02 15:23:54.396
+1342	1311	EFECTIVO_USD	1010.00	USD	\N	\N	\N	2026-01-02 15:23:54.401
+1343	1312	MIXTO	500.00	USD	\N	\N	\N	2026-01-02 15:23:54.406
+1344	1313	TRANSFERENCIA_BS	510.00	USD	\N	\N	\N	2026-01-02 15:23:54.412
+1345	1314	EFECTIVO_USD	460.00	USD	\N	\N	\N	2026-01-02 15:23:54.416
+1346	1315	EFECTIVO_USD	580.00	USD	\N	\N	\N	2026-01-02 15:23:54.422
+1347	1316	EFECTIVO_USD	590.00	USD	\N	\N	\N	2026-01-02 15:23:54.429
+1348	1317	TRANSFERENCIA_BS	550.00	USD	\N	\N	\N	2026-01-02 15:23:54.434
+1349	1317	EFECTIVO_USD	40.00	USD	\N	\N	\N	2026-01-02 15:23:54.434
+1350	1318	EFECTIVO_USD	510.00	USD	\N	\N	\N	2026-01-02 15:23:54.44
+1351	1319	EFECTIVO_USD	910.00	USD	\N	\N	\N	2026-01-02 15:23:54.446
+1352	1320	EFECTIVO_USD	510.00	USD	\N	\N	\N	2026-01-02 15:23:54.454
+1353	1321	EFECTIVO_USD	1720.00	USD	\N	\N	\N	2026-01-02 15:23:54.459
+1354	1322	EFECTIVO_USD	530.00	USD	\N	\N	\N	2026-01-02 15:23:54.465
+1355	1323	EFECTIVO_USD	885.00	USD	\N	\N	\N	2026-01-02 15:23:54.469
+1356	1324	EFECTIVO_USD	1020.00	USD	\N	\N	\N	2026-01-02 15:23:54.474
+1357	1325	ZELLE	515.00	USD	\N	\N	\N	2026-01-02 15:23:54.482
+1358	1326	MIXTO	520.00	USD	\N	\N	\N	2026-01-02 15:23:54.49
+1359	1327	ZELLE	520.00	USD	\N	\N	\N	2026-01-02 15:23:54.497
+1360	1328	EFECTIVO_USD	520.00	USD	\N	\N	\N	2026-01-02 15:23:54.507
+1361	1329	EFECTIVO_USD	520.00	USD	\N	\N	\N	2026-01-02 15:23:54.514
+1362	1330	BINANCE	540.00	USD	\N	\N	\N	2026-01-02 15:23:54.519
+1363	1331	ZELLE	892.00	USD	\N	\N	\N	2026-01-02 15:23:54.523
+1364	1332	EFECTIVO_USD	1040.00	USD	\N	\N	\N	2026-01-02 15:23:54.529
+1365	1333	EFECTIVO_USD	540.00	USD	\N	\N	\N	2026-01-02 15:23:54.534
+1366	1334	EFECTIVO_USD	530.00	USD	\N	\N	\N	2026-01-02 15:23:54.539
+1367	1335	ZELLE	2104.00	USD	\N	\N	\N	2026-01-02 15:23:54.543
+1368	1336	EFECTIVO_USD	550.00	USD	\N	\N	\N	2026-01-02 15:23:54.549
+1369	1337	EFECTIVO_USD	1100.00	USD	\N	\N	\N	2026-01-02 15:23:54.558
+1370	1338	EFECTIVO_USD	550.00	USD	\N	\N	\N	2026-01-02 15:23:54.567
+1371	1339	EFECTIVO_USD	550.00	USD	\N	\N	\N	2026-01-02 15:23:54.572
+1372	1340	EFECTIVO_USD	45.00	USD	\N	\N	\N	2026-01-02 15:23:54.578
+1373	1341	TRANSFERENCIA_BS	90.00	USD	\N	\N	\N	2026-01-02 15:23:54.584
+1374	1342	EFECTIVO_USD	45.00	USD	\N	\N	\N	2026-01-02 15:23:54.59
+1375	1343	EFECTIVO_USD	45.00	USD	\N	\N	\N	2026-01-02 15:23:54.596
+1376	1344	EFECTIVO_USD	45.00	USD	\N	\N	\N	2026-01-02 15:23:54.6
+1377	1345	EFECTIVO_USD	240.00	USD	\N	\N	\N	2026-01-02 15:23:54.604
+1378	1346	EFECTIVO_USD	90.00	USD	\N	\N	\N	2026-01-02 15:23:54.609
+1379	1347	EFECTIVO_USD	45.00	USD	\N	\N	\N	2026-01-02 15:23:54.616
+1380	1348	EFECTIVO_USD	168.00	USD	\N	\N	\N	2026-01-02 15:23:54.621
+1381	1348	MIXTO	42.00	USD	\N	\N	\N	2026-01-02 15:23:54.621
+1382	1349	EFECTIVO_USD	45.00	USD	\N	\N	\N	2026-01-02 15:23:54.627
+1383	1350	EFECTIVO_USD	90.00	USD	\N	\N	\N	2026-01-02 15:23:54.631
+1384	1351	EFECTIVO_USD	45.00	USD	\N	\N	\N	2026-01-02 15:23:54.637
+1385	1352	EFECTIVO_USD	45.00	USD	\N	\N	\N	2026-01-02 15:23:54.641
+1386	1353	EFECTIVO_USD	90.00	USD	\N	\N	\N	2026-01-02 15:23:54.645
+1387	1354	EFECTIVO_USD	125.00	USD	\N	\N	\N	2026-01-02 15:23:54.65
+1388	1355	EFECTIVO_USD	45.00	USD	\N	\N	\N	2026-01-02 15:23:54.659
+1389	1356	EFECTIVO_USD	455.00	USD	\N	\N	\N	2026-01-02 15:23:54.663
+1390	1357	EFECTIVO_USD	320.00	USD	\N	\N	\N	2026-01-02 15:23:54.668
+1391	1358	EFECTIVO_USD	240.00	USD	\N	\N	\N	2026-01-02 15:23:54.673
+1392	1359	EFECTIVO_USD	90.00	USD	\N	\N	\N	2026-01-02 15:23:54.678
+1393	1360	EFECTIVO_USD	110.00	USD	\N	\N	\N	2026-01-02 15:23:54.684
+1394	1361	EFECTIVO_USD	110.00	USD	\N	\N	\N	2026-01-02 15:23:54.688
+1395	1362	EFECTIVO_USD	110.00	USD	\N	\N	\N	2026-01-02 15:23:54.692
+1396	1363	EFECTIVO_USD	110.00	USD	\N	\N	\N	2026-01-02 15:23:54.697
+1397	1364	EFECTIVO_USD	120.00	USD	\N	\N	\N	2026-01-02 15:23:54.701
+1398	1365	EFECTIVO_USD	120.00	USD	\N	\N	\N	2026-01-02 15:23:54.706
+1399	1366	ZELLE	130.00	USD	\N	\N	\N	2026-01-02 15:23:54.711
+1400	1367	EFECTIVO_USD	135.00	USD	\N	\N	\N	2026-01-02 15:23:54.716
+1401	1368	EFECTIVO_USD	545.00	USD	\N	\N	\N	2026-01-02 15:23:54.722
+1402	1369	EFECTIVO_USD	140.00	USD	\N	\N	\N	2026-01-02 15:23:54.728
+1403	1370	EFECTIVO_USD	140.00	USD	\N	\N	\N	2026-01-02 15:23:54.732
+1404	1371	EFECTIVO_USD	140.00	USD	\N	\N	\N	2026-01-02 15:23:54.735
+1405	1372	EFECTIVO_USD	200.00	USD	\N	\N	\N	2026-01-02 15:23:54.738
+1406	1373	EFECTIVO_USD	200.00	USD	\N	\N	\N	2026-01-02 15:23:54.742
+1407	1374	EFECTIVO_USD	270.00	USD	\N	\N	\N	2026-01-02 15:23:54.745
+1408	1375	EFECTIVO_USD	120.00	USD	\N	\N	\N	2026-01-02 15:23:54.752
+1409	1376	EFECTIVO_USD	120.00	USD	\N	\N	\N	2026-01-02 15:23:54.756
+1410	1377	EFECTIVO_USD	40.00	USD	\N	\N	\N	2026-01-02 15:23:54.76
+1411	1378	ZELLE	120.00	USD	\N	\N	\N	2026-01-02 15:23:54.765
+1412	1379	ZELLE	120.00	USD	\N	\N	\N	2026-01-02 15:23:54.771
+1413	1380	EFECTIVO_USD	80.00	USD	\N	\N	\N	2026-01-02 15:23:54.778
+1414	1381	EFECTIVO_USD	80.00	USD	\N	\N	\N	2026-01-02 15:23:54.784
+1415	1382	ZELLE	40.00	USD	\N	\N	\N	2026-01-02 15:23:54.788
+1416	1383	EFECTIVO_USD	80.00	USD	\N	\N	\N	2026-01-02 15:23:54.792
+1417	1384	ZELLE	80.00	USD	\N	\N	\N	2026-01-02 15:23:54.797
+1418	1385	EFECTIVO_USD	80.00	USD	\N	\N	\N	2026-01-02 15:23:54.802
+1419	1386	EFECTIVO_USD	160.00	USD	\N	\N	\N	2026-01-02 15:23:54.807
+1420	1387	EFECTIVO_USD	80.00	USD	\N	\N	\N	2026-01-02 15:23:54.814
+1421	1388	EFECTIVO_USD	80.00	USD	\N	\N	\N	2026-01-02 15:23:54.819
+1422	1389	EFECTIVO_USD	480.00	USD	\N	\N	\N	2026-01-02 15:23:54.824
+1423	1390	EFECTIVO_USD	260.00	USD	\N	\N	\N	2026-01-02 15:23:54.834
+1424	1391	EFECTIVO_USD	480.00	USD	\N	\N	\N	2026-01-02 15:23:54.841
+1425	1392	EFECTIVO_USD	490.00	USD	\N	\N	\N	2026-01-02 15:23:54.852
+1426	1393	ZELLE	828.00	USD	\N	\N	\N	2026-01-02 15:23:54.858
+1427	1394	EFECTIVO_USD	260.00	USD	\N	\N	\N	2026-01-02 15:23:54.863
+1428	1395	EFECTIVO_USD	260.00	USD	\N	\N	\N	2026-01-02 15:23:54.869
+1429	1396	EFECTIVO_USD	260.00	USD	\N	\N	\N	2026-01-02 15:23:54.873
+1430	1397	EFECTIVO_USD	260.00	USD	\N	\N	\N	2026-01-02 15:23:54.879
+1431	1398	EFECTIVO_USD	150.00	USD	\N	\N	\N	2026-01-02 15:23:54.882
+1432	1399	EFECTIVO_USD	280.00	USD	\N	\N	\N	2026-01-02 15:23:54.891
+1433	1400	EFECTIVO_USD	150.00	USD	\N	\N	\N	2026-01-02 15:23:54.898
+1434	1401	EFECTIVO_USD	150.00	USD	\N	\N	\N	2026-01-02 15:23:54.903
+1435	1402	ZELLE	1176.00	USD	\N	\N	\N	2026-01-02 15:23:54.908
+1436	1403	EFECTIVO_USD	150.00	USD	\N	\N	\N	2026-01-02 15:23:54.914
+1437	1404	EFECTIVO_USD	1245.00	USD	\N	\N	\N	2026-01-02 15:23:54.918
+1438	1405	EFECTIVO_USD	220.00	USD	\N	\N	\N	2026-01-02 15:23:54.923
+1439	1406	EFECTIVO_USD	250.00	USD	\N	\N	\N	2026-01-02 15:23:54.927
+\.
+
+
+--
+-- Name: alertas_stock_id_seq; Type: SEQUENCE SET; Schema: public; Owner: -
+--
+
+SELECT pg_catalog.setval('public.alertas_stock_id_seq', 11, true);
+
+
+--
+-- Name: categorias_gasto_id_seq; Type: SEQUENCE SET; Schema: public; Owner: -
+--
+
+SELECT pg_catalog.setval('public.categorias_gasto_id_seq', 31, true);
+
+
+--
+-- Name: categorias_id_seq; Type: SEQUENCE SET; Schema: public; Owner: -
+--
+
+SELECT pg_catalog.setval('public.categorias_id_seq', 5, true);
+
+
+--
+-- Name: clientes_id_seq; Type: SEQUENCE SET; Schema: public; Owner: -
+--
+
+SELECT pg_catalog.setval('public.clientes_id_seq', 367, true);
+
+
+--
+-- Name: costos_importacion_id_seq; Type: SEQUENCE SET; Schema: public; Owner: -
+--
+
+SELECT pg_catalog.setval('public.costos_importacion_id_seq', 1, false);
+
+
+--
+-- Name: distribucion_fondos_id_seq; Type: SEQUENCE SET; Schema: public; Owner: -
+--
+
+SELECT pg_catalog.setval('public.distribucion_fondos_id_seq', 5, true);
+
+
+--
+-- Name: gastos_id_seq; Type: SEQUENCE SET; Schema: public; Owner: -
+--
+
+SELECT pg_catalog.setval('public.gastos_id_seq', 1269, true);
+
+
+--
+-- Name: importaciones_id_seq; Type: SEQUENCE SET; Schema: public; Owner: -
+--
+
+SELECT pg_catalog.setval('public.importaciones_id_seq', 49, true);
+
+
+--
+-- Name: movimientos_stock_id_seq; Type: SEQUENCE SET; Schema: public; Owner: -
+--
+
+SELECT pg_catalog.setval('public.movimientos_stock_id_seq', 7, true);
+
+
+--
+-- Name: operaciones_cambio_id_seq; Type: SEQUENCE SET; Schema: public; Owner: -
+--
+
+SELECT pg_catalog.setval('public.operaciones_cambio_id_seq', 9, true);
+
+
+--
+-- Name: ordenes_compra_detalle_id_seq; Type: SEQUENCE SET; Schema: public; Owner: -
+--
+
+SELECT pg_catalog.setval('public.ordenes_compra_detalle_id_seq', 1, false);
+
+
+--
+-- Name: ordenes_compra_id_seq; Type: SEQUENCE SET; Schema: public; Owner: -
+--
+
+SELECT pg_catalog.setval('public.ordenes_compra_id_seq', 1, false);
+
+
+--
+-- Name: productos_id_seq; Type: SEQUENCE SET; Schema: public; Owner: -
+--
+
+SELECT pg_catalog.setval('public.productos_id_seq', 125, true);
+
+
+--
+-- Name: proveedores_id_seq; Type: SEQUENCE SET; Schema: public; Owner: -
+--
+
+SELECT pg_catalog.setval('public.proveedores_id_seq', 5, true);
+
+
+--
+-- Name: roles_id_seq; Type: SEQUENCE SET; Schema: public; Owner: -
+--
+
+SELECT pg_catalog.setval('public.roles_id_seq', 6, true);
+
+
+--
+-- Name: tasas_cambio_id_seq; Type: SEQUENCE SET; Schema: public; Owner: -
+--
+
+SELECT pg_catalog.setval('public.tasas_cambio_id_seq', 1, true);
+
+
+--
+-- Name: transacciones_id_seq; Type: SEQUENCE SET; Schema: public; Owner: -
+--
+
+SELECT pg_catalog.setval('public.transacciones_id_seq', 34, true);
+
+
+--
+-- Name: unidades_inventario_id_seq; Type: SEQUENCE SET; Schema: public; Owner: -
+--
+
+SELECT pg_catalog.setval('public.unidades_inventario_id_seq', 3406, true);
+
+
+--
+-- Name: usuarios_id_seq; Type: SEQUENCE SET; Schema: public; Owner: -
+--
+
+SELECT pg_catalog.setval('public.usuarios_id_seq', 7, true);
+
+
+--
+-- Name: ventas_detalle_id_seq; Type: SEQUENCE SET; Schema: public; Owner: -
+--
+
+SELECT pg_catalog.setval('public.ventas_detalle_id_seq', 3042, true);
+
+
+--
+-- Name: ventas_id_seq; Type: SEQUENCE SET; Schema: public; Owner: -
+--
+
+SELECT pg_catalog.setval('public.ventas_id_seq', 1410, true);
+
+
+--
+-- Name: ventas_pagos_id_seq; Type: SEQUENCE SET; Schema: public; Owner: -
+--
+
+SELECT pg_catalog.setval('public.ventas_pagos_id_seq', 1443, true);
+
+
+--
+-- Name: alertas_stock alertas_stock_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.alertas_stock
+    ADD CONSTRAINT alertas_stock_pkey PRIMARY KEY (id);
+
+
+--
+-- Name: categorias_gasto categorias_gasto_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.categorias_gasto
+    ADD CONSTRAINT categorias_gasto_pkey PRIMARY KEY (id);
+
+
+--
+-- Name: categorias categorias_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.categorias
+    ADD CONSTRAINT categorias_pkey PRIMARY KEY (id);
+
+
+--
+-- Name: clientes clientes_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.clientes
+    ADD CONSTRAINT clientes_pkey PRIMARY KEY (id);
+
+
+--
+-- Name: costos_importacion costos_importacion_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.costos_importacion
+    ADD CONSTRAINT costos_importacion_pkey PRIMARY KEY (id);
+
+
+--
+-- Name: distribucion_fondos distribucion_fondos_concepto_key; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.distribucion_fondos
+    ADD CONSTRAINT distribucion_fondos_concepto_key UNIQUE (concepto);
+
+
+--
+-- Name: distribucion_fondos distribucion_fondos_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.distribucion_fondos
+    ADD CONSTRAINT distribucion_fondos_pkey PRIMARY KEY (id);
+
+
+--
+-- Name: gastos gastos_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.gastos
+    ADD CONSTRAINT gastos_pkey PRIMARY KEY (id);
+
+
+--
+-- Name: importaciones importaciones_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.importaciones
+    ADD CONSTRAINT importaciones_pkey PRIMARY KEY (id);
+
+
+--
+-- Name: movimientos_stock movimientos_stock_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.movimientos_stock
+    ADD CONSTRAINT movimientos_stock_pkey PRIMARY KEY (id);
+
+
+--
+-- Name: operaciones_cambio operaciones_cambio_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.operaciones_cambio
+    ADD CONSTRAINT operaciones_cambio_pkey PRIMARY KEY (id);
+
+
+--
+-- Name: ordenes_compra_detalle ordenes_compra_detalle_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.ordenes_compra_detalle
+    ADD CONSTRAINT ordenes_compra_detalle_pkey PRIMARY KEY (id);
+
+
+--
+-- Name: ordenes_compra ordenes_compra_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.ordenes_compra
+    ADD CONSTRAINT ordenes_compra_pkey PRIMARY KEY (id);
+
+
+--
+-- Name: productos productos_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.productos
+    ADD CONSTRAINT productos_pkey PRIMARY KEY (id);
+
+
+--
+-- Name: proveedores proveedores_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.proveedores
+    ADD CONSTRAINT proveedores_pkey PRIMARY KEY (id);
+
+
+--
+-- Name: roles roles_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.roles
+    ADD CONSTRAINT roles_pkey PRIMARY KEY (id);
+
+
+--
+-- Name: tasas_cambio tasas_cambio_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.tasas_cambio
+    ADD CONSTRAINT tasas_cambio_pkey PRIMARY KEY (id);
+
+
+--
+-- Name: transacciones transacciones_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.transacciones
+    ADD CONSTRAINT transacciones_pkey PRIMARY KEY (id);
+
+
+--
+-- Name: unidades_inventario unidades_inventario_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.unidades_inventario
+    ADD CONSTRAINT unidades_inventario_pkey PRIMARY KEY (id);
+
+
+--
+-- Name: usuarios usuarios_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.usuarios
+    ADD CONSTRAINT usuarios_pkey PRIMARY KEY (id);
+
+
+--
+-- Name: ventas_detalle ventas_detalle_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.ventas_detalle
+    ADD CONSTRAINT ventas_detalle_pkey PRIMARY KEY (id);
+
+
+--
+-- Name: ventas_pagos ventas_pagos_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.ventas_pagos
+    ADD CONSTRAINT ventas_pagos_pkey PRIMARY KEY (id);
+
+
+--
+-- Name: ventas ventas_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.ventas
+    ADD CONSTRAINT ventas_pkey PRIMARY KEY (id);
+
+
+--
+-- Name: categorias_gasto_nombre_key; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE UNIQUE INDEX categorias_gasto_nombre_key ON public.categorias_gasto USING btree (nombre);
+
+
+--
+-- Name: categorias_nombre_key; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE UNIQUE INDEX categorias_nombre_key ON public.categorias USING btree (nombre);
+
+
+--
+-- Name: importaciones_factura_key; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE UNIQUE INDEX importaciones_factura_key ON public.importaciones USING btree (factura);
+
+
+--
+-- Name: ordenes_compra_numero_orden_key; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE UNIQUE INDEX ordenes_compra_numero_orden_key ON public.ordenes_compra USING btree (numero_orden);
+
+
+--
+-- Name: productos_codigo_key; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE UNIQUE INDEX productos_codigo_key ON public.productos USING btree (codigo);
+
+
+--
+-- Name: roles_nombre_key; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE UNIQUE INDEX roles_nombre_key ON public.roles USING btree (nombre);
+
+
+--
+-- Name: tasas_cambio_fecha_moneda_origen_moneda_destino_tipo_key; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE UNIQUE INDEX tasas_cambio_fecha_moneda_origen_moneda_destino_tipo_key ON public.tasas_cambio USING btree (fecha, moneda_origen, moneda_destino, tipo);
+
+
+--
+-- Name: unidades_inventario_cliente_id_idx; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX unidades_inventario_cliente_id_idx ON public.unidades_inventario USING btree (cliente_id);
+
+
+--
+-- Name: unidades_inventario_estado_idx; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX unidades_inventario_estado_idx ON public.unidades_inventario USING btree (estado);
+
+
+--
+-- Name: unidades_inventario_producto_id_idx; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX unidades_inventario_producto_id_idx ON public.unidades_inventario USING btree (producto_id);
+
+
+--
+-- Name: unidades_inventario_serial_key; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE UNIQUE INDEX unidades_inventario_serial_key ON public.unidades_inventario USING btree (serial);
+
+
+--
+-- Name: usuarios_email_key; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE UNIQUE INDEX usuarios_email_key ON public.usuarios USING btree (email);
+
+
+--
+-- Name: ventas_numero_orden_key; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE UNIQUE INDEX ventas_numero_orden_key ON public.ventas USING btree (numero_orden);
+
+
+--
+-- Name: alertas_stock alertas_stock_producto_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.alertas_stock
+    ADD CONSTRAINT alertas_stock_producto_id_fkey FOREIGN KEY (producto_id) REFERENCES public.productos(id) ON UPDATE CASCADE ON DELETE RESTRICT;
+
+
+--
+-- Name: costos_importacion costos_importacion_importacion_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.costos_importacion
+    ADD CONSTRAINT costos_importacion_importacion_id_fkey FOREIGN KEY (importacion_id) REFERENCES public.importaciones(id) ON UPDATE CASCADE ON DELETE RESTRICT;
+
+
+--
+-- Name: costos_importacion costos_importacion_producto_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.costos_importacion
+    ADD CONSTRAINT costos_importacion_producto_id_fkey FOREIGN KEY (producto_id) REFERENCES public.productos(id) ON UPDATE CASCADE ON DELETE RESTRICT;
+
+
+--
+-- Name: gastos gastos_categoria_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.gastos
+    ADD CONSTRAINT gastos_categoria_id_fkey FOREIGN KEY (categoria_id) REFERENCES public.categorias_gasto(id) ON UPDATE CASCADE ON DELETE RESTRICT;
+
+
+--
+-- Name: importaciones importaciones_proveedor_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.importaciones
+    ADD CONSTRAINT importaciones_proveedor_id_fkey FOREIGN KEY (proveedor_id) REFERENCES public.proveedores(id) ON UPDATE CASCADE ON DELETE RESTRICT;
+
+
+--
+-- Name: movimientos_stock movimientos_stock_producto_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.movimientos_stock
+    ADD CONSTRAINT movimientos_stock_producto_id_fkey FOREIGN KEY (producto_id) REFERENCES public.productos(id) ON UPDATE CASCADE ON DELETE RESTRICT;
+
+
+--
+-- Name: ordenes_compra_detalle ordenes_compra_detalle_orden_compra_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.ordenes_compra_detalle
+    ADD CONSTRAINT ordenes_compra_detalle_orden_compra_id_fkey FOREIGN KEY (orden_compra_id) REFERENCES public.ordenes_compra(id) ON UPDATE CASCADE ON DELETE CASCADE;
+
+
+--
+-- Name: ordenes_compra_detalle ordenes_compra_detalle_producto_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.ordenes_compra_detalle
+    ADD CONSTRAINT ordenes_compra_detalle_producto_id_fkey FOREIGN KEY (producto_id) REFERENCES public.productos(id) ON UPDATE CASCADE ON DELETE RESTRICT;
+
+
+--
+-- Name: ordenes_compra ordenes_compra_importacion_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.ordenes_compra
+    ADD CONSTRAINT ordenes_compra_importacion_id_fkey FOREIGN KEY (importacion_id) REFERENCES public.importaciones(id) ON UPDATE CASCADE ON DELETE SET NULL;
+
+
+--
+-- Name: ordenes_compra ordenes_compra_proveedor_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.ordenes_compra
+    ADD CONSTRAINT ordenes_compra_proveedor_id_fkey FOREIGN KEY (proveedor_id) REFERENCES public.proveedores(id) ON UPDATE CASCADE ON DELETE RESTRICT;
+
+
+--
+-- Name: productos productos_categoria_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.productos
+    ADD CONSTRAINT productos_categoria_id_fkey FOREIGN KEY (categoria_id) REFERENCES public.categorias(id) ON UPDATE CASCADE ON DELETE SET NULL;
+
+
+--
+-- Name: transacciones transacciones_cliente_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.transacciones
+    ADD CONSTRAINT transacciones_cliente_id_fkey FOREIGN KEY (cliente_id) REFERENCES public.clientes(id) ON UPDATE CASCADE ON DELETE SET NULL;
+
+
+--
+-- Name: transacciones transacciones_producto_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.transacciones
+    ADD CONSTRAINT transacciones_producto_id_fkey FOREIGN KEY (producto_id) REFERENCES public.productos(id) ON UPDATE CASCADE ON DELETE RESTRICT;
+
+
+--
+-- Name: transacciones transacciones_usuario_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.transacciones
+    ADD CONSTRAINT transacciones_usuario_id_fkey FOREIGN KEY (usuario_id) REFERENCES public.usuarios(id) ON UPDATE CASCADE ON DELETE RESTRICT;
+
+
+--
+-- Name: unidades_inventario unidades_inventario_cliente_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.unidades_inventario
+    ADD CONSTRAINT unidades_inventario_cliente_id_fkey FOREIGN KEY (cliente_id) REFERENCES public.clientes(id) ON UPDATE CASCADE ON DELETE SET NULL;
+
+
+--
+-- Name: unidades_inventario unidades_inventario_producto_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.unidades_inventario
+    ADD CONSTRAINT unidades_inventario_producto_id_fkey FOREIGN KEY (producto_id) REFERENCES public.productos(id) ON UPDATE CASCADE ON DELETE RESTRICT;
+
+
+--
+-- Name: usuarios usuarios_rol_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.usuarios
+    ADD CONSTRAINT usuarios_rol_id_fkey FOREIGN KEY (rol_id) REFERENCES public.roles(id) ON UPDATE CASCADE ON DELETE RESTRICT;
+
+
+--
+-- Name: ventas ventas_cliente_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.ventas
+    ADD CONSTRAINT ventas_cliente_id_fkey FOREIGN KEY (cliente_id) REFERENCES public.clientes(id) ON UPDATE CASCADE ON DELETE RESTRICT;
+
+
+--
+-- Name: ventas_detalle ventas_detalle_producto_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.ventas_detalle
+    ADD CONSTRAINT ventas_detalle_producto_id_fkey FOREIGN KEY (producto_id) REFERENCES public.productos(id) ON UPDATE CASCADE ON DELETE RESTRICT;
+
+
+--
+-- Name: ventas_detalle ventas_detalle_venta_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.ventas_detalle
+    ADD CONSTRAINT ventas_detalle_venta_id_fkey FOREIGN KEY (venta_id) REFERENCES public.ventas(id) ON UPDATE CASCADE ON DELETE CASCADE;
+
+
+--
+-- Name: ventas_pagos ventas_pagos_venta_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.ventas_pagos
+    ADD CONSTRAINT ventas_pagos_venta_id_fkey FOREIGN KEY (venta_id) REFERENCES public.ventas(id) ON UPDATE CASCADE ON DELETE CASCADE;
+
+
+--
+-- Name: ventas ventas_usuario_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.ventas
+    ADD CONSTRAINT ventas_usuario_id_fkey FOREIGN KEY (usuario_id) REFERENCES public.usuarios(id) ON UPDATE CASCADE ON DELETE RESTRICT;
+
+
+--
+-- PostgreSQL database dump complete
+--
+
+
