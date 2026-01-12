@@ -34,7 +34,7 @@ export class VentasService {
     }
 
     // Crear venta con transacción
-    const venta = await this.prisma.$transaction(async (tx) => {
+    const venta = await this.prisma.$transaction(async (tx: any) => {
       // Crear la venta
       const nuevaVenta = await tx.venta.create({
         data: {
@@ -281,7 +281,7 @@ export class VentasService {
       const nombreDia = i === 0 ? 'Hoy' : i === 1 ? 'Ayer' : diasSemana[fecha.getDay()];
 
       // Filtrar ventas de este día
-      const ventasDelDia = ventas.filter((v) => {
+      const ventasDelDia = ventas.filter((v: { fecha: Date; total: any; detalles: any[] }) => {
         const ventaFecha = new Date(v.fecha);
         ventaFecha.setHours(0, 0, 0, 0);
         return ventaFecha.getTime() === fecha.getTime();

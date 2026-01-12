@@ -72,12 +72,12 @@ export class ReportesService {
         take: limit,
       });
 
-      const clienteIds = ventasPorCliente.map(v => v.clienteId);
+      const clienteIds = ventasPorCliente.map((v: { clienteId: number }) => v.clienteId);
       const clientes = await this.prisma.cliente.findMany({
         where: { id: { in: clienteIds } },
         select: { id: true, nombre: true, telefono: true, createdAt: true },
       });
-      const clientesMap = new Map(clientes.map(c => [c.id, c]));
+      const clientesMap = new Map(clientes.map((c: { id: number; nombre: string; telefono: string | null; createdAt: Date }) => [c.id, c]));
 
       return ventasPorCliente.map((v, index) => {
         const cliente = clientesMap.get(v.clienteId);
@@ -110,7 +110,7 @@ export class ReportesService {
       },
     });
 
-    return clientes.map((c, index) => ({
+    return clientes.map((c: { id: number; nombre: string; telefono: string | null; totalCompras: any; cantidadOrdenes: number | null; createdAt: Date }, index: number) => ({
       posicion: index + 1,
       id: c.id,
       nombre: c.nombre,
@@ -142,7 +142,7 @@ export class ReportesService {
     });
 
     // Obtener detalles de los productos
-    const productosIds = productosVendidos.map(p => p.productoId);
+    const productosIds = productosVendidos.map((p: { productoId: number }) => p.productoId);
     const productos = await this.prisma.producto.findMany({
       where: { id: { in: productosIds } },
       select: {
@@ -329,7 +329,7 @@ export class ReportesService {
     ]);
 
     // Calcular metricas clave
-    const totalVentasMes = topProductos.reduce((sum, p) => sum + p.ingresos, 0);
+    const totalVentasMes = topProductos.reduce((sum: number, p: { ingresos: number }) => sum + p.ingresos, 0);
     const totalUtilidadMes = utilidades.mesActual.utilidad;
     const margenPromedio = totalVentasMes > 0 ? (totalUtilidadMes / totalVentasMes) * 100 : 0;
 
@@ -371,8 +371,9 @@ export class ReportesService {
       });
 
       const totalVentas = Number(ventas._sum.total) || 0;
-      const totalUnidades = detalles.reduce((sum, d) => sum + d.cantidad, 0);
-      const totalCosto = detalles.reduce((sum, d) => {
+      type DetalleVenta = { cantidad: number; producto: { precioCosto: any } | null };
+      const totalUnidades = detalles.reduce((sum: number, d: DetalleVenta) => sum + d.cantidad, 0);
+      const totalCosto = detalles.reduce((sum: number, d: DetalleVenta) => {
         return sum + (d.cantidad * (Number(d.producto?.precioCosto) || 0));
       }, 0);
 

@@ -165,7 +165,7 @@ export class ProductosService {
 
     return {
       totalProductos: total,
-      porEstado: porEstado.reduce((acc: Record<string, number>, item) => {
+      porEstado: porEstado.reduce((acc: Record<string, number>, item: { estado: string; _count: number }) => {
         acc[item.estado] = item._count;
         return acc;
       }, {}),
