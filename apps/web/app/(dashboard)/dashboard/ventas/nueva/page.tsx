@@ -150,16 +150,12 @@ export default function NuevaVentaPage() {
   // Cargar seriales disponibles para un producto
   const cargarSerialesProducto = async (productoId: number): Promise<UnidadInventario[]> => {
     try {
-      const response = await inventarioApi.listarSerialesPorProducto(productoId, { estado: 'DISPONIBLE', limit: 100 });
-      console.log(`Seriales para producto ${productoId}:`, response);
-      return response.unidades || [];
-    } catch (error) {
+      const response = await inventarioApi.listarSerialesPorProducto(productoId, { estado: 'DISPONIBLE' as any, limit: 100 });
+      return response?.unidades || [];
+    } catch (error: any) {
       console.error('Error cargando seriales:', error);
-      toast({
-        title: 'Error cargando seriales',
-        description: 'No se pudieron cargar los seriales del producto',
-        variant: 'destructive',
-      });
+      // No mostrar error - simplemente no hay seriales o el producto no tiene
+      // Los productos sin seriales registrados simplemente mostraran lista vacia
       return [];
     }
   };
@@ -297,6 +293,14 @@ export default function NuevaVentaPage() {
             // Limpiar seriales si la cantidad cambia y hay más seriales que cantidad
             serialesSeleccionados: item.serialesSeleccionados.slice(0, nuevaCantidad)
           }
+        : item
+    ));
+  };
+
+  const actualizarPrecioUnitario = (productoId: number, precio: number) => {
+    setCarrito(carrito.map(item =>
+      item.producto.id === productoId
+        ? { ...item, precioUnitario: Math.max(0, precio) }
         : item
     ));
   };
@@ -475,11 +479,25 @@ export default function NuevaVentaPage() {
                   <div key={item.producto.id} className="p-4">
                     <div className="flex items-center gap-4">
                       {/* Info producto */}
-                      <div className="flex-1">
-                        <p className="font-medium">{item.producto.nombre}</p>
-                        <p className="text-sm text-muted-foreground">
-                          {formatCurrency(item.precioUnitario)} c/u
+                      <div className="flex-1 min-w-0">
+                        <p className="font-medium truncate">{item.producto.nombre}</p>
+                        <p className="text-xs text-muted-foreground">
+                          Precio lista: {formatCurrency(Number(item.producto.precioElevapartes))}
                         </p>
+                      </div>
+
+                      {/* Precio Unitario Editable */}
+                      <div className="flex items-center gap-1">
+                        <span className="text-xs text-muted-foreground">$</span>
+                        <Input
+                          type="number"
+                          step="0.01"
+                          min="0"
+                          value={item.precioUnitario || ''}
+                          onChange={(e) => actualizarPrecioUnitario(item.producto.id, parseFloat(e.target.value) || 0)}
+                          className="h-8 w-20 text-center"
+                          placeholder="Precio"
+                        />
                       </div>
 
                       {/* Cantidad */}
