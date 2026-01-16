@@ -353,6 +353,34 @@ export default function NuevaVentaPage() {
     }));
   };
 
+  const agregarSerialManual = (productoId: number, serial: string) => {
+    if (!serial) return;
+
+    setCarrito(carrito.map(item => {
+      if (item.producto.id !== productoId) return item;
+
+      // Verificar si ya existe
+      if (item.serialesSeleccionados.includes(serial)) {
+        toast({ title: 'Serial ya agregado', variant: 'destructive' });
+        return item;
+      }
+
+      // Verificar stock
+      if (item.serialesSeleccionados.length >= item.producto.stockActual) {
+        toast({ title: 'Stock insuficiente', variant: 'destructive' });
+        return item;
+      }
+
+      toast({ title: `Serial ${serial} agregado`, variant: 'success' });
+
+      return {
+        ...item,
+        serialesSeleccionados: [...item.serialesSeleccionados, serial],
+        cantidad: item.serialesSeleccionados.length + 1,
+      };
+    }));
+  };
+
   const limpiarVenta = () => {
     setClienteSeleccionado(null);
     setCarrito([]);
@@ -593,34 +621,77 @@ export default function NuevaVentaPage() {
 
                       {/* Panel expandible de seriales */}
                       {item.mostrarSeriales && !item.cargandoSeriales && (
-                        <div className="mt-2 rounded-lg border bg-muted/30 p-2">
-                          {item.serialesDisponibles.length === 0 ? (
+                        <div className="mt-2 rounded-lg border bg-muted/30 p-2 space-y-2">
+                          {/* Input para serial manual */}
+                          <div className="flex gap-2">
+                            <Input
+                              placeholder="Escribir serial manualmente..."
+                              className="h-8 text-xs font-mono flex-1"
+                              onKeyDown={(e) => {
+                                if (e.key === 'Enter') {
+                                  const input = e.target as HTMLInputElement;
+                                  const serial = input.value.trim().toUpperCase();
+                                  if (serial && !item.serialesSeleccionados.includes(serial)) {
+                                    agregarSerialManual(item.producto.id, serial);
+                                    input.value = '';
+                                  }
+                                }
+                              }}
+                            />
+                            <Button
+                              type="button"
+                              size="sm"
+                              variant="secondary"
+                              className="h-8 text-xs"
+                              onClick={(e) => {
+                                const input = (e.target as HTMLElement).parentElement?.querySelector('input') as HTMLInputElement;
+                                if (input) {
+                                  const serial = input.value.trim().toUpperCase();
+                                  if (serial && !item.serialesSeleccionados.includes(serial)) {
+                                    agregarSerialManual(item.producto.id, serial);
+                                    input.value = '';
+                                  }
+                                }
+                              }}
+                            >
+                              <Plus className="h-3 w-3 mr-1" />
+                              Agregar
+                            </Button>
+                          </div>
+
+                          {/* Seriales disponibles del sistema */}
+                          {item.serialesDisponibles.length > 0 && (
+                            <>
+                              <p className="text-xs text-muted-foreground">Seriales disponibles:</p>
+                              <div className="grid grid-cols-2 gap-1 sm:grid-cols-3 md:grid-cols-4">
+                                {item.serialesDisponibles.map(unidad => {
+                                  const seleccionado = item.serialesSeleccionados.includes(unidad.serial);
+                                  return (
+                                    <button
+                                      key={unidad.serial}
+                                      onClick={() => toggleSerial(item.producto.id, unidad.serial)}
+                                      className={`flex items-center gap-1 rounded px-2 py-1 text-xs transition-colors ${
+                                        seleccionado
+                                          ? 'bg-primary text-primary-foreground'
+                                          : 'bg-background hover:bg-muted'
+                                      }`}
+                                    >
+                                      <Checkbox
+                                        checked={seleccionado}
+                                        className="h-3 w-3"
+                                      />
+                                      <span className="font-mono">{unidad.serial}</span>
+                                    </button>
+                                  );
+                                })}
+                              </div>
+                            </>
+                          )}
+
+                          {item.serialesDisponibles.length === 0 && item.serialesSeleccionados.length === 0 && (
                             <p className="text-xs text-muted-foreground">
-                              No hay seriales disponibles. Importa stock con seriales desde Inventario → Importar Stock
+                              No hay seriales en el sistema. Escribe el serial manualmente arriba.
                             </p>
-                          ) : (
-                            <div className="grid grid-cols-2 gap-1 sm:grid-cols-3 md:grid-cols-4">
-                              {item.serialesDisponibles.map(unidad => {
-                                const seleccionado = item.serialesSeleccionados.includes(unidad.serial);
-                                return (
-                                  <button
-                                    key={unidad.serial}
-                                    onClick={() => toggleSerial(item.producto.id, unidad.serial)}
-                                    className={`flex items-center gap-1 rounded px-2 py-1 text-xs transition-colors ${
-                                      seleccionado
-                                        ? 'bg-primary text-primary-foreground'
-                                        : 'bg-background hover:bg-muted'
-                                    }`}
-                                  >
-                                    <Checkbox
-                                      checked={seleccionado}
-                                      className="h-3 w-3"
-                                    />
-                                    <span className="font-mono">{unidad.serial}</span>
-                                  </button>
-                                );
-                              })}
-                            </div>
                           )}
                         </div>
                       )}
