@@ -201,23 +201,27 @@ export class VentasService {
   }
 
   async getEstadisticasVentas(fechaDesde?: Date, fechaHasta?: Date) {
-    // Usar transacciones para estadísticas ya que ahí están los datos migrados
+    // Usar la tabla ventas para estadísticas del mes actual
     const now = new Date();
-    const currentMonth = now.getMonth() + 1;
-    const currentYear = now.getFullYear();
+    const primerDiaMes = new Date(now.getFullYear(), now.getMonth(), 1);
+    const ultimoDiaMes = new Date(now.getFullYear(), now.getMonth() + 1, 0, 23, 59, 59, 999);
 
     const [totalVentasResult, cantidadVentas] = await Promise.all([
-      this.prisma.transaccion.aggregate({
+      this.prisma.venta.aggregate({
         where: {
-          mes: currentMonth,
-          anio: currentYear,
+          fecha: {
+            gte: primerDiaMes,
+            lte: ultimoDiaMes,
+          },
         },
         _sum: { total: true },
       }),
-      this.prisma.transaccion.count({
+      this.prisma.venta.count({
         where: {
-          mes: currentMonth,
-          anio: currentYear,
+          fecha: {
+            gte: primerDiaMes,
+            lte: ultimoDiaMes,
+          },
         },
       }),
     ]);
