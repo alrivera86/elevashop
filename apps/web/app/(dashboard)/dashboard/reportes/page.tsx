@@ -18,6 +18,7 @@ import {
   ArrowDownRight,
   Calendar,
   CalendarDays,
+  Check,
 } from 'lucide-react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import {
@@ -127,13 +128,27 @@ function KPICard({
 
 export default function ReportesPage() {
   const [filtroFecha, setFiltroFecha] = useState<FiltroFecha>('todo');
-  const [fechaDesdeCustom, setFechaDesdeCustom] = useState('');
-  const [fechaHastaCustom, setFechaHastaCustom] = useState('');
+  // Fechas temporales (mientras el usuario edita)
+  const [fechaDesdeTmp, setFechaDesdeTmp] = useState('');
+  const [fechaHastaTmp, setFechaHastaTmp] = useState('');
+  // Fechas aplicadas (las que se usan en la query)
+  const [fechaDesdeAplicada, setFechaDesdeAplicada] = useState('');
+  const [fechaHastaAplicada, setFechaHastaAplicada] = useState('');
 
   const fechas = useMemo(
-    () => getFechasFiltro(filtroFecha, fechaDesdeCustom, fechaHastaCustom),
-    [filtroFecha, fechaDesdeCustom, fechaHastaCustom]
+    () => getFechasFiltro(filtroFecha, fechaDesdeAplicada, fechaHastaAplicada),
+    [filtroFecha, fechaDesdeAplicada, fechaHastaAplicada]
   );
+
+  // Aplicar fechas personalizadas
+  const aplicarFechas = () => {
+    setFechaDesdeAplicada(fechaDesdeTmp);
+    setFechaHastaAplicada(fechaHastaTmp);
+  };
+
+  // Verificar si hay cambios sin aplicar
+  const hayFechasSinAplicar = filtroFecha === 'personalizado' &&
+    (fechaDesdeTmp !== fechaDesdeAplicada || fechaHastaTmp !== fechaHastaAplicada);
 
   const { data: dashboard, isLoading, isFetching } = useQuery({
     queryKey: ['dashboard-bi', fechas.desde, fechas.hasta],
@@ -212,17 +227,25 @@ export default function ReportesPage() {
               <div className="flex items-center gap-2 ml-2">
                 <Input
                   type="date"
-                  value={fechaDesdeCustom}
-                  onChange={(e) => setFechaDesdeCustom(e.target.value)}
+                  value={fechaDesdeTmp}
+                  onChange={(e) => setFechaDesdeTmp(e.target.value)}
                   className="w-36 h-8"
                 />
                 <span className="text-sm text-muted-foreground">a</span>
                 <Input
                   type="date"
-                  value={fechaHastaCustom}
-                  onChange={(e) => setFechaHastaCustom(e.target.value)}
+                  value={fechaHastaTmp}
+                  onChange={(e) => setFechaHastaTmp(e.target.value)}
                   className="w-36 h-8"
                 />
+                <Button
+                  size="sm"
+                  onClick={aplicarFechas}
+                  disabled={!fechaDesdeTmp || !fechaHastaTmp}
+                  variant={hayFechasSinAplicar ? 'default' : 'outline'}
+                >
+                  {hayFechasSinAplicar ? 'Aplicar' : <Check className="h-4 w-4" />}
+                </Button>
               </div>
             )}
 
