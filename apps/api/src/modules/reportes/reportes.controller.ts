@@ -24,7 +24,9 @@ export class ReportesController {
     @Query('fechaDesde') fechaDesde?: string,
     @Query('fechaHasta') fechaHasta?: string,
   ) {
-    const desde = fechaDesde ? new Date(fechaDesde) : undefined;
+    // Parsear fechas correctamente para evitar problemas de timezone
+    // Agregar T00:00:00 para que se interprete en hora local
+    const desde = fechaDesde ? new Date(fechaDesde + 'T00:00:00') : undefined;
     const hasta = fechaHasta ? new Date(fechaHasta + 'T23:59:59') : undefined;
     return this.reportesService.getDashboardBI(desde, hasta);
   }
