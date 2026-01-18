@@ -4,8 +4,8 @@
 
 | Parámetro | Valor |
 |-----------|-------|
-| **Base URL Producción** | `https://elevashop-api.onrender.com` |
-| **Base URL Local** | `http://localhost:4050` |
+| **Base URL Producción** | `https://elevashop-api.onrender.com/api/v1` |
+| **Base URL Local** | `http://localhost:4050/api/v1` |
 | **Autenticación** | JWT Bearer Token |
 | **Content-Type** | `application/json` |
 
