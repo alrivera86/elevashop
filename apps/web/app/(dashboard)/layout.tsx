@@ -4,6 +4,7 @@ import { useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { Sidebar } from '@/components/layout/sidebar';
 import { Header } from '@/components/layout/header';
+import { TasaDolarBanner } from '@/components/tasa-dolar-banner';
 import { useAuthStore } from '@/stores/auth-store';
 import { Skeleton } from '@/components/ui/skeleton';
 
@@ -46,6 +47,7 @@ export default function DashboardLayout({
       <div className="flex flex-1 flex-col overflow-hidden">
         <Header />
         <main className="flex-1 overflow-y-auto bg-muted/30 p-4 lg:p-6">
+          <TasaDolarBanner />
           {children}
         </main>
       </div>

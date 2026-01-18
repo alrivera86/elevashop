@@ -1,6 +1,7 @@
 import { Controller, Get, Post, Body, Query, UseGuards, ParseIntPipe } from '@nestjs/common';
 import { ApiTags, ApiOperation, ApiBearerAuth, ApiQuery } from '@nestjs/swagger';
 import { FinanzasService } from './finanzas.service';
+import { BinanceP2PService } from './binance-p2p.service';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { SetTasaCambioDto, CreateGastoDto } from './dto/finanzas.dto';
 
@@ -9,7 +10,10 @@ import { SetTasaCambioDto, CreateGastoDto } from './dto/finanzas.dto';
 @UseGuards(JwtAuthGuard)
 @ApiBearerAuth()
 export class FinanzasController {
-  constructor(private readonly finanzasService: FinanzasService) {}
+  constructor(
+    private readonly finanzasService: FinanzasService,
+    private readonly binanceP2PService: BinanceP2PService,
+  ) {}
 
   @Get('gastos-mensuales')
   @ApiOperation({ summary: 'Gastos mensuales por año' })
@@ -100,5 +104,17 @@ export class FinanzasController {
   @ApiOperation({ summary: 'Distribución de fondos por método de pago' })
   getDistribucionFondos() {
     return this.finanzasService.getDistribucionFondos();
+  }
+
+  @Get('tasa-dolar')
+  @ApiOperation({ summary: 'Tasa del dólar actual desde Binance P2P' })
+  getTasaDolar() {
+    return this.binanceP2PService.getCurrentRate();
+  }
+
+  @Post('tasa-dolar/actualizar')
+  @ApiOperation({ summary: 'Forzar actualización de la tasa desde Binance P2P' })
+  actualizarTasaDolar() {
+    return this.binanceP2PService.updateRate();
   }
 }

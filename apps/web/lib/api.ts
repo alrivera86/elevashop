@@ -248,6 +248,13 @@ export interface DistribucionFondos {
   };
 }
 
+export interface TasaDolar {
+  rate: number;
+  source: string;
+  updatedAt: string;
+  nextUpdate: string;
+}
+
 export const finanzasApi = {
   getTasaCambio: () => get<TasaCambio>('/finanzas/tasa-cambio'),
   setTasaCambio: (tasa: number) => post<TasaCambio>('/finanzas/tasa-cambio', { tasa }),
@@ -257,6 +264,8 @@ export const finanzasApi = {
   getResumen: (params?: { desde?: string; hasta?: string }) =>
     get<FinanzasResumen>('/finanzas/resumen', { params }),
   getDistribucionFondos: () => get<DistribucionFondos>('/finanzas/distribucion-fondos'),
+  getTasaDolar: () => get<TasaDolar>('/finanzas/tasa-dolar'),
+  actualizarTasaDolar: () => post<TasaDolar>('/finanzas/tasa-dolar/actualizar'),
 };
 
 export const reportesApi = {
