@@ -26,6 +26,17 @@ export function TasaDolarSidebar() {
     }
   };
 
+  const formatDate = (dateString: string) => {
+    const date = new Date(dateString);
+    return date.toLocaleDateString('es-VE', {
+      day: '2-digit',
+      month: '2-digit',
+      year: '2-digit',
+      hour: '2-digit',
+      minute: '2-digit',
+    });
+  };
+
   if (isLoading) {
     return (
       <div className="mx-3 mb-2 rounded-lg border border-green-200 bg-green-50/50 px-3 py-2 dark:border-green-800 dark:bg-green-950/50">
@@ -55,15 +66,10 @@ export function TasaDolarSidebar() {
 
   return (
     <div className="mx-3 mb-2 rounded-lg border border-green-200 bg-green-50/50 px-3 py-2 dark:border-green-800 dark:bg-green-950/50">
-      <div className="flex items-center justify-between">
-        <div className="flex items-center gap-2">
-          <span className="text-lg font-bold text-green-700 dark:text-green-300">
-            Bs {tasa.rate.toLocaleString('es-VE', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
-          </span>
-          <span className="rounded bg-green-100 px-1 py-0.5 text-[10px] font-medium text-green-600 dark:bg-green-900 dark:text-green-400">
-            P2P
-          </span>
-        </div>
+      <div className="flex items-center justify-between mb-1">
+        <span className="text-lg font-bold text-green-700 dark:text-green-300">
+          Bs {tasa.rate.toLocaleString('es-VE', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+        </span>
         <Button
           variant="ghost"
           size="icon"
@@ -74,9 +80,13 @@ export function TasaDolarSidebar() {
           <RefreshCw className={`h-3.5 w-3.5 ${isRefreshing ? 'animate-spin' : ''}`} />
         </Button>
       </div>
-      <p className="text-[10px] text-muted-foreground">
-        Prox: {tasa.nextUpdate}
+      <p className="text-[10px] font-medium text-green-600 dark:text-green-400 mb-0.5">
+        Binance P2P
       </p>
+      <div className="text-[9px] text-muted-foreground space-y-0.5">
+        <p>Actualizado: {formatDate(tasa.updatedAt)}</p>
+        <p>Prox. actualiz: {tasa.nextUpdate}</p>
+      </div>
     </div>
   );
 }
