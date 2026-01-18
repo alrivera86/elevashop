@@ -1,6 +1,7 @@
 import { Module } from '@nestjs/common';
 import { ConfigModule } from '@nestjs/config';
 import { EventEmitterModule } from '@nestjs/event-emitter';
+import { ScheduleModule } from '@nestjs/schedule';
 
 // Módulos de la aplicación
 import { AuthModule } from './modules/auth/auth.module';
@@ -27,6 +28,9 @@ import { PrismaModule } from './config/prisma.module';
 
     // Event Emitter para comunicación entre módulos
     EventEmitterModule.forRoot(),
+
+    // Scheduler para tareas programadas (cron jobs)
+    ScheduleModule.forRoot(),
 
     // Prisma (Base de datos)
     PrismaModule,
