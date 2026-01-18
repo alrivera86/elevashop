@@ -24,6 +24,7 @@ import {
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Sheet, SheetContent, SheetTrigger } from '@/components/ui/sheet';
+import { TasaDolarSidebar } from '@/components/tasa-dolar-sidebar';
 import { useState } from 'react';
 import { useAuthStore } from '@/stores/auth-store';
 
@@ -71,6 +72,9 @@ function SidebarContent({ onNavigate }: { onNavigate?: () => void }) {
           />
         </Link>
       </div>
+
+      {/* Tasa del dolar */}
+      <TasaDolarSidebar />
 
       {/* Navigation */}
       <nav className="flex-1 space-y-1 px-3 py-4">
