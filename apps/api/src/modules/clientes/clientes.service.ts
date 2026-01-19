@@ -49,12 +49,27 @@ export class ClientesService {
         skip,
         take: limit,
         orderBy: { nombre: 'asc' },
+        include: {
+          etiquetas: {
+            include: {
+              etiqueta: {
+                select: { id: true, codigo: true, nombre: true, color: true }
+              }
+            }
+          }
+        }
       }),
       this.prisma.cliente.count({ where }),
     ]);
 
+    // Transformar etiquetas para respuesta más limpia
+    const clientesConEtiquetas = clientes.map(cliente => ({
+      ...cliente,
+      etiquetas: cliente.etiquetas.map(ce => ce.etiqueta)
+    }));
+
     return {
-      clientes,
+      clientes: clientesConEtiquetas,
       pagination: { page, limit, total, totalPages: Math.ceil(total / limit) },
     };
   }
@@ -63,6 +78,13 @@ export class ClientesService {
     const cliente = await this.prisma.cliente.findUnique({
       where: { id },
       include: {
+        etiquetas: {
+          include: {
+            etiqueta: {
+              select: { id: true, codigo: true, nombre: true, color: true }
+            }
+          }
+        },
         ventas: {
           take: 20,
           orderBy: { fecha: 'desc' },
@@ -105,6 +127,7 @@ export class ClientesService {
 
     return {
       ...cliente,
+      etiquetas: cliente.etiquetas.map(ce => ce.etiqueta),
       estadisticas,
     };
   }

@@ -188,8 +188,42 @@ model Cliente {
   ventas             Venta[]
   transacciones      Transaccion[]
   unidadesCompradas  UnidadInventario[]
+  etiquetas          ClienteEtiqueta[]
 
   @@map("clientes")
+}
+
+// ============ ETIQUETAS DE CLIENTES ============
+
+model Etiqueta {
+  id          Int               @id @default(autoincrement())
+  codigo      String            @unique // CLIENTE_VIP, CLIENTE_GENERAL
+  nombre      String            // Cliente VIP, Cliente General
+  descripcion String?
+  color       String            @default("#6B7280") // Color hex para UI
+  activo      Boolean           @default(true)
+  createdAt   DateTime          @default(now()) @map("created_at")
+  updatedAt   DateTime          @updatedAt @map("updated_at")
+
+  // Relaciones
+  clientes    ClienteEtiqueta[]
+
+  @@map("etiquetas")
+}
+
+model ClienteEtiqueta {
+  id          Int      @id @default(autoincrement())
+  clienteId   Int      @map("cliente_id")
+  cliente     Cliente  @relation(fields: [clienteId], references: [id], onDelete: Cascade)
+  etiquetaId  Int      @map("etiqueta_id")
+  etiqueta    Etiqueta @relation(fields: [etiquetaId], references: [id], onDelete: Cascade)
+  asignadoPor String?  @map("asignado_por") // Usuario que asignó la etiqueta
+  createdAt   DateTime @default(now()) @map("created_at")
+
+  @@unique([clienteId, etiquetaId])
+  @@index([clienteId])
+  @@index([etiquetaId])
+  @@map("cliente_etiquetas")
 }
 
 // ============ VENTAS Y TRANSACCIONES ============

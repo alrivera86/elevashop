@@ -475,6 +475,16 @@ export interface InventarioDashboard {
   alertasNoLeidas: number;
 }
 
+export interface Etiqueta {
+  id: number;
+  codigo: string;
+  nombre: string;
+  descripcion?: string;
+  color: string;
+  activo: boolean;
+  cantidadClientes?: number;
+}
+
 export interface Cliente {
   id: string;
   nombre: string;
@@ -483,6 +493,7 @@ export interface Cliente {
   direccion?: string;
   totalCompras?: number;
   cantidadOrdenes?: number;
+  etiquetas?: Etiqueta[];
   createdAt: string;
 }
 
@@ -870,4 +881,27 @@ export const usuariosApi = {
     post<{ message: string }>(`/usuarios/${id}/change-password`, { currentPassword, newPassword }),
   getRoles: () => get<Rol[]>('/usuarios/roles'),
   getStats: () => get<UsuarioStats>('/usuarios/stats'),
+};
+
+// ============ ETIQUETAS ============
+
+export interface AsignarEtiquetaData {
+  clienteId: number;
+  etiquetaId: number;
+  asignadoPor?: string;
+}
+
+export const etiquetasApi = {
+  getAll: () => get<Etiqueta[]>('/etiquetas'),
+  getOne: (id: number) => get<Etiqueta & { clientes: Cliente[] }>(`/etiquetas/${id}`),
+  create: (data: { codigo: string; nombre: string; descripcion?: string; color?: string }) =>
+    post<Etiqueta>('/etiquetas', data),
+  update: (id: number, data: { nombre?: string; descripcion?: string; color?: string; activo?: boolean }) =>
+    put<Etiqueta>(`/etiquetas/${id}`, data),
+  delete: (id: number) => del<void>(`/etiquetas/${id}`),
+  // Asignación
+  asignar: (data: AsignarEtiquetaData) => post<any>('/etiquetas/asignar', data),
+  quitar: (clienteId: number, etiquetaId: number) =>
+    del<void>(`/etiquetas/cliente/${clienteId}/etiqueta/${etiquetaId}`),
+  getEtiquetasCliente: (clienteId: number) => get<Etiqueta[]>(`/etiquetas/cliente/${clienteId}`),
 };
