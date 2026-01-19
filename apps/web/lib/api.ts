@@ -74,6 +74,11 @@ export async function del<T>(url: string, config?: AxiosRequestConfig): Promise<
   return response.data;
 }
 
+export async function patch<T>(url: string, data?: unknown, config?: AxiosRequestConfig): Promise<T> {
+  const response = await api.patch<T>(url, data, config);
+  return response.data;
+}
+
 // API endpoints
 export const authApi = {
   login: (email: string, password: string) =>
@@ -88,7 +93,7 @@ export const productosApi = {
     get<PaginatedResponse<Producto>>('/productos', { params }),
   getOne: (id: string) => get<Producto>(`/productos/${id}`),
   create: (data: CreateProductoData) => post<Producto>('/productos', data),
-  update: (id: string, data: Partial<CreateProductoData>) => put<Producto>(`/productos/${id}`, data),
+  update: (id: string, data: Partial<CreateProductoData>) => patch<Producto>(`/productos/${id}`, data),
   delete: (id: string) => del<void>(`/productos/${id}`),
 };
 
@@ -222,7 +227,7 @@ export const clientesApi = {
     get<{ clientes: Cliente[]; pagination: Pagination }>('/clientes', { params }),
   getOne: (id: string) => get<ClienteDetalle>(`/clientes/${id}`),
   create: (data: CreateClienteData) => post<Cliente>('/clientes', data),
-  update: (id: string, data: Partial<CreateClienteData>) => put<Cliente>(`/clientes/${id}`, data),
+  update: (id: string, data: Partial<CreateClienteData>) => patch<Cliente>(`/clientes/${id}`, data),
   delete: (id: string) => del<void>(`/clientes/${id}`),
 };
 
