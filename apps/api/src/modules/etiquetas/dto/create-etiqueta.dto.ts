@@ -1,5 +1,6 @@
-import { IsString, IsOptional, IsBoolean, Matches } from 'class-validator';
+import { IsString, IsOptional, IsBoolean, Matches, IsNumber } from 'class-validator';
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
+import { Type } from 'class-transformer';
 
 export class CreateEtiquetaDto {
   @ApiProperty({ example: 'CLIENTE_PREMIUM', description: 'Código único de la etiqueta (mayúsculas y guiones)' })
@@ -48,9 +49,13 @@ export class UpdateEtiquetaDto {
 
 export class AsignarEtiquetaDto {
   @ApiProperty({ example: 1, description: 'ID del cliente' })
+  @IsNumber()
+  @Type(() => Number)
   clienteId: number;
 
   @ApiProperty({ example: 1, description: 'ID de la etiqueta' })
+  @IsNumber()
+  @Type(() => Number)
   etiquetaId: number;
 
   @ApiPropertyOptional({ example: 'admin@elevashop.com', description: 'Usuario que asigna la etiqueta' })
@@ -61,9 +66,13 @@ export class AsignarEtiquetaDto {
 
 export class AsignarEtiquetasMasivoDto {
   @ApiProperty({ example: [1, 2, 3], description: 'IDs de los clientes' })
+  @IsNumber({}, { each: true })
+  @Type(() => Number)
   clienteIds: number[];
 
   @ApiProperty({ example: 1, description: 'ID de la etiqueta a asignar' })
+  @IsNumber()
+  @Type(() => Number)
   etiquetaId: number;
 
   @ApiPropertyOptional({ example: 'admin@elevashop.com' })
