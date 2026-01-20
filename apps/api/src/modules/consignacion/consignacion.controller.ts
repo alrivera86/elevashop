@@ -14,6 +14,7 @@ import { ApiTags, ApiOperation, ApiBearerAuth, ApiQuery } from '@nestjs/swagger'
 import { ConsignacionService } from './consignacion.service';
 import {
   CreateConsignatarioDto,
+  CreateConsignatarioDesdeClienteDto,
   UpdateConsignatarioDto,
   CreateConsignacionDto,
   RegistrarPagoDto,
@@ -50,6 +51,18 @@ export class ConsignacionController {
   @ApiOperation({ summary: 'Crear consignatario' })
   createConsignatario(@Body() dto: CreateConsignatarioDto) {
     return this.consignacionService.createConsignatario(dto);
+  }
+
+  @Post('consignatarios/desde-cliente')
+  @ApiOperation({ summary: 'Crear consignatario desde un cliente existente' })
+  createConsignatarioDesdeCliente(@Body() dto: CreateConsignatarioDesdeClienteDto) {
+    return this.consignacionService.createConsignatarioDesdeCliente(dto);
+  }
+
+  @Get('consignatarios/por-cliente/:clienteId')
+  @ApiOperation({ summary: 'Obtener consignatario por clienteId' })
+  findConsignatarioByClienteId(@Param('clienteId', ParseIntPipe) clienteId: number) {
+    return this.consignacionService.findConsignatarioByClienteId(clienteId);
   }
 
   @Get('consignatarios')

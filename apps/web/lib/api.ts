@@ -543,10 +543,20 @@ export interface ClienteEstadisticas {
   serialesComprados: number;
 }
 
+export interface ClienteConsignatario {
+  id: number;
+  activo: boolean;
+  totalConsignado: number;
+  totalPagado: number;
+  saldoPendiente: number;
+  _count: { consignaciones: number };
+}
+
 export interface ClienteDetalle extends Cliente {
   ventas: ClienteVentaDetalle[];
   unidadesCompradas: ClienteUnidadComprada[];
   estadisticas: ClienteEstadisticas;
+  consignatario?: ClienteConsignatario;
 }
 
 export interface ClientesParams {
@@ -1000,6 +1010,12 @@ export interface CreateConsignatarioData {
   direccion?: string;
   rifCedula?: string;
   notas?: string;
+  clienteId?: number;
+}
+
+export interface CreateConsignatarioDesdeClienteData {
+  clienteId: number;
+  notas?: string;
 }
 
 export interface CreateConsignacionData {
@@ -1081,8 +1097,12 @@ export const consignacionApi = {
   getConsignatarios: (params?: ConsignatariosParams) =>
     get<{ consignatarios: Consignatario[]; pagination: Pagination }>('/consignacion/consignatarios', { params }),
   getConsignatario: (id: number) => get<Consignatario>(`/consignacion/consignatarios/${id}`),
+  getConsignatarioByClienteId: (clienteId: number) =>
+    get<Consignatario | null>(`/consignacion/consignatarios/por-cliente/${clienteId}`),
   createConsignatario: (data: CreateConsignatarioData) =>
     post<Consignatario>('/consignacion/consignatarios', data),
+  createConsignatarioDesdeCliente: (data: CreateConsignatarioDesdeClienteData) =>
+    post<Consignatario>('/consignacion/consignatarios/desde-cliente', data),
   updateConsignatario: (id: number, data: Partial<CreateConsignatarioData>) =>
     patch<Consignatario>(`/consignacion/consignatarios/${id}`, data),
   deleteConsignatario: (id: number) => del<void>(`/consignacion/consignatarios/${id}`),

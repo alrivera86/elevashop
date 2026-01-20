@@ -6,6 +6,7 @@ import {
 import { PrismaService } from '../../config/prisma.service';
 import {
   CreateConsignatarioDto,
+  CreateConsignatarioDesdeClienteDto,
   UpdateConsignatarioDto,
   CreateConsignacionDto,
   RegistrarPagoDto,
@@ -22,8 +23,75 @@ export class ConsignacionService {
   // ==================== CONSIGNATARIOS ====================
 
   async createConsignatario(dto: CreateConsignatarioDto) {
+    // Si se proporciona clienteId, verificar que existe y no tiene consignatario
+    if (dto.clienteId) {
+      const cliente = await this.prisma.cliente.findUnique({
+        where: { id: dto.clienteId },
+        include: { consignatario: true },
+      });
+      if (!cliente) {
+        throw new NotFoundException(`Cliente con ID ${dto.clienteId} no encontrado`);
+      }
+      if (cliente.consignatario) {
+        throw new BadRequestException(`El cliente ya tiene un perfil de consignatario asociado`);
+      }
+    }
+
     return this.prisma.consignatario.create({
       data: dto,
+      include: {
+        cliente: {
+          select: { id: true, nombre: true, telefono: true, email: true },
+        },
+      },
+    });
+  }
+
+  async createConsignatarioDesdeCliente(dto: CreateConsignatarioDesdeClienteDto) {
+    // Verificar que el cliente existe
+    const cliente = await this.prisma.cliente.findUnique({
+      where: { id: dto.clienteId },
+      include: { consignatario: true },
+    });
+
+    if (!cliente) {
+      throw new NotFoundException(`Cliente con ID ${dto.clienteId} no encontrado`);
+    }
+
+    if (cliente.consignatario) {
+      throw new BadRequestException(`El cliente ya tiene un perfil de consignatario asociado`);
+    }
+
+    // Crear consignatario con datos del cliente
+    return this.prisma.consignatario.create({
+      data: {
+        nombre: cliente.nombre,
+        telefono: cliente.telefono,
+        email: cliente.email,
+        direccion: cliente.direccion,
+        rifCedula: cliente.rifCedula,
+        notas: dto.notas,
+        clienteId: cliente.id,
+      },
+      include: {
+        cliente: {
+          select: { id: true, nombre: true, telefono: true, email: true },
+        },
+      },
+    });
+  }
+
+  async findConsignatarioByClienteId(clienteId: number) {
+    return this.prisma.consignatario.findUnique({
+      where: { clienteId },
+      include: {
+        cliente: {
+          select: { id: true, nombre: true, telefono: true, email: true },
+        },
+        _count: {
+          select: { consignaciones: true },
+        },
+      },
     });
   }
 
@@ -56,6 +124,9 @@ export class ConsignacionService {
         take: limit,
         orderBy: { nombre: 'asc' },
         include: {
+          cliente: {
+            select: { id: true, nombre: true, telefono: true, email: true },
+          },
           _count: {
             select: { consignaciones: true },
           },
@@ -74,6 +145,9 @@ export class ConsignacionService {
     const consignatario = await this.prisma.consignatario.findUnique({
       where: { id },
       include: {
+        cliente: {
+          select: { id: true, nombre: true, telefono: true, email: true },
+        },
         consignaciones: {
           orderBy: { createdAt: 'desc' },
           take: 10,

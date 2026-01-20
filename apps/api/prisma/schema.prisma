@@ -193,6 +193,7 @@ model Cliente {
   transacciones      Transaccion[]
   unidadesCompradas  UnidadInventario[]
   etiquetas          ClienteEtiqueta[]
+  consignatario      Consignatario?  // Perfil de consignatario asociado
 
   @@map("clientes")
 }
@@ -498,6 +499,11 @@ model Consignatario {
   rifCedula       String?   @map("rif_cedula")
   notas           String?
   activo          Boolean   @default(true)
+
+  // Relación opcional con Cliente
+  clienteId       Int?      @unique @map("cliente_id")
+  cliente         Cliente?  @relation(fields: [clienteId], references: [id])
+
   // Saldos calculados
   totalConsignado Decimal   @default(0) @map("total_consignado") @db.Decimal(12, 2)
   totalPagado     Decimal   @default(0) @map("total_pagado") @db.Decimal(12, 2)

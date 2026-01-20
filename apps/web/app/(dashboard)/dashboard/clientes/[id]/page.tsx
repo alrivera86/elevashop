@@ -1,7 +1,8 @@
 'use client';
 
-import { useQuery } from '@tanstack/react-query';
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useParams, useRouter } from 'next/navigation';
+import Link from 'next/link';
 import {
   ArrowLeft,
   User,
@@ -18,6 +19,9 @@ import {
   ShieldCheck,
   ShieldX,
   FileText,
+  PackageOpen,
+  Plus,
+  ExternalLink,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
@@ -32,8 +36,9 @@ import {
 import { Badge } from '@/components/ui/badge';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { clientesApi, ClienteDetalle } from '@/lib/api';
+import { clientesApi, consignacionApi, ClienteDetalle } from '@/lib/api';
 import { formatCurrency, formatDate } from '@/lib/utils';
+import { toast } from '@/hooks/use-toast';
 
 const METODO_PAGO_LABELS: Record<string, string> = {
   EFECTIVO_USD: 'Efectivo USD',
@@ -94,12 +99,27 @@ function diasRestantesGarantia(garantiaHasta?: string): number {
 export default function ClienteDetallePage() {
   const params = useParams();
   const router = useRouter();
+  const queryClient = useQueryClient();
   const clienteId = params.id as string;
 
   const { data: cliente, isLoading, error } = useQuery({
     queryKey: ['cliente', clienteId],
     queryFn: () => clientesApi.getOne(clienteId),
     enabled: !!clienteId,
+  });
+
+  const crearConsignatarioMutation = useMutation({
+    mutationFn: () => consignacionApi.createConsignatarioDesdeCliente({ clienteId: Number(clienteId) }),
+    onSuccess: () => {
+      toast({ title: 'Perfil de consignatario creado exitosamente' });
+      queryClient.invalidateQueries({ queryKey: ['cliente', clienteId] });
+    },
+    onError: (error: any) => {
+      toast({
+        title: error.response?.data?.message || 'Error al crear perfil de consignatario',
+        variant: 'destructive',
+      });
+    },
   });
 
   if (isLoading) {
@@ -209,6 +229,62 @@ export default function ClienteDetallePage() {
           description="Unidades con serial"
         />
       </div>
+
+      {/* Consignacion */}
+      <Card className={cliente.consignatario ? 'border-orange-200 bg-orange-50/50 dark:border-orange-800 dark:bg-orange-950/30' : ''}>
+        <CardHeader className="flex flex-row items-center justify-between">
+          <div className="flex items-center gap-3">
+            <PackageOpen className={`h-5 w-5 ${cliente.consignatario ? 'text-orange-600' : 'text-muted-foreground'}`} />
+            <div>
+              <CardTitle className="text-lg">Consignaciones</CardTitle>
+              <CardDescription>
+                {cliente.consignatario
+                  ? 'Este cliente tiene un perfil de consignatario'
+                  : 'Este cliente no tiene perfil de consignatario'}
+              </CardDescription>
+            </div>
+          </div>
+          {cliente.consignatario ? (
+            <Link href="/dashboard/consignacion">
+              <Button variant="outline" size="sm">
+                <ExternalLink className="mr-2 h-4 w-4" />
+                Ver Consignaciones
+              </Button>
+            </Link>
+          ) : (
+            <Button
+              onClick={() => crearConsignatarioMutation.mutate()}
+              disabled={crearConsignatarioMutation.isPending}
+              size="sm"
+            >
+              <Plus className="mr-2 h-4 w-4" />
+              {crearConsignatarioMutation.isPending ? 'Creando...' : 'Crear Perfil Consignatario'}
+            </Button>
+          )}
+        </CardHeader>
+        {cliente.consignatario && (
+          <CardContent>
+            <div className="grid gap-4 md:grid-cols-4">
+              <div className="rounded-lg border bg-background p-3">
+                <p className="text-xs text-muted-foreground">Total Consignado</p>
+                <p className="text-xl font-bold">{formatCurrency(Number(cliente.consignatario.totalConsignado))}</p>
+              </div>
+              <div className="rounded-lg border bg-background p-3">
+                <p className="text-xs text-muted-foreground">Total Pagado</p>
+                <p className="text-xl font-bold text-green-600">{formatCurrency(Number(cliente.consignatario.totalPagado))}</p>
+              </div>
+              <div className="rounded-lg border bg-background p-3">
+                <p className="text-xs text-muted-foreground">Saldo Pendiente</p>
+                <p className="text-xl font-bold text-orange-600">{formatCurrency(Number(cliente.consignatario.saldoPendiente))}</p>
+              </div>
+              <div className="rounded-lg border bg-background p-3">
+                <p className="text-xs text-muted-foreground">Consignaciones</p>
+                <p className="text-xl font-bold">{cliente.consignatario._count.consignaciones}</p>
+              </div>
+            </div>
+          </CardContent>
+        )}
+      </Card>
 
       {/* Tabs */}
       <Tabs defaultValue="historial" className="space-y-4">

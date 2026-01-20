@@ -1,4 +1,4 @@
-import { IsString, IsNotEmpty, IsOptional, IsEmail } from 'class-validator';
+import { IsString, IsNotEmpty, IsOptional, IsEmail, IsNumber } from 'class-validator';
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
 
 export class CreateConsignatarioDto {
@@ -26,6 +26,23 @@ export class CreateConsignatarioDto {
   @IsString()
   @IsOptional()
   rifCedula?: string;
+
+  @ApiPropertyOptional()
+  @IsString()
+  @IsOptional()
+  notas?: string;
+
+  @ApiPropertyOptional({ example: 1, description: 'ID del cliente asociado' })
+  @IsNumber()
+  @IsOptional()
+  clienteId?: number;
+}
+
+export class CreateConsignatarioDesdeClienteDto {
+  @ApiProperty({ example: 1, description: 'ID del cliente' })
+  @IsNumber()
+  @IsNotEmpty({ message: 'El clienteId es requerido' })
+  clienteId: number;
 
   @ApiPropertyOptional()
   @IsString()
