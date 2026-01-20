@@ -107,16 +107,6 @@ export class ClientesService {
             },
           },
         },
-        consignatario: {
-          select: {
-            id: true,
-            activo: true,
-            totalConsignado: true,
-            totalPagado: true,
-            saldoPendiente: true,
-            _count: { select: { consignaciones: true } },
-          },
-        },
       },
     });
 

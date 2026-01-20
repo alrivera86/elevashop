@@ -543,20 +543,10 @@ export interface ClienteEstadisticas {
   serialesComprados: number;
 }
 
-export interface ClienteConsignatario {
-  id: number;
-  activo: boolean;
-  totalConsignado: number;
-  totalPagado: number;
-  saldoPendiente: number;
-  _count: { consignaciones: number };
-}
-
 export interface ClienteDetalle extends Cliente {
   ventas: ClienteVentaDetalle[];
   unidadesCompradas: ClienteUnidadComprada[];
   estadisticas: ClienteEstadisticas;
-  consignatario?: ClienteConsignatario;
 }
 
 export interface ClientesParams {
@@ -923,200 +913,43 @@ export const etiquetasApi = {
 
 // ============ CONSIGNACIONES ============
 
-export type EstadoConsignacion = 'PENDIENTE' | 'EN_PROCESO' | 'LIQUIDADA' | 'VENCIDA' | 'CANCELADA';
-export type EstadoDetalleConsignacion = 'CONSIGNADO' | 'VENDIDO' | 'DEVUELTO';
-
-export interface Consignatario {
-  id: number;
-  nombre: string;
-  telefono?: string;
-  email?: string;
-  direccion?: string;
-  rifCedula?: string;
-  notas?: string;
-  activo: boolean;
-  totalConsignado: number;
-  totalPagado: number;
-  saldoPendiente: number;
-  createdAt: string;
-  updatedAt: string;
-  _count?: { consignaciones: number };
-}
-
-export interface ConsignacionDetalle {
-  id: number;
-  consignacionId: number;
-  productoId: number;
-  unidadInventarioId: number;
-  precioConsignacion: number;
-  estado: EstadoDetalleConsignacion;
-  fechaVenta?: string;
-  fechaDevolucion?: string;
-  producto: { id: number; codigo: string; nombre: string };
-  unidadInventario: { id: number; serial: string };
-}
-
-export interface ConsignacionPago {
-  id: number;
-  consignatarioId: number;
-  consignacionId?: number;
-  monto: number;
-  metodoPago: MetodoPago;
-  referencia?: string;
-  fecha: string;
-  notas?: string;
-}
-
-export interface Consignacion {
-  id: number;
-  numero: string;
-  consignatarioId: number;
-  fechaEntrega: string;
-  fechaLimite?: string;
-  valorTotal: number;
-  valorPagado: number;
-  valorPendiente: number;
-  estado: EstadoConsignacion;
-  notas?: string;
-  createdAt: string;
-  updatedAt: string;
-  consignatario?: Consignatario | { id: number; nombre: string; telefono?: string };
-  detalles?: ConsignacionDetalle[];
-  pagos?: ConsignacionPago[];
-  _count?: { detalles: number };
-}
-
+// Consignación - Simplificado (ahora usa el módulo de ventas)
 export interface ConsignacionDashboard {
-  valorTotalConsignado: number;
-  valorTotalPagado: number;
-  valorPorCobrar: number;
-  totalConsignatarios: number;
-  consignacionesPendientes: number;
-  consignacionesVencidas: number;
-  topDeudores: {
-    id: number;
-    nombre: string;
-    telefono?: string;
-    totalConsignado: number;
-    totalPagado: number;
-    saldoPendiente: number;
-  }[];
-}
-
-export interface CreateConsignatarioData {
-  nombre: string;
-  telefono?: string;
-  email?: string;
-  direccion?: string;
-  rifCedula?: string;
-  notas?: string;
-  clienteId?: number;
-}
-
-export interface CreateConsignatarioDesdeClienteData {
-  clienteId: number;
-  notas?: string;
-}
-
-export interface CreateConsignacionData {
-  consignatarioId: number;
-  fechaEntrega?: string;
-  fechaLimite?: string;
-  notas?: string;
-  detalles: {
-    productoId: number;
-    unidadInventarioId: number;
-    precioConsignacion: number;
-  }[];
-}
-
-export interface RegistrarPagoData {
-  consignatarioId: number;
-  consignacionId?: number;
-  monto: number;
-  metodoPago: MetodoPago;
-  referencia?: string;
-  fecha?: string;
-  notas?: string;
-}
-
-export interface ReportarVentaData {
-  detalleIds: number[];
-  fechaVenta?: string;
-}
-
-export interface ReportarDevolucionData {
-  detalleIds: number[];
-  fechaDevolucion?: string;
-}
-
-export interface ConsignatariosParams {
-  page?: number;
-  limit?: number;
-  search?: string;
-  activo?: boolean;
-}
-
-export interface ConsignacionesParams {
-  page?: number;
-  limit?: number;
-  consignatarioId?: number;
-  estado?: EstadoConsignacion;
-}
-
-export interface ResumenPorCobrar {
-  consignatario: { id: number; nombre: string; telefono?: string };
   totalConsignado: number;
   totalPagado: number;
-  saldoPendiente: number;
-  consignaciones: {
-    id: number;
-    numero: string;
-    fechaEntrega: string;
-    fechaLimite?: string;
-    valorTotal: number;
-    valorPagado: number;
-    valorPendiente: number;
-    estado: EstadoConsignacion;
-    detalles: {
-      id: number;
-      producto: { id: number; codigo: string; nombre: string };
-      serial: string;
-      precioConsignacion: number;
-      estado: EstadoDetalleConsignacion;
-    }[];
+  porCobrar: number;
+  cantidadConsignaciones: number;
+  consignacionesPendientes: Venta[];
+  topClientes: {
+    cliente: { id: number; nombre: string; telefono?: string };
+    total: number;
+    cantidad: number;
   }[];
+  unidadesConsignadas: number;
+  // Propiedades de compatibilidad con el dashboard existente
+  valorTotalConsignado?: number;
+  valorPorCobrar?: number;
+  totalConsignatarios?: number;
 }
 
 export const consignacionApi = {
-  // Dashboard
-  getDashboard: () => get<ConsignacionDashboard>('/consignacion/dashboard'),
-  getPorCobrar: () => get<ResumenPorCobrar[]>('/consignacion/por-cobrar'),
+  // Dashboard de consignaciones (usa el endpoint de ventas)
+  getDashboard: async (): Promise<ConsignacionDashboard> => {
+    const data = await get<ConsignacionDashboard>('/ventas/consignaciones/dashboard');
+    // Mapear propiedades para compatibilidad con el dashboard existente
+    return {
+      ...data,
+      valorTotalConsignado: data.totalConsignado,
+      valorPorCobrar: data.porCobrar,
+      totalConsignatarios: data.topClientes?.length || 0,
+    };
+  },
 
-  // Consignatarios
-  getConsignatarios: (params?: ConsignatariosParams) =>
-    get<{ consignatarios: Consignatario[]; pagination: Pagination }>('/consignacion/consignatarios', { params }),
-  getConsignatario: (id: number) => get<Consignatario>(`/consignacion/consignatarios/${id}`),
-  getConsignatarioByClienteId: (clienteId: number) =>
-    get<Consignatario | null>(`/consignacion/consignatarios/por-cliente/${clienteId}`),
-  createConsignatario: (data: CreateConsignatarioData) =>
-    post<Consignatario>('/consignacion/consignatarios', data),
-  createConsignatarioDesdeCliente: (data: CreateConsignatarioDesdeClienteData) =>
-    post<Consignatario>('/consignacion/consignatarios/desde-cliente', data),
-  updateConsignatario: (id: number, data: Partial<CreateConsignatarioData>) =>
-    patch<Consignatario>(`/consignacion/consignatarios/${id}`, data),
-  deleteConsignatario: (id: number) => del<void>(`/consignacion/consignatarios/${id}`),
+  // Listar consignaciones
+  getConsignaciones: (params?: { page?: number; limit?: number; clienteId?: number }) =>
+    get<{ ventas: Venta[]; pagination: Pagination }>('/ventas/consignaciones', { params }),
 
-  // Consignaciones
-  getConsignaciones: (params?: ConsignacionesParams) =>
-    get<{ consignaciones: Consignacion[]; pagination: Pagination }>('/consignacion', { params }),
-  getConsignacion: (id: number) => get<Consignacion>(`/consignacion/${id}`),
-  createConsignacion: (data: CreateConsignacionData) => post<Consignacion>('/consignacion', data),
-  reportarVenta: (id: number, data: ReportarVentaData) =>
-    post<Consignacion>(`/consignacion/${id}/reportar-venta`, data),
-  reportarDevolucion: (id: number, data: ReportarDevolucionData) =>
-    post<Consignacion>(`/consignacion/${id}/devolucion`, data),
-
-  // Pagos
-  registrarPago: (data: RegistrarPagoData) => post<ConsignacionPago>('/consignacion/pago', data),
+  // Liquidar consignación (registrar pago)
+  liquidar: (ventaId: number, pagos: { metodoPago: MetodoPago; monto: number; moneda?: 'USD' | 'VES'; referencia?: string }[]) =>
+    post<Venta>(`/ventas/${ventaId}/liquidar`, { pagos }),
 };

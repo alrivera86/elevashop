@@ -15,7 +15,6 @@ import { ImportacionesModule } from './modules/importaciones/importaciones.modul
 import { FinanzasModule } from './modules/finanzas/finanzas.module';
 import { ReportesModule } from './modules/reportes/reportes.module';
 import { NotificacionesModule } from './modules/notificaciones/notificaciones.module';
-import { ConsignacionModule } from './modules/consignacion/consignacion.module';
 
 // Servicios globales
 import { PrismaModule } from './config/prisma.module';
@@ -49,7 +48,6 @@ import { PrismaModule } from './config/prisma.module';
     FinanzasModule,
     ReportesModule,
     NotificacionesModule,
-    ConsignacionModule,
   ],
 })
 export class AppModule {}

@@ -80,7 +80,6 @@ model Producto {
   costosImportacion      CostoImportacion[]
   ventasDetalle          VentaDetalle[]
   unidadesInventario     UnidadInventario[]
-  consignacionDetalles   ConsignacionDetalle[]
 
   @@map("productos")
 }
@@ -160,9 +159,6 @@ model UnidadInventario {
   createdAt       DateTime      @default(now()) @map("created_at")
   updatedAt       DateTime      @updatedAt @map("updated_at")
 
-  // Relación con consignación
-  consignacionDetalles ConsignacionDetalle[]
-
   @@index([productoId])
   @@index([estado])
   @@index([clienteId])
@@ -193,7 +189,6 @@ model Cliente {
   transacciones      Transaccion[]
   unidadesCompradas  UnidadInventario[]
   etiquetas          ClienteEtiqueta[]
-  consignatario      Consignatario?  // Perfil de consignatario asociado
 
   @@map("clientes")
 }
@@ -236,6 +231,7 @@ model ClienteEtiqueta {
 model Venta {
   id           Int           @id @default(autoincrement())
   numeroOrden  String?       @unique @map("numero_orden")
+  tipoVenta    TipoVenta     @default(VENTA) @map("tipo_venta")
   clienteId    Int           @map("cliente_id")
   cliente      Cliente       @relation(fields: [clienteId], references: [id])
   usuarioId    Int           @map("usuario_id")
@@ -255,6 +251,7 @@ model Venta {
   detalles VentaDetalle[]
   pagos    VentaPago[]
 
+  @@index([tipoVenta])
   @@map("ventas")
 }
 
@@ -487,130 +484,12 @@ model OperacionCambio {
   @@map("operaciones_cambio")
 }
 
-// ============ CONSIGNACIONES ============
-
-// Vendedor externo que recibe mercancía en consignación
-model Consignatario {
-  id              Int       @id @default(autoincrement())
-  nombre          String
-  telefono        String?
-  email           String?
-  direccion       String?
-  rifCedula       String?   @map("rif_cedula")
-  notas           String?
-  activo          Boolean   @default(true)
-
-  // Relación opcional con Cliente
-  clienteId       Int?      @unique @map("cliente_id")
-  cliente         Cliente?  @relation(fields: [clienteId], references: [id])
-
-  // Saldos calculados
-  totalConsignado Decimal   @default(0) @map("total_consignado") @db.Decimal(12, 2)
-  totalPagado     Decimal   @default(0) @map("total_pagado") @db.Decimal(12, 2)
-  saldoPendiente  Decimal   @default(0) @map("saldo_pendiente") @db.Decimal(12, 2)
-
-  consignaciones  Consignacion[]
-  pagos           ConsignacionPago[]
-
-  createdAt       DateTime  @default(now()) @map("created_at")
-  updatedAt       DateTime  @updatedAt @map("updated_at")
-
-  @@map("consignatarios")
-}
-
-// Cada entrega de mercancía a un consignatario
-model Consignacion {
-  id              Int       @id @default(autoincrement())
-  numero          String    @unique  // CON-001, CON-002, etc.
-  consignatarioId Int       @map("consignatario_id")
-  consignatario   Consignatario @relation(fields: [consignatarioId], references: [id])
-
-  fechaEntrega    DateTime  @default(now()) @map("fecha_entrega")
-  fechaLimite     DateTime? @map("fecha_limite")
-
-  // Valores
-  valorTotal      Decimal   @db.Decimal(12, 2) @map("valor_total")
-  valorPagado     Decimal   @default(0) @db.Decimal(12, 2) @map("valor_pagado")
-  valorPendiente  Decimal   @db.Decimal(12, 2) @map("valor_pendiente")
-
-  // Estado
-  estado          EstadoConsignacion @default(PENDIENTE)
-  notas           String?
-
-  detalles        ConsignacionDetalle[]
-  pagos           ConsignacionPago[]
-
-  createdAt       DateTime  @default(now()) @map("created_at")
-  updatedAt       DateTime  @updatedAt @map("updated_at")
-
-  @@index([consignatarioId])
-  @@index([estado])
-  @@map("consignaciones")
-}
-
-// Unidades específicas en cada consignación (con serial)
-model ConsignacionDetalle {
-  id                 Int       @id @default(autoincrement())
-  consignacionId     Int       @map("consignacion_id")
-  consignacion       Consignacion @relation(fields: [consignacionId], references: [id])
-  productoId         Int       @map("producto_id")
-  producto           Producto  @relation(fields: [productoId], references: [id])
-
-  // Tracking por serial individual
-  unidadInventarioId Int       @map("unidad_inventario_id")
-  unidadInventario   UnidadInventario @relation(fields: [unidadInventarioId], references: [id])
-
-  precioConsignacion Decimal   @db.Decimal(12, 2) @map("precio_consignacion")
-
-  // Estado de esta unidad específica
-  estado             EstadoDetalleConsignacion @default(CONSIGNADO)
-  fechaVenta         DateTime?  @map("fecha_venta")
-  fechaDevolucion    DateTime?  @map("fecha_devolucion")
-
-  createdAt          DateTime  @default(now()) @map("created_at")
-
-  @@index([consignacionId])
-  @@index([productoId])
-  @@index([unidadInventarioId])
-  @@map("consignacion_detalles")
-}
-
-// Pagos/abonos del consignatario
-model ConsignacionPago {
-  id              Int       @id @default(autoincrement())
-  consignatarioId Int       @map("consignatario_id")
-  consignatario   Consignatario @relation(fields: [consignatarioId], references: [id])
-  consignacionId  Int?      @map("consignacion_id")
-  consignacion    Consignacion? @relation(fields: [consignacionId], references: [id])
-
-  monto           Decimal   @db.Decimal(12, 2)
-  metodoPago      MetodoPago @map("metodo_pago")
-  referencia      String?
-  fecha           DateTime  @default(now())
-  notas           String?
-
-  createdAt       DateTime  @default(now()) @map("created_at")
-
-  @@index([consignatarioId])
-  @@index([consignacionId])
-  @@map("consignacion_pagos")
-}
-
-enum EstadoConsignacion {
-  PENDIENTE    // Entregada, sin actividad
-  EN_PROCESO   // Hay ventas/pagos parciales
-  LIQUIDADA    // Todo vendido y pagado
-  VENCIDA      // Pasó fecha límite sin liquidar
-  CANCELADA    // Devuelta/cancelada
-}
-
-enum EstadoDetalleConsignacion {
-  CONSIGNADO    // En poder del vendedor
-  VENDIDO       // Reportado como vendido
-  DEVUELTO      // Regresó al inventario
-}
-
 // ============ ENUMS ============
+
+enum TipoVenta {
+  VENTA         // Venta normal
+  CONSIGNACION  // Mercancía en consignación
+}
 
 enum EstadoStock {
   OK

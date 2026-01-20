@@ -1,7 +1,7 @@
 import { IsInt, IsNotEmpty, IsNumber, IsOptional, IsString, IsArray, ValidateNested, IsEnum, Min } from 'class-validator';
 import { Type } from 'class-transformer';
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
-import { MetodoPago, Moneda } from '@prisma/client';
+import { MetodoPago, Moneda, TipoVenta } from '@prisma/client';
 
 class VentaDetalleDto {
   @ApiProperty()
@@ -63,6 +63,11 @@ export class CreateVentaDto {
   @IsInt()
   @IsNotEmpty()
   clienteId: number;
+
+  @ApiPropertyOptional({ enum: TipoVenta, default: TipoVenta.VENTA })
+  @IsEnum(TipoVenta)
+  @IsOptional()
+  tipoVenta?: TipoVenta;
 
   @ApiPropertyOptional({ example: 'ORD-001' })
   @IsString()

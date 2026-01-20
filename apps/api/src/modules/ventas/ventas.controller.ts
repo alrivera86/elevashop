@@ -22,12 +22,14 @@ export class VentasController {
   @ApiQuery({ name: 'page', required: false })
   @ApiQuery({ name: 'limit', required: false })
   @ApiQuery({ name: 'clienteId', required: false })
+  @ApiQuery({ name: 'tipoVenta', required: false, enum: ['VENTA', 'CONSIGNACION'] })
   findAll(
     @Query('page') page?: number,
     @Query('limit') limit?: number,
     @Query('clienteId') clienteId?: number,
+    @Query('tipoVenta') tipoVenta?: 'VENTA' | 'CONSIGNACION',
   ) {
-    return this.ventasService.findAll({ page, limit, clienteId });
+    return this.ventasService.findAll({ page, limit, clienteId, tipoVenta });
   }
 
   @Get('estadisticas')
@@ -46,6 +48,34 @@ export class VentasController {
   @ApiOperation({ summary: 'Ventas de los últimos 7 días' })
   getUltimos7Dias() {
     return this.ventasService.getVentasUltimos7Dias();
+  }
+
+  @Get('consignaciones/dashboard')
+  @ApiOperation({ summary: 'Dashboard de consignaciones' })
+  getConsignacionesDashboard() {
+    return this.ventasService.getConsignacionesDashboard();
+  }
+
+  @Get('consignaciones')
+  @ApiOperation({ summary: 'Listar consignaciones' })
+  @ApiQuery({ name: 'page', required: false })
+  @ApiQuery({ name: 'limit', required: false })
+  @ApiQuery({ name: 'clienteId', required: false })
+  findConsignaciones(
+    @Query('page') page?: number,
+    @Query('limit') limit?: number,
+    @Query('clienteId') clienteId?: number,
+  ) {
+    return this.ventasService.findAll({ page, limit, clienteId, tipoVenta: 'CONSIGNACION' });
+  }
+
+  @Post(':id/liquidar')
+  @ApiOperation({ summary: 'Liquidar consignación (registrar pago)' })
+  liquidarConsignacion(
+    @Param('id', ParseIntPipe) id: number,
+    @Body() body: { pagos: any[] },
+  ) {
+    return this.ventasService.liquidarConsignacion(id, body.pagos);
   }
 
   @Get(':id')

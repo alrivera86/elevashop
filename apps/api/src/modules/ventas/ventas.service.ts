@@ -33,6 +33,9 @@ export class VentasService {
       }
     }
 
+    const tipoVenta = createVentaDto.tipoVenta || 'VENTA';
+    const esConsignacion = tipoVenta === 'CONSIGNACION';
+
     // Crear venta con transacción
     const venta = await this.prisma.$transaction(async (tx: any) => {
       // Crear la venta
@@ -40,12 +43,15 @@ export class VentasService {
         data: {
           clienteId: createVentaDto.clienteId,
           usuarioId,
+          tipoVenta,
           numeroOrden: createVentaDto.numeroOrden,
           subtotal: createVentaDto.subtotal,
           descuento: createVentaDto.descuento || 0,
           impuesto: createVentaDto.impuesto || 0,
           total: createVentaDto.total,
           notas: createVentaDto.notas,
+          // Las consignaciones empiezan como PENDIENTE de pago
+          estadoPago: esConsignacion ? 'PENDIENTE' : (createVentaDto.pagos?.length ? 'PAGADO' : 'PENDIENTE'),
           detalles: {
             create: createVentaDto.detalles.map((d) => ({
               productoId: d.productoId,
@@ -56,7 +62,8 @@ export class VentasService {
               serial: d.serial,
             })),
           },
-          pagos: {
+          // Las consignaciones no tienen pagos iniciales
+          pagos: esConsignacion ? undefined : {
             create: createVentaDto.pagos?.map((p) => ({
               metodoPago: p.metodoPago,
               monto: p.monto,
@@ -85,6 +92,7 @@ export class VentasService {
 
         // Registrar movimiento de stock
         const producto = await tx.producto.findUnique({ where: { id: detalle.productoId } });
+        const prefijo = esConsignacion ? 'CONS' : 'VENTA';
         await tx.movimientoStock.create({
           data: {
             productoId: detalle.productoId,
@@ -92,8 +100,10 @@ export class VentasService {
             cantidad: detalle.cantidad,
             stockAnterior: producto!.stockActual + detalle.cantidad,
             stockNuevo: producto!.stockActual,
-            referencia: nuevaVenta.numeroOrden || `VENTA-${nuevaVenta.id}`,
-            motivo: `Venta a ${cliente.nombre}`,
+            referencia: nuevaVenta.numeroOrden || `${prefijo}-${nuevaVenta.id}`,
+            motivo: esConsignacion
+              ? `Consignación a ${cliente.nombre}`
+              : `Venta a ${cliente.nombre}`,
           },
         });
 
@@ -104,36 +114,52 @@ export class VentasService {
           });
 
           if (unidad && unidad.estado === 'DISPONIBLE') {
-            const utilidad = detalle.precioUnitario - Number(unidad.costoUnitario);
-            const garantiaHasta = unidad.garantiaMeses
-              ? new Date(Date.now() + unidad.garantiaMeses * 30 * 24 * 60 * 60 * 1000)
-              : null;
+            if (esConsignacion) {
+              // Consignación: marcar como CONSIGNADO
+              await tx.unidadInventario.update({
+                where: { serial: detalle.serial.toUpperCase().trim() },
+                data: {
+                  estado: 'CONSIGNADO',
+                  clienteId: cliente.id,
+                  ventaId: nuevaVenta.id,
+                  precioVenta: detalle.precioUnitario,
+                },
+              });
+            } else {
+              // Venta normal: marcar como VENDIDO
+              const utilidad = detalle.precioUnitario - Number(unidad.costoUnitario);
+              const garantiaHasta = unidad.garantiaMeses
+                ? new Date(Date.now() + unidad.garantiaMeses * 30 * 24 * 60 * 60 * 1000)
+                : null;
 
-            await tx.unidadInventario.update({
-              where: { serial: detalle.serial.toUpperCase().trim() },
-              data: {
-                estado: 'VENDIDO',
-                fechaVenta: new Date(),
-                clienteId: cliente.id,
-                ventaId: nuevaVenta.id,
-                precioVenta: detalle.precioUnitario,
-                metodoPago: createVentaDto.pagos?.[0]?.metodoPago,
-                utilidad,
-                garantiaHasta,
-              },
-            });
+              await tx.unidadInventario.update({
+                where: { serial: detalle.serial.toUpperCase().trim() },
+                data: {
+                  estado: 'VENDIDO',
+                  fechaVenta: new Date(),
+                  clienteId: cliente.id,
+                  ventaId: nuevaVenta.id,
+                  precioVenta: detalle.precioUnitario,
+                  metodoPago: createVentaDto.pagos?.[0]?.metodoPago,
+                  utilidad,
+                  garantiaHasta,
+                },
+              });
+            }
           }
         }
       }
 
-      // Actualizar total de compras del cliente
-      await tx.cliente.update({
-        where: { id: cliente.id },
-        data: {
-          totalCompras: { increment: createVentaDto.total },
-          cantidadOrdenes: { increment: 1 },
-        },
-      });
+      // Solo actualizar estadísticas del cliente para ventas, no consignaciones
+      if (!esConsignacion) {
+        await tx.cliente.update({
+          where: { id: cliente.id },
+          data: {
+            totalCompras: { increment: createVentaDto.total },
+            cantidadOrdenes: { increment: 1 },
+          },
+        });
+      }
 
       return nuevaVenta;
     });
@@ -147,13 +173,15 @@ export class VentasService {
     clienteId?: number;
     fechaDesde?: Date;
     fechaHasta?: Date;
+    tipoVenta?: 'VENTA' | 'CONSIGNACION';
   }) {
-    const { page = 1, limit = 20, clienteId, fechaDesde, fechaHasta } = options || {};
+    const { page = 1, limit = 20, clienteId, fechaDesde, fechaHasta, tipoVenta } = options || {};
     const skip = (page - 1) * limit;
 
     const where: any = {};
 
     if (clienteId) where.clienteId = clienteId;
+    if (tipoVenta) where.tipoVenta = tipoVenta;
     if (fechaDesde || fechaHasta) {
       where.fecha = {};
       if (fechaDesde) where.fecha.gte = fechaDesde;
@@ -328,5 +356,162 @@ export class VentasService {
       totalPeriodo: dias.reduce((sum, d) => sum + d.total, 0),
       cantidadVentas: dias.reduce((sum, d) => sum + d.cantidad, 0),
     };
+  }
+
+  async getConsignacionesDashboard() {
+    // Obtener todas las consignaciones pendientes de pago
+    const consignacionesPendientes = await this.prisma.venta.findMany({
+      where: {
+        tipoVenta: 'CONSIGNACION',
+        estadoPago: { in: ['PENDIENTE', 'PARCIAL'] },
+      },
+      include: {
+        cliente: { select: { id: true, nombre: true, telefono: true } },
+        detalles: { include: { producto: { select: { id: true, codigo: true, nombre: true } } } },
+      },
+      orderBy: { fecha: 'desc' },
+    });
+
+    // Calcular totales
+    const totalConsignado = consignacionesPendientes.reduce(
+      (sum, c) => sum + Number(c.total),
+      0,
+    );
+
+    // Calcular total pagado (de VentaPago)
+    const pagosConsignaciones = await this.prisma.ventaPago.findMany({
+      where: {
+        venta: {
+          tipoVenta: 'CONSIGNACION',
+        },
+      },
+    });
+    const totalPagado = pagosConsignaciones.reduce((sum, p) => sum + Number(p.monto), 0);
+
+    const porCobrar = totalConsignado - totalPagado;
+
+    // Top clientes con más consignaciones pendientes
+    const clientesMap = new Map<number, { cliente: any; total: number; cantidad: number }>();
+    for (const cons of consignacionesPendientes) {
+      const existing = clientesMap.get(cons.clienteId);
+      if (existing) {
+        existing.total += Number(cons.total);
+        existing.cantidad += 1;
+      } else {
+        clientesMap.set(cons.clienteId, {
+          cliente: cons.cliente,
+          total: Number(cons.total),
+          cantidad: 1,
+        });
+      }
+    }
+
+    const topClientes = Array.from(clientesMap.values())
+      .sort((a, b) => b.total - a.total)
+      .slice(0, 5);
+
+    // Unidades en consignación (por serial)
+    const unidadesConsignadas = await this.prisma.unidadInventario.findMany({
+      where: { estado: 'CONSIGNADO' },
+      include: {
+        producto: { select: { id: true, codigo: true, nombre: true } },
+        cliente: { select: { id: true, nombre: true } },
+      },
+    });
+
+    return {
+      totalConsignado,
+      totalPagado,
+      porCobrar,
+      cantidadConsignaciones: consignacionesPendientes.length,
+      consignacionesPendientes,
+      topClientes,
+      unidadesConsignadas: unidadesConsignadas.length,
+    };
+  }
+
+  async liquidarConsignacion(ventaId: number, pagos: any[]) {
+    const venta = await this.findOne(ventaId);
+
+    if (venta.tipoVenta !== 'CONSIGNACION') {
+      throw new BadRequestException('Esta venta no es una consignación');
+    }
+
+    return this.prisma.$transaction(async (tx: any) => {
+      // Registrar los pagos
+      for (const pago of pagos) {
+        await tx.ventaPago.create({
+          data: {
+            ventaId,
+            metodoPago: pago.metodoPago,
+            monto: pago.monto,
+            moneda: pago.moneda || 'USD',
+            tasaCambio: pago.tasaCambio,
+            montoBs: pago.montoBs,
+            referencia: pago.referencia,
+          },
+        });
+      }
+
+      // Calcular total pagado
+      const totalPagos = await tx.ventaPago.aggregate({
+        where: { ventaId },
+        _sum: { monto: true },
+      });
+
+      const totalPagado = Number(totalPagos._sum.monto) || 0;
+      const estadoPago =
+        totalPagado >= Number(venta.total)
+          ? 'PAGADO'
+          : totalPagado > 0
+          ? 'PARCIAL'
+          : 'PENDIENTE';
+
+      // Actualizar estado de la venta
+      await tx.venta.update({
+        where: { id: ventaId },
+        data: { estadoPago },
+      });
+
+      // Si está pagado completamente, actualizar unidades a VENDIDO
+      if (estadoPago === 'PAGADO') {
+        for (const detalle of venta.detalles) {
+          if (detalle.serial) {
+            const unidad = await tx.unidadInventario.findUnique({
+              where: { serial: detalle.serial.toUpperCase().trim() },
+            });
+
+            if (unidad && unidad.estado === 'CONSIGNADO') {
+              const utilidad = Number(detalle.precioUnitario) - Number(unidad.costoUnitario);
+              const garantiaHasta = unidad.garantiaMeses
+                ? new Date(Date.now() + unidad.garantiaMeses * 30 * 24 * 60 * 60 * 1000)
+                : null;
+
+              await tx.unidadInventario.update({
+                where: { id: unidad.id },
+                data: {
+                  estado: 'VENDIDO',
+                  fechaVenta: new Date(),
+                  metodoPago: pagos[0]?.metodoPago,
+                  utilidad,
+                  garantiaHasta,
+                },
+              });
+            }
+          }
+        }
+
+        // Actualizar estadísticas del cliente
+        await tx.cliente.update({
+          where: { id: venta.clienteId },
+          data: {
+            totalCompras: { increment: Number(venta.total) },
+            cantidadOrdenes: { increment: 1 },
+          },
+        });
+      }
+
+      return this.findOne(ventaId);
+    });
   }
 }

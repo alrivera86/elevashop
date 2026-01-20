@@ -78,12 +78,15 @@ export default function NuevaVentaPage() {
   const queryClient = useQueryClient();
 
   // Estados principales
+  const [tipoVenta, setTipoVenta] = useState<'VENTA' | 'CONSIGNACION'>('VENTA');
   const [clienteSeleccionado, setClienteSeleccionado] = useState<Cliente | null>(null);
   const [carrito, setCarrito] = useState<ItemCarrito[]>([]);
   const [aplicarIva, setAplicarIva] = useState(false);
   const [descuentoGlobal, setDescuentoGlobal] = useState(0);
   const [metodoPago, setMetodoPago] = useState<MetodoPago>('EFECTIVO_USD');
   const [notas, setNotas] = useState('');
+
+  const esConsignacion = tipoVenta === 'CONSIGNACION';
 
   // Estado para venta completada
   const [ventaCompletada, setVentaCompletada] = useState<Venta | null>(null);
@@ -197,20 +200,25 @@ export default function NuevaVentaPage() {
         }
       }
 
-      const ventaData = {
+      const ventaData: any = {
         clienteId: Number(clienteSeleccionado.id),
+        tipoVenta,
         subtotal: calculos.subtotalBruto,
         descuento: calculos.descuentosLinea + calculos.descuentoGlobalMonto,
         impuesto: calculos.montoIva,
         total: calculos.total,
         notas: notas || undefined,
         detalles,
-        pagos: [{
+      };
+
+      // Solo agregar pagos si es una venta (no consignación)
+      if (!esConsignacion) {
+        ventaData.pagos = [{
           metodoPago,
           monto: calculos.total,
           moneda: metodoPago.includes('BS') ? 'VES' as const : 'USD' as const,
-        }],
-      };
+        }];
+      }
 
       return ventasApi.create(ventaData);
     },
@@ -382,6 +390,7 @@ export default function NuevaVentaPage() {
   };
 
   const limpiarVenta = () => {
+    setTipoVenta('VENTA');
     setClienteSeleccionado(null);
     setCarrito([]);
     setAplicarIva(false);
@@ -706,6 +715,35 @@ export default function NuevaVentaPage() {
 
       {/* Panel Derecho - Cliente y Resumen */}
       <div className="flex w-96 flex-col gap-4">
+        {/* Tipo de Operación */}
+        <Card>
+          <CardContent className="p-4">
+            <div className="flex gap-2">
+              <Button
+                variant={tipoVenta === 'VENTA' ? 'default' : 'outline'}
+                className="flex-1"
+                onClick={() => setTipoVenta('VENTA')}
+              >
+                <ShoppingCart className="mr-2 h-4 w-4" />
+                Venta
+              </Button>
+              <Button
+                variant={tipoVenta === 'CONSIGNACION' ? 'default' : 'outline'}
+                className="flex-1"
+                onClick={() => setTipoVenta('CONSIGNACION')}
+              >
+                <Package className="mr-2 h-4 w-4" />
+                Consignación
+              </Button>
+            </div>
+            {esConsignacion && (
+              <p className="mt-2 text-xs text-muted-foreground">
+                La mercancía se entrega al cliente sin cobro inmediato. El pago se registra cuando el cliente liquida.
+              </p>
+            )}
+          </CardContent>
+        </Card>
+
         {/* Selección de Cliente */}
         <Card>
           <CardHeader className="py-3">
@@ -834,22 +872,36 @@ export default function NuevaVentaPage() {
               <span className="text-green-600">{formatCurrency(calculos.total)}</span>
             </div>
 
-            {/* Método de Pago */}
-            <div className="space-y-2">
-              <Label>Método de Pago</Label>
-              <Select value={metodoPago} onValueChange={(v) => setMetodoPago(v as MetodoPago)}>
-                <SelectTrigger>
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  {METODOS_PAGO.map(mp => (
-                    <SelectItem key={mp.value} value={mp.value}>
-                      {mp.label}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
+            {/* Método de Pago - Solo para ventas */}
+            {!esConsignacion && (
+              <div className="space-y-2">
+                <Label>Método de Pago</Label>
+                <Select value={metodoPago} onValueChange={(v) => setMetodoPago(v as MetodoPago)}>
+                  <SelectTrigger>
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {METODOS_PAGO.map(mp => (
+                      <SelectItem key={mp.value} value={mp.value}>
+                        {mp.label}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+            )}
+
+            {/* Indicador de consignación */}
+            {esConsignacion && (
+              <div className="rounded-lg border border-orange-200 bg-orange-50 p-3 dark:border-orange-900 dark:bg-orange-950">
+                <p className="text-sm font-medium text-orange-800 dark:text-orange-200">
+                  Consignación - Sin pago inmediato
+                </p>
+                <p className="text-xs text-orange-600 dark:text-orange-400">
+                  El cliente recibirá la mercancía y pagará cuando venda.
+                </p>
+              </div>
+            )}
 
             {/* Notas */}
             <div className="space-y-2">
@@ -873,7 +925,7 @@ export default function NuevaVentaPage() {
             Limpiar
           </Button>
           <Button
-            className="flex-1"
+            className={`flex-1 ${esConsignacion ? 'bg-orange-600 hover:bg-orange-700' : ''}`}
             size="lg"
             disabled={!clienteSeleccionado || carrito.length === 0 || crearVentaMutation.isPending}
             onClick={() => crearVentaMutation.mutate()}
@@ -882,6 +934,11 @@ export default function NuevaVentaPage() {
               <>
                 <Loader2 className="mr-2 h-4 w-4 animate-spin" />
                 Procesando...
+              </>
+            ) : esConsignacion ? (
+              <>
+                <Package className="mr-2 h-4 w-4" />
+                Confirmar Consignación
               </>
             ) : (
               <>
@@ -904,21 +961,23 @@ export default function NuevaVentaPage() {
         />
       )}
 
-      {/* Diálogo de Venta Exitosa */}
+      {/* Diálogo de Venta/Consignación Exitosa */}
       <Dialog open={mostrarDialogoExito} onOpenChange={setMostrarDialogoExito}>
         <DialogContent className="sm:max-w-md">
           <DialogHeader>
-            <DialogTitle className="flex items-center gap-2 text-green-600">
+            <DialogTitle className={`flex items-center gap-2 ${esConsignacion ? 'text-orange-600' : 'text-green-600'}`}>
               <CheckCircle className="h-6 w-6" />
-              ¡Venta Registrada!
+              {esConsignacion ? '¡Consignación Registrada!' : '¡Venta Registrada!'}
             </DialogTitle>
             <DialogDescription>
-              La venta #{ventaCompletada?.numero || ventaCompletada?.id} ha sido registrada exitosamente
-              por {formatCurrency(Number(ventaCompletada?.total) || 0)}.
+              {esConsignacion
+                ? `La consignación #${ventaCompletada?.numero || ventaCompletada?.id} ha sido registrada. El cliente debe ${formatCurrency(Number(ventaCompletada?.total) || 0)}.`
+                : `La venta #${ventaCompletada?.numero || ventaCompletada?.id} ha sido registrada exitosamente por ${formatCurrency(Number(ventaCompletada?.total) || 0)}.`
+              }
             </DialogDescription>
           </DialogHeader>
 
-          <div className="mt-4 rounded-lg border bg-muted/50 p-4">
+          <div className={`mt-4 rounded-lg border p-4 ${esConsignacion ? 'border-orange-200 bg-orange-50 dark:border-orange-900 dark:bg-orange-950' : 'bg-muted/50'}`}>
             <div className="flex items-center justify-between text-sm">
               <span className="text-muted-foreground">Cliente:</span>
               <span className="font-medium">{clienteSeleccionado?.nombre}</span>
@@ -928,9 +987,17 @@ export default function NuevaVentaPage() {
               <span className="font-medium">{ventaCompletada?.detalles?.length || 0} productos</span>
             </div>
             <div className="flex items-center justify-between text-sm mt-1">
-              <span className="text-muted-foreground">Total:</span>
-              <span className="font-bold text-green-600">{formatCurrency(Number(ventaCompletada?.total) || 0)}</span>
+              <span className="text-muted-foreground">{esConsignacion ? 'Por cobrar:' : 'Total:'}</span>
+              <span className={`font-bold ${esConsignacion ? 'text-orange-600' : 'text-green-600'}`}>
+                {formatCurrency(Number(ventaCompletada?.total) || 0)}
+              </span>
             </div>
+            {esConsignacion && (
+              <div className="flex items-center justify-between text-sm mt-1">
+                <span className="text-muted-foreground">Estado:</span>
+                <Badge variant="outline" className="text-orange-600 border-orange-600">Pendiente de pago</Badge>
+              </div>
+            )}
           </div>
 
           <div className="mt-6 flex flex-col gap-2">
@@ -942,7 +1009,7 @@ export default function NuevaVentaPage() {
             <div className="flex gap-2 mt-2">
               <Button variant="outline" onClick={cerrarDialogoYNueva} className="flex-1">
                 <Plus className="mr-2 h-4 w-4" />
-                Nueva Venta
+                {esConsignacion ? 'Nueva Consignación' : 'Nueva Venta'}
               </Button>
               <Button variant="secondary" onClick={cerrarDialogoEIrAVentas} className="flex-1">
                 <FileText className="mr-2 h-4 w-4" />

@@ -329,7 +329,7 @@ export default function DashboardPage() {
                   </div>
                   <div className="flex justify-between">
                     <span className="text-muted-foreground">Pendientes:</span>
-                    <span className="font-medium">{consignacion?.consignacionesPendientes || 0}</span>
+                    <span className="font-medium">{consignacion?.cantidadConsignaciones || 0}</span>
                   </div>
                 </div>
               </CardContent>
