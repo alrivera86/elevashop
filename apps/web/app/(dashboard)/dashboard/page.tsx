@@ -15,11 +15,13 @@ import {
   Building,
   Coins,
   Wallet,
+  PackageOpen,
+  Landmark,
 } from 'lucide-react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Skeleton } from '@/components/ui/skeleton';
-import { inventarioApi, ventasApi, clientesApi, finanzasApi, VentaDia, CuentaFondo } from '@/lib/api';
+import { inventarioApi, ventasApi, clientesApi, finanzasApi, consignacionApi, VentaDia, CuentaFondo, ConsignacionDashboard } from '@/lib/api';
 import { formatCurrency } from '@/lib/utils';
 
 function StatCard({
@@ -164,6 +166,11 @@ export default function DashboardPage() {
     queryFn: ventasApi.getUltimos7Dias,
   });
 
+  const { data: consignacion, isLoading: loadingConsignacion } = useQuery({
+    queryKey: ['consignacion-dashboard'],
+    queryFn: consignacionApi.getDashboard,
+  });
+
   const isLoading = loadingInventario || loadingVentas || loadingClientes || loadingFinanzas;
 
   return (
@@ -214,12 +221,119 @@ export default function DashboardPage() {
               icon={Users}
             />
             <StatCard
-              title="Balance"
+              title="Utilidad"
               value={formatCurrency(finanzas?.balance || 0)}
               description={`Tasa: ${finanzas?.tasaCambioActual || 0} Bs/$`}
               icon={DollarSign}
               trend={(finanzas?.balance || 0) >= 0 ? 'up' : 'down'}
             />
+          </>
+        )}
+      </div>
+
+      {/* Patrimonio y Efectivo - Nueva sección */}
+      <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
+        {isLoading || loadingDistribucion || loadingConsignacion ? (
+          <>
+            {[...Array(3)].map((_, i) => (
+              <Card key={i}>
+                <CardHeader className="pb-2">
+                  <Skeleton className="h-4 w-24" />
+                </CardHeader>
+                <CardContent>
+                  <Skeleton className="h-8 w-32" />
+                  <Skeleton className="mt-4 h-3 w-full" />
+                  <Skeleton className="mt-2 h-3 w-full" />
+                </CardContent>
+              </Card>
+            ))}
+          </>
+        ) : (
+          <>
+            {/* Patrimonio */}
+            <Card className="bg-gradient-to-br from-blue-50 to-indigo-50 dark:from-blue-950 dark:to-indigo-950 border-blue-200 dark:border-blue-800">
+              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                <CardTitle className="text-sm font-medium">Patrimonio</CardTitle>
+                <Landmark className="h-4 w-4 text-blue-600" />
+              </CardHeader>
+              <CardContent>
+                <div className="text-2xl font-bold text-blue-700 dark:text-blue-400">
+                  {formatCurrency(
+                    (inventario?.valorInventario || 0) +
+                    (finanzas?.balance || 0) +
+                    (consignacion?.valorPorCobrar || 0)
+                  )}
+                </div>
+                <div className="mt-3 space-y-1 text-xs">
+                  <div className="flex justify-between">
+                    <span className="text-muted-foreground">Inventario:</span>
+                    <span className="font-medium">{formatCurrency(inventario?.valorInventario || 0)}</span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span className="text-muted-foreground">Utilidad:</span>
+                    <span className="font-medium">{formatCurrency(finanzas?.balance || 0)}</span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span className="text-muted-foreground">Por Cobrar:</span>
+                    <span className="font-medium">{formatCurrency(consignacion?.valorPorCobrar || 0)}</span>
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+
+            {/* Efectivo Disponible */}
+            <Card className="bg-gradient-to-br from-green-50 to-emerald-50 dark:from-green-950 dark:to-emerald-950 border-green-200 dark:border-green-800">
+              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                <CardTitle className="text-sm font-medium">Efectivo Disponible</CardTitle>
+                <Wallet className="h-4 w-4 text-green-600" />
+              </CardHeader>
+              <CardContent>
+                <div className="text-2xl font-bold text-green-700 dark:text-green-400">
+                  {formatCurrency(
+                    (distribucionFondos?.resumen?.enUsd || 0) +
+                    (distribucionFondos?.resumen?.enBsEquivalenteUsd || 0)
+                  )}
+                </div>
+                <div className="mt-3 space-y-1 text-xs">
+                  {distribucionFondos?.cuentas?.slice(0, 3).map((cuenta: CuentaFondo) => (
+                    <div key={cuenta.codigo} className="flex justify-between">
+                      <span className="text-muted-foreground">{cuenta.nombre}:</span>
+                      <span className="font-medium">
+                        {cuenta.moneda === 'BS' ? 'Bs ' : '$'}
+                        {cuenta.monto.toLocaleString('es-VE', { minimumFractionDigits: 2 })}
+                      </span>
+                    </div>
+                  ))}
+                </div>
+              </CardContent>
+            </Card>
+
+            {/* En Consignación */}
+            <Card className="bg-gradient-to-br from-orange-50 to-amber-50 dark:from-orange-950 dark:to-amber-950 border-orange-200 dark:border-orange-800">
+              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                <CardTitle className="text-sm font-medium">En Consignación</CardTitle>
+                <PackageOpen className="h-4 w-4 text-orange-600" />
+              </CardHeader>
+              <CardContent>
+                <div className="text-2xl font-bold text-orange-700 dark:text-orange-400">
+                  {formatCurrency(consignacion?.valorTotalConsignado || 0)}
+                </div>
+                <div className="mt-3 space-y-1 text-xs">
+                  <div className="flex justify-between">
+                    <span className="text-muted-foreground">Por Cobrar:</span>
+                    <span className="font-medium text-orange-600">{formatCurrency(consignacion?.valorPorCobrar || 0)}</span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span className="text-muted-foreground">Consignatarios:</span>
+                    <span className="font-medium">{consignacion?.totalConsignatarios || 0} activos</span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span className="text-muted-foreground">Pendientes:</span>
+                    <span className="font-medium">{consignacion?.consignacionesPendientes || 0}</span>
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
           </>
         )}
       </div>
