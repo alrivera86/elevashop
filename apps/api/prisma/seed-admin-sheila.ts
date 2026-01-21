@@ -51,12 +51,13 @@ async function main() {
   }
 
   // Verificar si el usuario ya existe
+  const adminEmail = process.env.SEED_ADMIN_EMAIL || 'admin@elevashop.com';
   const existingUser = await prisma.usuario.findUnique({
-    where: { email: '***EMAIL_REMOVED***' }
+    where: { email: adminEmail }
   });
 
   if (existingUser) {
-    console.log('\nEl usuario ***EMAIL_REMOVED*** ya existe (ID:', existingUser.id + ')');
+    console.log('\nEl usuario', adminEmail, 'ya existe (ID:', existingUser.id + ')');
     console.log('Actualizando a rol SUPER_ADMIN...');
 
     await prisma.usuario.update({
@@ -68,12 +69,12 @@ async function main() {
   }
 
   // Crear usuario
-  const password = '***PASSWORD_REMOVED***'; // Contraseña temporal
+  const password = process.env.SEED_ADMIN_PASSWORD || 'CambiarEnProduccion123!';
   const hashedPassword = await bcrypt.hash(password, 10);
 
   const usuario = await prisma.usuario.create({
     data: {
-      email: '***EMAIL_REMOVED***',
+      email: adminEmail,
       passwordHash: hashedPassword,
       nombreCompleto: 'Sheila Briceno',
       rolId: rolAdmin.id,
@@ -87,7 +88,6 @@ async function main() {
   console.log('Nombre:', usuario.nombreCompleto);
   console.log('Email:', usuario.email);
   console.log('Rol:', usuario.rol.nombre);
-  console.log('Contraseña temporal:', password);
   console.log('\n¡Recuerda cambiar la contraseña después del primer login!');
 }
 
