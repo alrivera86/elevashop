@@ -46,5 +46,9 @@ apps/api/prisma/migrations/*_migration.sql
 *.xlsx
 *.xls
 
+# Scripts con datos sensibles
+scripts/
+contacts.csv
+
 # Keep the architecture doc
 !arquitectura_modular_elevashop.md
