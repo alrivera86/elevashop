@@ -327,6 +327,11 @@ export default function VentasPage() {
     queryFn: () => ventasApi.getResumen(),
   });
 
+  const { data: consignacionData } = useQuery({
+    queryKey: ['consignacion-dashboard'],
+    queryFn: () => consignacionApi.getDashboard(),
+  });
+
   const handleVerDetalle = (venta: Venta) => {
     setSelectedVenta(venta);
     setDetalleOpen(true);
@@ -341,51 +346,67 @@ export default function VentasPage() {
     <div className="space-y-6">
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-3xl font-bold tracking-tight">Ventas</h1>
-          <p className="text-muted-foreground">Historial de ventas y transacciones</p>
+          <h1 className="text-3xl font-bold tracking-tight">Ventas y Consignaciones</h1>
+          <p className="text-muted-foreground">Historial de ventas y mercancía en consignación</p>
         </div>
         <Link href="/dashboard/ventas/nueva">
           <Button>
             <Plus className="mr-2 h-4 w-4" />
-            Nueva Venta
+            Nueva Operación
           </Button>
         </Link>
       </div>
 
       {/* Stats */}
-      <div className="grid gap-4 md:grid-cols-3">
+      <div className="grid gap-4 md:grid-cols-4">
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Total Ventas</CardTitle>
-            <DollarSign className="h-4 w-4 text-muted-foreground" />
+            <CardTitle className="text-sm font-medium">Ventas del Mes</CardTitle>
+            <DollarSign className="h-4 w-4 text-green-600" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">
+            <div className="text-2xl font-bold text-green-600">
               {formatCurrency(resumen?.totalVentas || 0)}
             </div>
-            <p className="text-xs text-muted-foreground">Este mes</p>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Transacciones</CardTitle>
-            <ShoppingCart className="h-4 w-4 text-muted-foreground" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">{resumen?.cantidadVentas || 0}</div>
-            <p className="text-xs text-muted-foreground">Ventas realizadas</p>
+            <p className="text-xs text-muted-foreground">{resumen?.cantidadVentas || 0} transacciones</p>
           </CardContent>
         </Card>
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
             <CardTitle className="text-sm font-medium">Ticket Promedio</CardTitle>
-            <DollarSign className="h-4 w-4 text-muted-foreground" />
+            <ShoppingCart className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold">
               {formatCurrency(resumen?.ticketPromedio || 0)}
             </div>
-            <p className="text-xs text-muted-foreground">Por venta</p>
+            <p className="text-xs text-muted-foreground">Por operación</p>
+          </CardContent>
+        </Card>
+        <Card className="border-orange-200 dark:border-orange-800">
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <CardTitle className="text-sm font-medium">En Consignación</CardTitle>
+            <PackageOpen className="h-4 w-4 text-orange-600" />
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold text-orange-600">
+              {formatCurrency(consignacionData?.porCobrar || 0)}
+            </div>
+            <p className="text-xs text-muted-foreground">
+              {consignacionData?.cantidadConsignaciones || 0} pendientes de cobro
+            </p>
+          </CardContent>
+        </Card>
+        <Card className="border-orange-200 dark:border-orange-800">
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <CardTitle className="text-sm font-medium">Unidades Consignadas</CardTitle>
+            <PackageOpen className="h-4 w-4 text-orange-600" />
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold text-orange-600">
+              {consignacionData?.unidadesConsignadas || 0}
+            </div>
+            <p className="text-xs text-muted-foreground">Con clientes externos</p>
           </CardContent>
         </Card>
       </div>
@@ -473,7 +494,18 @@ export default function VentasPage() {
                       <TableCell>{formatDateTime(venta.fecha)}</TableCell>
                       <TableCell>{venta.cliente?.nombre || 'Cliente general'}</TableCell>
                       <TableCell>
-                        <Badge variant="outline">{venta.detalles.length} items</Badge>
+                        <div className="max-w-[200px]">
+                          {venta.detalles.slice(0, 2).map((d, i) => (
+                            <p key={i} className="text-sm truncate">
+                              {d.cantidad}x {d.producto?.nombre || 'Producto'}
+                            </p>
+                          ))}
+                          {venta.detalles.length > 2 && (
+                            <p className="text-xs text-muted-foreground">
+                              +{venta.detalles.length - 2} más
+                            </p>
+                          )}
+                        </div>
                       </TableCell>
                       <TableCell className="text-right font-medium">
                         {formatCurrency(venta.total)}
