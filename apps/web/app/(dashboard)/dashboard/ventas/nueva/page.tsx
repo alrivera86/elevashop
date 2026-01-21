@@ -497,21 +497,21 @@ export default function NuevaVentaPage() {
         </Card>
 
         {/* Carrito */}
-        <Card className="flex-1 overflow-hidden">
-          <CardHeader className="border-b py-3">
+        <Card className="flex-1 flex flex-col min-h-0">
+          <CardHeader className="border-b py-3 flex-shrink-0">
             <CardTitle className="flex items-center gap-2 text-lg">
               <ShoppingCart className="h-5 w-5" />
               Carrito ({calculos.cantidadItems} items)
             </CardTitle>
           </CardHeader>
-          <CardContent className="h-full overflow-auto p-0">
+          <CardContent className="flex-1 overflow-y-auto p-0 min-h-0">
             {carrito.length === 0 ? (
               <div className="flex h-48 flex-col items-center justify-center text-muted-foreground">
                 <Package className="mb-2 h-12 w-12 opacity-50" />
                 <p>Busca y agrega productos</p>
               </div>
             ) : (
-              <div className="divide-y">
+              <div className="divide-y pb-4">
                 {carrito.map((item) => (
                   <div key={item.producto.id} className="p-4">
                     <div className="flex items-center gap-4">
