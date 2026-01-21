@@ -12,6 +12,7 @@ import {
   PackageOpen,
   CheckCircle,
   Loader2,
+  Download,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -45,6 +46,7 @@ import { Skeleton } from '@/components/ui/skeleton';
 import { toast } from '@/hooks/use-toast';
 import { ventasApi, consignacionApi, Venta, MetodoPago } from '@/lib/api';
 import { formatCurrency, formatDateTime } from '@/lib/utils';
+import { generarOrdenSalida, VentaPDF } from '@/lib/generate-pdf';
 import Link from 'next/link';
 
 const METODOS_PAGO: { value: MetodoPago; label: string }[] = [
@@ -69,6 +71,43 @@ function VentaDetalleDialog({
   if (!venta) return null;
 
   const esConsignacion = venta.tipoVenta === 'CONSIGNACION';
+
+  const descargarPDF = () => {
+    const ventaPDF: VentaPDF = {
+      id: venta.id,
+      numero: venta.numero,
+      fecha: venta.fecha,
+      cliente: {
+        nombre: venta.cliente?.nombre || 'Cliente general',
+        telefono: venta.cliente?.telefono,
+        email: venta.cliente?.email,
+        direccion: venta.cliente?.direccion,
+      },
+      detalles: venta.detalles.map((d: any) => ({
+        producto: {
+          codigo: d.producto?.codigo || '',
+          nombre: d.producto?.nombre || '',
+        },
+        cantidad: d.cantidad,
+        precioUnitario: Number(d.precioUnitario),
+        descuento: Number(d.descuento) || 0,
+        subtotal: Number(d.subtotal),
+        serial: d.serial,
+      })),
+      subtotal: Number(venta.subtotal),
+      descuento: Number(venta.descuento) || 0,
+      impuesto: Number(venta.impuesto) || 0,
+      total: Number(venta.total),
+      pagos: venta.pagos?.map((p: any) => ({
+        metodoPago: p.metodoPago,
+        monto: Number(p.monto),
+        moneda: p.moneda || 'USD',
+      })) || [],
+      notas: venta.notas,
+    };
+
+    generarOrdenSalida(ventaPDF);
+  };
 
   return (
     <Dialog open={open} onOpenChange={onClose}>
@@ -176,6 +215,12 @@ function VentaDetalleDialog({
               </div>
             </div>
           </div>
+
+          {/* Botón Descargar PDF */}
+          <Button onClick={descargarPDF} className="w-full mt-4">
+            <Download className="mr-2 h-4 w-4" />
+            Descargar Orden de Salida (PDF)
+          </Button>
         </div>
       </DialogContent>
     </Dialog>
