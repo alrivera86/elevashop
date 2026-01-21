@@ -562,9 +562,14 @@ export interface CreateClienteData {
   direccion?: string;
 }
 
+export type TipoVenta = 'VENTA' | 'CONSIGNACION';
+export type EstadoPago = 'PENDIENTE' | 'PARCIAL' | 'PAGADO';
+
 export interface Venta {
   id: number;
   numero: string;
+  tipoVenta: TipoVenta;
+  estadoPago: EstadoPago;
   fecha: string;
   subtotal: number;
   descuento: number;
@@ -606,6 +611,7 @@ export interface VentasParams {
 
 export interface CreateVentaData {
   clienteId: number;
+  tipoVenta?: TipoVenta;
   subtotal: number;
   descuento?: number;
   impuesto?: number;

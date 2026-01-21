@@ -1,7 +1,7 @@
 'use client';
 
 import { useState } from 'react';
-import { useQuery } from '@tanstack/react-query';
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import {
   ShoppingCart,
   Plus,
@@ -9,6 +9,9 @@ import {
   Calendar,
   Eye,
   DollarSign,
+  PackageOpen,
+  CheckCircle,
+  Loader2,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -28,10 +31,31 @@ import {
   DialogDescription,
   DialogHeader,
   DialogTitle,
+  DialogFooter,
 } from '@/components/ui/dialog';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select';
+import { Label } from '@/components/ui/label';
 import { Skeleton } from '@/components/ui/skeleton';
-import { ventasApi, Venta } from '@/lib/api';
+import { toast } from '@/hooks/use-toast';
+import { ventasApi, consignacionApi, Venta, MetodoPago } from '@/lib/api';
 import { formatCurrency, formatDateTime } from '@/lib/utils';
+import Link from 'next/link';
+
+const METODOS_PAGO: { value: MetodoPago; label: string }[] = [
+  { value: 'EFECTIVO_USD', label: 'Efectivo USD' },
+  { value: 'ZELLE', label: 'Zelle' },
+  { value: 'BANESCO', label: 'Banesco Panamá' },
+  { value: 'EFECTIVO_BS', label: 'Efectivo Bs' },
+  { value: 'TRANSFERENCIA_BS', label: 'Transferencia Bs' },
+  { value: 'PAGO_MOVIL', label: 'Pago Móvil' },
+  { value: 'BINANCE', label: 'Binance' },
+];
 
 function VentaDetalleDialog({
   venta,
@@ -44,13 +68,24 @@ function VentaDetalleDialog({
 }) {
   if (!venta) return null;
 
+  const esConsignacion = venta.tipoVenta === 'CONSIGNACION';
+
   return (
     <Dialog open={open} onOpenChange={onClose}>
       <DialogContent className="max-w-2xl">
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
-            <ShoppingCart className="h-5 w-5" />
-            Venta #{venta.numero}
+            {esConsignacion ? (
+              <PackageOpen className="h-5 w-5 text-orange-600" />
+            ) : (
+              <ShoppingCart className="h-5 w-5" />
+            )}
+            {esConsignacion ? 'Consignación' : 'Venta'} #{venta.numero}
+            {esConsignacion && (
+              <Badge variant="outline" className="ml-2 border-orange-500 text-orange-600">
+                Consignación
+              </Badge>
+            )}
           </DialogTitle>
           <DialogDescription>
             {formatDateTime(venta.fecha)} | {venta.cliente?.nombre || 'Cliente general'}
@@ -147,11 +182,140 @@ function VentaDetalleDialog({
   );
 }
 
+function LiquidarDialog({
+  venta,
+  open,
+  onClose,
+  onSuccess,
+}: {
+  venta: Venta | null;
+  open: boolean;
+  onClose: () => void;
+  onSuccess: () => void;
+}) {
+  const [metodoPago, setMetodoPago] = useState<MetodoPago>('EFECTIVO_USD');
+  const [referencia, setReferencia] = useState('');
+  const queryClient = useQueryClient();
+
+  const liquidarMutation = useMutation({
+    mutationFn: () => {
+      if (!venta) throw new Error('No hay venta seleccionada');
+      return consignacionApi.liquidar(venta.id, [{
+        metodoPago,
+        monto: Number(venta.total),
+        moneda: metodoPago.includes('BS') ? 'VES' : 'USD',
+        referencia: referencia || undefined,
+      }]);
+    },
+    onSuccess: () => {
+      toast({ title: 'Consignación liquidada exitosamente' });
+      queryClient.invalidateQueries({ queryKey: ['ventas'] });
+      queryClient.invalidateQueries({ queryKey: ['consignacion-dashboard'] });
+      onSuccess();
+      onClose();
+    },
+    onError: (error: any) => {
+      toast({
+        title: error.response?.data?.message || 'Error al liquidar consignación',
+        variant: 'destructive',
+      });
+    },
+  });
+
+  if (!venta) return null;
+
+  return (
+    <Dialog open={open} onOpenChange={onClose}>
+      <DialogContent className="max-w-md">
+        <DialogHeader>
+          <DialogTitle className="flex items-center gap-2">
+            <CheckCircle className="h-5 w-5 text-green-600" />
+            Liquidar Consignación
+          </DialogTitle>
+          <DialogDescription>
+            Registrar el pago de la consignación #{venta.numero}
+          </DialogDescription>
+        </DialogHeader>
+
+        <div className="space-y-4 py-4">
+          {/* Resumen */}
+          <div className="rounded-lg border bg-orange-50 p-4 dark:bg-orange-950">
+            <div className="flex items-center justify-between">
+              <span className="text-sm text-muted-foreground">Cliente:</span>
+              <span className="font-medium">{venta.cliente?.nombre || 'Cliente general'}</span>
+            </div>
+            <div className="flex items-center justify-between mt-1">
+              <span className="text-sm text-muted-foreground">Productos:</span>
+              <span className="font-medium">{venta.detalles.length} items</span>
+            </div>
+            <div className="flex items-center justify-between mt-2 pt-2 border-t">
+              <span className="font-medium">Total a cobrar:</span>
+              <span className="text-xl font-bold text-green-600">{formatCurrency(venta.total)}</span>
+            </div>
+          </div>
+
+          {/* Método de pago */}
+          <div className="space-y-2">
+            <Label>Método de Pago</Label>
+            <Select value={metodoPago} onValueChange={(v) => setMetodoPago(v as MetodoPago)}>
+              <SelectTrigger>
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                {METODOS_PAGO.map(mp => (
+                  <SelectItem key={mp.value} value={mp.value}>
+                    {mp.label}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+
+          {/* Referencia */}
+          <div className="space-y-2">
+            <Label>Referencia (opcional)</Label>
+            <Input
+              placeholder="Número de referencia..."
+              value={referencia}
+              onChange={(e) => setReferencia(e.target.value)}
+            />
+          </div>
+        </div>
+
+        <DialogFooter>
+          <Button variant="outline" onClick={onClose}>
+            Cancelar
+          </Button>
+          <Button
+            onClick={() => liquidarMutation.mutate()}
+            disabled={liquidarMutation.isPending}
+            className="bg-green-600 hover:bg-green-700"
+          >
+            {liquidarMutation.isPending ? (
+              <>
+                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                Procesando...
+              </>
+            ) : (
+              <>
+                <CheckCircle className="mr-2 h-4 w-4" />
+                Confirmar Pago
+              </>
+            )}
+          </Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
+  );
+}
+
 export default function VentasPage() {
   const [search, setSearch] = useState('');
   const [page, setPage] = useState(1);
   const [selectedVenta, setSelectedVenta] = useState<Venta | null>(null);
   const [detalleOpen, setDetalleOpen] = useState(false);
+  const [liquidarOpen, setLiquidarOpen] = useState(false);
+  const [ventaALiquidar, setVentaALiquidar] = useState<Venta | null>(null);
 
   const { data, isLoading } = useQuery({
     queryKey: ['ventas', { page }],
@@ -168,6 +332,11 @@ export default function VentasPage() {
     setDetalleOpen(true);
   };
 
+  const handleLiquidar = (venta: Venta) => {
+    setVentaALiquidar(venta);
+    setLiquidarOpen(true);
+  };
+
   return (
     <div className="space-y-6">
       <div className="flex items-center justify-between">
@@ -175,10 +344,12 @@ export default function VentasPage() {
           <h1 className="text-3xl font-bold tracking-tight">Ventas</h1>
           <p className="text-muted-foreground">Historial de ventas y transacciones</p>
         </div>
-        <Button>
-          <Plus className="mr-2 h-4 w-4" />
-          Nueva Venta
-        </Button>
+        <Link href="/dashboard/ventas/nueva">
+          <Button>
+            <Plus className="mr-2 h-4 w-4" />
+            Nueva Venta
+          </Button>
+        </Link>
       </div>
 
       {/* Stats */}
@@ -247,11 +418,12 @@ export default function VentasPage() {
             <TableHeader>
               <TableRow>
                 <TableHead>Número</TableHead>
+                <TableHead>Tipo</TableHead>
                 <TableHead>Fecha</TableHead>
                 <TableHead>Cliente</TableHead>
                 <TableHead>Productos</TableHead>
                 <TableHead className="text-right">Total</TableHead>
-                <TableHead className="text-center">Pagos</TableHead>
+                <TableHead className="text-center">Estado</TableHead>
                 <TableHead className="text-right">Acciones</TableHead>
               </TableRow>
             </TableHeader>
@@ -260,59 +432,93 @@ export default function VentasPage() {
                 [...Array(5)].map((_, i) => (
                   <TableRow key={i}>
                     <TableCell><Skeleton className="h-4 w-20" /></TableCell>
+                    <TableCell><Skeleton className="h-4 w-16" /></TableCell>
                     <TableCell><Skeleton className="h-4 w-32" /></TableCell>
                     <TableCell><Skeleton className="h-4 w-28" /></TableCell>
                     <TableCell><Skeleton className="h-4 w-12" /></TableCell>
                     <TableCell><Skeleton className="h-4 w-20" /></TableCell>
                     <TableCell><Skeleton className="h-4 w-16" /></TableCell>
-                    <TableCell><Skeleton className="h-4 w-8" /></TableCell>
+                    <TableCell><Skeleton className="h-4 w-20" /></TableCell>
                   </TableRow>
                 ))
               ) : data?.ventas?.length === 0 ? (
                 <TableRow>
-                  <TableCell colSpan={7} className="h-24 text-center">
+                  <TableCell colSpan={8} className="h-24 text-center">
                     No se encontraron ventas
                   </TableCell>
                 </TableRow>
               ) : (
-                data?.ventas?.map((venta) => (
-                  <TableRow key={venta.id}>
-                    <TableCell className="font-mono text-sm font-medium">
-                      #{venta.numero}
-                    </TableCell>
-                    <TableCell>{formatDateTime(venta.fecha)}</TableCell>
-                    <TableCell>{venta.cliente?.nombre || 'Cliente general'}</TableCell>
-                    <TableCell>
-                      <Badge variant="outline">{venta.detalles.length} items</Badge>
-                    </TableCell>
-                    <TableCell className="text-right font-medium">
-                      {formatCurrency(venta.total)}
-                    </TableCell>
-                    <TableCell className="text-center">
-                      <div className="flex justify-center gap-1">
-                        {venta.pagos.slice(0, 2).map((pago, i) => (
-                          <Badge key={i} variant="secondary" className="text-xs">
-                            {pago.metodoPago}
+                data?.ventas?.map((venta) => {
+                  const esConsignacion = venta.tipoVenta === 'CONSIGNACION';
+                  const pendientePago = venta.estadoPago === 'PENDIENTE' || venta.estadoPago === 'PARCIAL';
+
+                  return (
+                    <TableRow key={venta.id} className={esConsignacion && pendientePago ? 'bg-orange-50/50 dark:bg-orange-950/20' : ''}>
+                      <TableCell className="font-mono text-sm font-medium">
+                        #{venta.numero}
+                      </TableCell>
+                      <TableCell>
+                        {esConsignacion ? (
+                          <Badge variant="outline" className="border-orange-500 text-orange-600">
+                            <PackageOpen className="mr-1 h-3 w-3" />
+                            Consignación
                           </Badge>
-                        ))}
-                        {venta.pagos.length > 2 && (
-                          <Badge variant="secondary" className="text-xs">
-                            +{venta.pagos.length - 2}
+                        ) : (
+                          <Badge variant="outline" className="border-green-500 text-green-600">
+                            <ShoppingCart className="mr-1 h-3 w-3" />
+                            Venta
                           </Badge>
                         )}
-                      </div>
-                    </TableCell>
-                    <TableCell className="text-right">
-                      <Button
-                        variant="ghost"
-                        size="icon"
-                        onClick={() => handleVerDetalle(venta)}
-                      >
-                        <Eye className="h-4 w-4" />
-                      </Button>
-                    </TableCell>
-                  </TableRow>
-                ))
+                      </TableCell>
+                      <TableCell>{formatDateTime(venta.fecha)}</TableCell>
+                      <TableCell>{venta.cliente?.nombre || 'Cliente general'}</TableCell>
+                      <TableCell>
+                        <Badge variant="outline">{venta.detalles.length} items</Badge>
+                      </TableCell>
+                      <TableCell className="text-right font-medium">
+                        {formatCurrency(venta.total)}
+                      </TableCell>
+                      <TableCell className="text-center">
+                        {venta.estadoPago === 'PAGADO' ? (
+                          <Badge className="bg-green-100 text-green-700 dark:bg-green-900 dark:text-green-300">
+                            <CheckCircle className="mr-1 h-3 w-3" />
+                            Pagado
+                          </Badge>
+                        ) : venta.estadoPago === 'PARCIAL' ? (
+                          <Badge className="bg-yellow-100 text-yellow-700 dark:bg-yellow-900 dark:text-yellow-300">
+                            Parcial
+                          </Badge>
+                        ) : (
+                          <Badge className="bg-orange-100 text-orange-700 dark:bg-orange-900 dark:text-orange-300">
+                            Pendiente
+                          </Badge>
+                        )}
+                      </TableCell>
+                      <TableCell className="text-right">
+                        <div className="flex justify-end gap-1">
+                          {esConsignacion && pendientePago && (
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              onClick={() => handleLiquidar(venta)}
+                              className="text-green-600 border-green-600 hover:bg-green-50"
+                            >
+                              <DollarSign className="mr-1 h-3 w-3" />
+                              Liquidar
+                            </Button>
+                          )}
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            onClick={() => handleVerDetalle(venta)}
+                          >
+                            <Eye className="h-4 w-4" />
+                          </Button>
+                        </div>
+                      </TableCell>
+                    </TableRow>
+                  );
+                })
               )}
             </TableBody>
           </Table>
@@ -351,6 +557,19 @@ export default function VentasPage() {
         venta={selectedVenta}
         open={detalleOpen}
         onClose={() => setDetalleOpen(false)}
+      />
+
+      {/* Liquidar Dialog */}
+      <LiquidarDialog
+        venta={ventaALiquidar}
+        open={liquidarOpen}
+        onClose={() => {
+          setLiquidarOpen(false);
+          setVentaALiquidar(null);
+        }}
+        onSuccess={() => {
+          setVentaALiquidar(null);
+        }}
       />
     </div>
   );
