@@ -38,42 +38,48 @@ export class VentasService {
 
     // Crear venta con transacción
     const venta = await this.prisma.$transaction(async (tx: any) => {
+      // Preparar datos de la venta
+      const ventaData: any = {
+        clienteId: createVentaDto.clienteId,
+        usuarioId,
+        tipoVenta,
+        numeroOrden: createVentaDto.numeroOrden,
+        subtotal: createVentaDto.subtotal,
+        descuento: createVentaDto.descuento || 0,
+        impuesto: createVentaDto.impuesto || 0,
+        total: createVentaDto.total,
+        notas: createVentaDto.notas,
+        // Las consignaciones empiezan como PENDIENTE de pago
+        estadoPago: esConsignacion ? 'PENDIENTE' : (createVentaDto.pagos?.length ? 'PAGADO' : 'PENDIENTE'),
+        detalles: {
+          create: createVentaDto.detalles.map((d) => ({
+            productoId: d.productoId,
+            cantidad: d.cantidad,
+            precioUnitario: d.precioUnitario,
+            descuento: d.descuento || 0,
+            subtotal: d.cantidad * d.precioUnitario - (d.descuento || 0),
+            serial: d.serial,
+          })),
+        },
+      };
+
+      // Solo agregar pagos si NO es consignación y hay pagos
+      if (!esConsignacion && createVentaDto.pagos?.length) {
+        ventaData.pagos = {
+          create: createVentaDto.pagos.map((p) => ({
+            metodoPago: p.metodoPago,
+            monto: p.monto,
+            moneda: p.moneda || 'USD',
+            tasaCambio: p.tasaCambio,
+            montoBs: p.montoBs,
+            referencia: p.referencia,
+          })),
+        };
+      }
+
       // Crear la venta
       const nuevaVenta = await tx.venta.create({
-        data: {
-          clienteId: createVentaDto.clienteId,
-          usuarioId,
-          tipoVenta,
-          numeroOrden: createVentaDto.numeroOrden,
-          subtotal: createVentaDto.subtotal,
-          descuento: createVentaDto.descuento || 0,
-          impuesto: createVentaDto.impuesto || 0,
-          total: createVentaDto.total,
-          notas: createVentaDto.notas,
-          // Las consignaciones empiezan como PENDIENTE de pago
-          estadoPago: esConsignacion ? 'PENDIENTE' : (createVentaDto.pagos?.length ? 'PAGADO' : 'PENDIENTE'),
-          detalles: {
-            create: createVentaDto.detalles.map((d) => ({
-              productoId: d.productoId,
-              cantidad: d.cantidad,
-              precioUnitario: d.precioUnitario,
-              descuento: d.descuento || 0,
-              subtotal: d.cantidad * d.precioUnitario - (d.descuento || 0),
-              serial: d.serial,
-            })),
-          },
-          // Las consignaciones no tienen pagos iniciales
-          pagos: esConsignacion ? undefined : {
-            create: createVentaDto.pagos?.map((p) => ({
-              metodoPago: p.metodoPago,
-              monto: p.monto,
-              moneda: p.moneda || 'USD',
-              tasaCambio: p.tasaCambio,
-              montoBs: p.montoBs,
-              referencia: p.referencia,
-            })) || [],
-          },
-        },
+        data: ventaData,
         include: {
           detalles: { include: { producto: true } },
           pagos: true,
