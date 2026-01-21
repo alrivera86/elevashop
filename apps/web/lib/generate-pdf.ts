@@ -6,6 +6,8 @@ export interface VentaPDF {
   id: number;
   numero?: string;
   fecha: string;
+  tipoVenta?: 'VENTA' | 'CONSIGNACION';
+  estadoPago?: string;
   cliente: {
     nombre: string;
     telefono?: string;
@@ -47,9 +49,14 @@ const METODO_PAGO_LABELS: Record<string, string> = {
 export function generarOrdenSalida(venta: VentaPDF): void {
   const doc = new jsPDF();
   const pageWidth = doc.internal.pageSize.getWidth();
+  const esConsignacion = venta.tipoVenta === 'CONSIGNACION';
 
-  // Header
-  doc.setFillColor(59, 130, 246); // Blue
+  // Header - Color diferente para consignación
+  if (esConsignacion) {
+    doc.setFillColor(234, 88, 12); // Orange for consignacion
+  } else {
+    doc.setFillColor(59, 130, 246); // Blue for venta
+  }
   doc.rect(0, 0, pageWidth, 35, 'F');
 
   doc.setTextColor(255, 255, 255);
@@ -61,9 +68,13 @@ export function generarOrdenSalida(venta: VentaPDF): void {
   doc.setFont('helvetica', 'normal');
   doc.text('Sistema de Gestión de Inventario', 14, 26);
 
-  // Título Orden de Salida
+  // Título - Diferente para consignación
   doc.setFontSize(14);
-  doc.text('ORDEN DE SALIDA', pageWidth - 14, 18, { align: 'right' });
+  if (esConsignacion) {
+    doc.text('NOTA DE CONSIGNACIÓN', pageWidth - 14, 18, { align: 'right' });
+  } else {
+    doc.text('ORDEN DE SALIDA', pageWidth - 14, 18, { align: 'right' });
+  }
   doc.setFontSize(11);
   doc.text(`#${venta.numero || venta.id}`, pageWidth - 14, 26, { align: 'right' });
 
@@ -187,12 +198,25 @@ export function generarOrdenSalida(venta: VentaPDF): void {
   doc.text(formatCurrency(venta.total), boxX + boxWidth, currentY, { align: 'right' });
   doc.setTextColor(0, 0, 0);
 
-  // Método de pago
+  // Método de pago o estado de consignación
   currentY += 10;
   doc.setFont('helvetica', 'normal');
   doc.setFontSize(9);
-  const metodoPago = venta.pagos.map(p => METODO_PAGO_LABELS[p.metodoPago] || p.metodoPago).join(', ');
-  doc.text(`Método de pago: ${metodoPago}`, boxX, currentY);
+
+  if (esConsignacion) {
+    // Mostrar aviso de consignación
+    doc.setTextColor(234, 88, 12); // Orange
+    doc.setFont('helvetica', 'bold');
+    doc.text('MERCANCÍA EN CONSIGNACIÓN', boxX, currentY);
+    currentY += 5;
+    doc.setFont('helvetica', 'normal');
+    doc.setFontSize(8);
+    doc.text('Pendiente de pago', boxX, currentY);
+    doc.setTextColor(0, 0, 0);
+  } else {
+    const metodoPago = venta.pagos.map(p => METODO_PAGO_LABELS[p.metodoPago] || p.metodoPago).join(', ');
+    doc.text(`Método de pago: ${metodoPago || 'No especificado'}`, boxX, currentY);
+  }
 
   // Notas (si hay)
   if (venta.notas) {
@@ -203,14 +227,36 @@ export function generarOrdenSalida(venta: VentaPDF): void {
     doc.text(venta.notas, 14, finalY + 5, { maxWidth: 80 });
   }
 
+  // Aviso grande para consignación
+  if (esConsignacion) {
+    const avisoY = finalY + (venta.notas ? 20 : 0);
+    doc.setDrawColor(234, 88, 12);
+    doc.setFillColor(255, 247, 237); // Light orange background
+    doc.roundedRect(14, avisoY, pageWidth - 28, 20, 3, 3, 'FD');
+
+    doc.setTextColor(234, 88, 12);
+    doc.setFont('helvetica', 'bold');
+    doc.setFontSize(10);
+    doc.text('⚠ MATERIAL EN CONSIGNACIÓN - NO ES UNA VENTA', pageWidth / 2, avisoY + 8, { align: 'center' });
+    doc.setFont('helvetica', 'normal');
+    doc.setFontSize(8);
+    doc.text('Este material debe ser pagado o devuelto según acuerdo con Elevashop', pageWidth / 2, avisoY + 14, { align: 'center' });
+    doc.setTextColor(0, 0, 0);
+  }
+
   // Footer
   const footerY = doc.internal.pageSize.getHeight() - 20;
   doc.setFontSize(8);
   doc.setTextColor(128, 128, 128);
-  doc.text('Gracias por su compra', pageWidth / 2, footerY, { align: 'center' });
+  if (esConsignacion) {
+    doc.text('Material entregado en consignación', pageWidth / 2, footerY, { align: 'center' });
+  } else {
+    doc.text('Gracias por su compra', pageWidth / 2, footerY, { align: 'center' });
+  }
   doc.text('Elevashop - Sistema de Gestión de Inventario', pageWidth / 2, footerY + 5, { align: 'center' });
 
   // Descargar PDF
-  const fileName = `orden_salida_${venta.numero || venta.id}_${new Date().toISOString().split('T')[0]}.pdf`;
+  const prefix = esConsignacion ? 'consignacion' : 'orden_salida';
+  const fileName = `${prefix}_${venta.numero || venta.id}_${new Date().toISOString().split('T')[0]}.pdf`;
   doc.save(fileName);
 }

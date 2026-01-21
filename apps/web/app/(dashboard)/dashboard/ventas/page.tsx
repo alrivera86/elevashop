@@ -77,6 +77,8 @@ function VentaDetalleDialog({
       id: venta.id,
       numero: venta.numero,
       fecha: venta.fecha,
+      tipoVenta: venta.tipoVenta,
+      estadoPago: venta.estadoPago,
       cliente: {
         nombre: venta.cliente?.nombre || 'Cliente general',
         telefono: venta.cliente?.telefono,

@@ -405,6 +405,8 @@ export default function NuevaVentaPage() {
       id: ventaCompletada.id,
       numero: ventaCompletada.numero,
       fecha: ventaCompletada.fecha || new Date().toISOString(),
+      tipoVenta: tipoVenta,
+      estadoPago: ventaCompletada.estadoPago,
       cliente: {
         nombre: clienteSeleccionado.nombre,
         telefono: clienteSeleccionado.telefono,
