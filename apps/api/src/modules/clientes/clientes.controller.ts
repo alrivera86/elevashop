@@ -23,12 +23,14 @@ export class ClientesController {
   @ApiQuery({ name: 'page', required: false })
   @ApiQuery({ name: 'limit', required: false })
   @ApiQuery({ name: 'search', required: false })
+  @ApiQuery({ name: 'telefono', required: false })
   findAll(
     @Query('page') page?: number,
     @Query('limit') limit?: number,
     @Query('search') search?: string,
+    @Query('telefono') telefono?: string,
   ) {
-    return this.clientesService.findAll({ page, limit, search });
+    return this.clientesService.findAll({ page, limit, search, telefono });
   }
 
   @Get('top')

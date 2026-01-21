@@ -27,15 +27,21 @@ export class ClientesService {
     });
   }
 
-  async findAll(options?: { page?: number; limit?: number; search?: string }) {
+  async findAll(options?: { page?: number; limit?: number; search?: string; telefono?: string }) {
     const page = options?.page || 1;
     const limit = options?.limit || 20;
     const search = options?.search;
+    const telefono = options?.telefono;
     const skip = (page - 1) * limit;
 
     const where: any = { activo: true };
 
-    if (search) {
+    // Búsqueda por teléfono exacto (para bot de WhatsApp)
+    if (telefono) {
+      // Limpiar el teléfono de caracteres no numéricos
+      const telefonoLimpio = telefono.replace(/\D/g, '');
+      where.telefono = { contains: telefonoLimpio };
+    } else if (search) {
       where.OR = [
         { nombre: { contains: search, mode: 'insensitive' } },
         { email: { contains: search, mode: 'insensitive' } },

@@ -50,6 +50,18 @@ export class VentasController {
     return this.ventasService.getVentasUltimos7Dias();
   }
 
+  @Get('hoy')
+  @ApiOperation({ summary: 'Ventas de hoy' })
+  getVentasHoy() {
+    return this.ventasService.getVentasHoy();
+  }
+
+  @Get('ultima')
+  @ApiOperation({ summary: 'Última venta realizada' })
+  getUltimaVenta() {
+    return this.ventasService.getUltimaVenta();
+  }
+
   @Get('consignaciones/dashboard')
   @ApiOperation({ summary: 'Dashboard de consignaciones' })
   getConsignacionesDashboard() {

@@ -358,6 +358,98 @@ export class VentasService {
     };
   }
 
+  async getVentasHoy() {
+    const hoy = new Date();
+    hoy.setHours(0, 0, 0, 0);
+    const manana = new Date(hoy);
+    manana.setDate(manana.getDate() + 1);
+
+    const ventas = await this.prisma.venta.findMany({
+      where: {
+        fecha: {
+          gte: hoy,
+          lt: manana,
+        },
+      },
+      include: {
+        cliente: { select: { id: true, nombre: true, telefono: true } },
+        detalles: {
+          include: {
+            producto: { select: { id: true, codigo: true, nombre: true } },
+          },
+        },
+        pagos: true,
+      },
+      orderBy: { fecha: 'desc' },
+    });
+
+    const totalVentas = ventas.reduce((sum, v) => sum + Number(v.total), 0);
+    const cantidadVentas = ventas.length;
+    const ticketPromedio = cantidadVentas > 0 ? totalVentas / cantidadVentas : 0;
+
+    return {
+      fecha: hoy.toISOString().split('T')[0],
+      cantidadVentas,
+      totalVentas,
+      ticketPromedio,
+      ventas: ventas.map(v => ({
+        id: v.id,
+        numero: v.numeroOrden,
+        cliente: v.cliente?.nombre || 'Cliente general',
+        total: Number(v.total),
+        hora: new Date(v.fecha).toLocaleTimeString('es-VE', { hour: '2-digit', minute: '2-digit' }),
+        productos: v.detalles.length,
+        tipoVenta: v.tipoVenta,
+        estadoPago: v.estadoPago,
+      })),
+    };
+  }
+
+  async getUltimaVenta() {
+    const venta: any = await this.prisma.venta.findFirst({
+      orderBy: { fecha: 'desc' },
+      include: {
+        cliente: { select: { id: true, nombre: true, telefono: true } },
+        detalles: {
+          include: {
+            producto: { select: { id: true, codigo: true, nombre: true } },
+          },
+        },
+        pagos: true,
+        usuario: { select: { id: true, nombreCompleto: true } },
+      },
+    });
+
+    if (!venta) {
+      return { mensaje: 'No hay ventas registradas' };
+    }
+
+    return {
+      id: venta.id,
+      numero: venta.numeroOrden,
+      fecha: venta.fecha,
+      hora: new Date(venta.fecha).toLocaleTimeString('es-VE', { hour: '2-digit', minute: '2-digit' }),
+      cliente: venta.cliente?.nombre || 'Cliente general',
+      clienteTelefono: venta.cliente?.telefono,
+      vendedor: venta.usuario?.nombreCompleto,
+      total: Number(venta.total),
+      tipoVenta: venta.tipoVenta,
+      estadoPago: venta.estadoPago,
+      productos: venta.detalles.map((d: any) => ({
+        nombre: d.producto.nombre,
+        codigo: d.producto.codigo,
+        cantidad: d.cantidad,
+        precio: Number(d.precioUnitario),
+        subtotal: Number(d.subtotal),
+      })),
+      pagos: venta.pagos.map((p: any) => ({
+        metodo: p.metodoPago,
+        monto: Number(p.monto),
+        moneda: p.moneda,
+      })),
+    };
+  }
+
   async getConsignacionesDashboard() {
     // Obtener todas las consignaciones pendientes de pago
     const consignacionesPendientes = await this.prisma.venta.findMany({
