@@ -57,32 +57,26 @@ export function generarOrdenSalida(venta: VentaPDF): void {
   } else {
     doc.setFillColor(59, 130, 246); // Blue for venta
   }
-  doc.rect(0, 0, pageWidth, 35, 'F');
+  doc.rect(0, 0, pageWidth, 28, 'F');
 
   doc.setTextColor(255, 255, 255);
-  doc.setFontSize(24);
+  doc.setFontSize(18);
   doc.setFont('helvetica', 'bold');
-  doc.text('ELEVASHOP', 14, 18);
 
-  doc.setFontSize(10);
-  doc.setFont('helvetica', 'normal');
-  doc.text('Sistema de Gestión de Inventario', 14, 26);
-
-  // Título - Diferente para consignación
-  doc.setFontSize(14);
+  // Título centrado - Diferente para consignación
   if (esConsignacion) {
-    doc.text('NOTA DE CONSIGNACIÓN', pageWidth - 14, 18, { align: 'right' });
+    doc.text('NOTA DE CONSIGNACIÓN', pageWidth / 2, 14, { align: 'center' });
   } else {
-    doc.text('ORDEN DE SALIDA', pageWidth - 14, 18, { align: 'right' });
+    doc.text('ORDEN DE SALIDA', pageWidth / 2, 14, { align: 'center' });
   }
-  doc.setFontSize(11);
-  doc.text(`#${venta.numero || venta.id}`, pageWidth - 14, 26, { align: 'right' });
+  doc.setFontSize(12);
+  doc.text(`#${venta.numero || venta.id}`, pageWidth / 2, 22, { align: 'center' });
 
   // Reset color
   doc.setTextColor(0, 0, 0);
 
   // Información de venta y cliente
-  const yStart = 45;
+  const yStart = 38;
 
   // Columna izquierda - Info Venta
   doc.setFontSize(10);
@@ -237,23 +231,22 @@ export function generarOrdenSalida(venta: VentaPDF): void {
     doc.setTextColor(234, 88, 12);
     doc.setFont('helvetica', 'bold');
     doc.setFontSize(10);
-    doc.text('⚠ MATERIAL EN CONSIGNACIÓN - NO ES UNA VENTA', pageWidth / 2, avisoY + 8, { align: 'center' });
+    doc.text('MATERIAL EN CONSIGNACIÓN - NO ES UNA VENTA', pageWidth / 2, avisoY + 8, { align: 'center' });
     doc.setFont('helvetica', 'normal');
     doc.setFontSize(8);
-    doc.text('Este material debe ser pagado o devuelto según acuerdo con Elevashop', pageWidth / 2, avisoY + 14, { align: 'center' });
+    doc.text('Este material debe ser pagado o devuelto según acuerdo previo', pageWidth / 2, avisoY + 14, { align: 'center' });
     doc.setTextColor(0, 0, 0);
   }
 
   // Footer
-  const footerY = doc.internal.pageSize.getHeight() - 20;
+  const footerY = doc.internal.pageSize.getHeight() - 15;
   doc.setFontSize(8);
   doc.setTextColor(128, 128, 128);
   if (esConsignacion) {
     doc.text('Material entregado en consignación', pageWidth / 2, footerY, { align: 'center' });
   } else {
-    doc.text('Gracias por su compra', pageWidth / 2, footerY, { align: 'center' });
+    doc.text('Gracias por su preferencia', pageWidth / 2, footerY, { align: 'center' });
   }
-  doc.text('Elevashop - Sistema de Gestión de Inventario', pageWidth / 2, footerY + 5, { align: 'center' });
 
   // Descargar PDF
   const prefix = esConsignacion ? 'consignacion' : 'orden_salida';
