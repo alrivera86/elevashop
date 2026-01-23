@@ -12,6 +12,77 @@ export class VentasService {
     private clientesService: ClientesService,
   ) {}
 
+  /**
+   * Busca un serial en el inventario usando diferentes estrategias de matching
+   * Ejemplo: "P-8060 / SERIAL #063" → busca "8060-063", "8060-63", "-063", etc.
+   */
+  private async buscarSerialFlexible(
+    tx: any,
+    serialIngresado: string,
+    productoId: number,
+  ): Promise<{ serial: string; id: number } | null> {
+    const serialNormalizado = serialIngresado.toUpperCase().trim();
+
+    // 1. Intentar match exacto
+    const exacto = await tx.unidadInventario.findFirst({
+      where: {
+        serial: serialNormalizado,
+        productoId,
+        estado: 'DISPONIBLE',
+      },
+      select: { serial: true, id: true },
+    });
+    if (exacto) return exacto;
+
+    // 2. Extraer todos los números del serial ingresado
+    const numeros = serialIngresado.match(/\d+/g);
+    if (!numeros || numeros.length === 0) return null;
+
+    // 3. Buscar seriales disponibles del producto
+    const serialesDisponibles = await tx.unidadInventario.findMany({
+      where: {
+        productoId,
+        estado: 'DISPONIBLE',
+      },
+      select: { serial: true, id: true },
+    });
+
+    // 4. Intentar diferentes patrones de match
+    for (const unidad of serialesDisponibles) {
+      const serialDB = unidad.serial.toUpperCase();
+
+      // Si el serial de la BD contiene todos los números ingresados en orden
+      let matchTodos = true;
+      let posActual = 0;
+      for (const num of numeros) {
+        const pos = serialDB.indexOf(num, posActual);
+        if (pos === -1) {
+          matchTodos = false;
+          break;
+        }
+        posActual = pos + num.length;
+      }
+      if (matchTodos) return unidad;
+
+      // Si el último número coincide (ej: "#063" → "-063")
+      const ultimoNumero = numeros[numeros.length - 1];
+      if (serialDB.endsWith(ultimoNumero) || serialDB.endsWith('-' + ultimoNumero)) {
+        return unidad;
+      }
+
+      // Si tiene formato XXXX-YYY y coinciden los números
+      if (numeros.length >= 2) {
+        const patron = `${numeros[numeros.length - 2]}-${ultimoNumero.padStart(3, '0')}`;
+        const patronAlt = `${numeros[numeros.length - 2]}-${ultimoNumero}`;
+        if (serialDB.includes(patron) || serialDB.includes(patronAlt) || serialDB === patron || serialDB === patronAlt) {
+          return unidad;
+        }
+      }
+    }
+
+    return null;
+  }
+
   async create(createVentaDto: CreateVentaDto, usuarioId: number) {
     // Verificar cliente
     const cliente = await this.clientesService.findOne(createVentaDto.clienteId);
@@ -113,45 +184,60 @@ export class VentasService {
           },
         });
 
-        // Si tiene serial, actualizar la UnidadInventario
+        // Si tiene serial, buscar y actualizar la UnidadInventario
         if (detalle.serial) {
-          const unidad = await tx.unidadInventario.findUnique({
-            where: { serial: detalle.serial.toUpperCase().trim() },
-          });
+          // Usar búsqueda flexible para encontrar el serial
+          const unidadEncontrada = await this.buscarSerialFlexible(
+            tx,
+            detalle.serial,
+            detalle.productoId,
+          );
 
-          if (unidad && unidad.estado === 'DISPONIBLE') {
-            if (esConsignacion) {
-              // Consignación: marcar como CONSIGNADO
-              await tx.unidadInventario.update({
-                where: { serial: detalle.serial.toUpperCase().trim() },
-                data: {
-                  estado: 'CONSIGNADO',
-                  clienteId: cliente.id,
-                  ventaId: nuevaVenta.id,
-                  precioVenta: detalle.precioUnitario,
-                },
-              });
-            } else {
-              // Venta normal: marcar como VENDIDO
-              const utilidad = detalle.precioUnitario - Number(unidad.costoUnitario);
-              const garantiaHasta = unidad.garantiaMeses
-                ? new Date(Date.now() + unidad.garantiaMeses * 30 * 24 * 60 * 60 * 1000)
-                : null;
+          if (unidadEncontrada) {
+            const unidad = await tx.unidadInventario.findUnique({
+              where: { id: unidadEncontrada.id },
+            });
 
-              await tx.unidadInventario.update({
-                where: { serial: detalle.serial.toUpperCase().trim() },
-                data: {
-                  estado: 'VENDIDO',
-                  fechaVenta: new Date(),
-                  clienteId: cliente.id,
-                  ventaId: nuevaVenta.id,
-                  precioVenta: detalle.precioUnitario,
-                  metodoPago: createVentaDto.pagos?.[0]?.metodoPago,
-                  utilidad,
-                  garantiaHasta,
-                },
-              });
+            if (unidad && unidad.estado === 'DISPONIBLE') {
+              if (esConsignacion) {
+                // Consignación: marcar como CONSIGNADO
+                await tx.unidadInventario.update({
+                  where: { id: unidadEncontrada.id },
+                  data: {
+                    estado: 'CONSIGNADO',
+                    clienteId: cliente.id,
+                    ventaId: nuevaVenta.id,
+                    precioVenta: detalle.precioUnitario,
+                  },
+                });
+              } else {
+                // Venta normal: marcar como VENDIDO
+                const utilidad = detalle.precioUnitario - Number(unidad.costoUnitario);
+                const garantiaHasta = unidad.garantiaMeses
+                  ? new Date(Date.now() + unidad.garantiaMeses * 30 * 24 * 60 * 60 * 1000)
+                  : null;
+
+                await tx.unidadInventario.update({
+                  where: { id: unidadEncontrada.id },
+                  data: {
+                    estado: 'VENDIDO',
+                    fechaVenta: new Date(),
+                    clienteId: cliente.id,
+                    ventaId: nuevaVenta.id,
+                    precioVenta: detalle.precioUnitario,
+                    metodoPago: createVentaDto.pagos?.[0]?.metodoPago,
+                    utilidad,
+                    garantiaHasta,
+                  },
+                });
+              }
+
+              // Log para debug
+              console.log(`Serial encontrado: "${detalle.serial}" → "${unidadEncontrada.serial}"`);
             }
+          } else {
+            // No se encontró match, registrar para referencia
+            console.log(`Serial no encontrado en inventario: "${detalle.serial}" para producto ${detalle.productoId}`);
           }
         }
       }
