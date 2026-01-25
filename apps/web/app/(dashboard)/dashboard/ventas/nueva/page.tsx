@@ -150,6 +150,24 @@ export default function NuevaVentaPage() {
     };
   }, [carrito, descuentoGlobal, aplicarIva]);
 
+  // Validación de seriales: cada producto debe tener tantos seriales como cantidad
+  const validacionSeriales = useMemo(() => {
+    const productosSinSeriales = carrito.filter(item =>
+      item.cantidad > 0 && item.serialesSeleccionados.length !== item.cantidad
+    );
+
+    const todosConSeriales = productosSinSeriales.length === 0;
+    const serialesFaltantes = productosSinSeriales.reduce((acc, item) =>
+      acc + (item.cantidad - item.serialesSeleccionados.length), 0
+    );
+
+    return {
+      todosConSeriales,
+      productosSinSeriales,
+      serialesFaltantes,
+    };
+  }, [carrito]);
+
   // Cargar seriales disponibles para un producto
   const cargarSerialesProducto = async (productoId: number): Promise<UnidadInventario[]> => {
     try {
@@ -258,6 +276,7 @@ export default function NuevaVentaPage() {
       }
 
       // Agregar producto con estado de carga de seriales
+      // mostrarSeriales: true para que el vendedor vea que debe ingresar seriales
       const nuevoItem: ItemCarrito = {
         producto,
         cantidad: 1,
@@ -266,18 +285,28 @@ export default function NuevaVentaPage() {
         serialesSeleccionados: [],
         serialesDisponibles: [],
         cargandoSeriales: true,
-        mostrarSeriales: false,
+        mostrarSeriales: true,
       };
 
       setCarrito(prev => [...prev, nuevoItem]);
 
-      // Cargar seriales disponibles en background
+      // Cargar seriales disponibles en background y auto-seleccionar el primero
       const seriales = await cargarSerialesProducto(producto.id);
-      setCarrito(prev => prev.map(item =>
-        item.producto.id === producto.id
-          ? { ...item, serialesDisponibles: seriales, cargandoSeriales: false }
-          : item
-      ));
+      setCarrito(prev => prev.map(item => {
+        if (item.producto.id !== producto.id) return item;
+
+        // Auto-seleccionar el primer serial disponible para cantidad=1
+        const serialesAutoSeleccionados = seriales.length > 0
+          ? [seriales[0].serial]
+          : [];
+
+        return {
+          ...item,
+          serialesDisponibles: seriales,
+          cargandoSeriales: false,
+          serialesSeleccionados: serialesAutoSeleccionados,
+        };
+      }));
     }
     setBusquedaProducto('');
     setMostrarBusquedaProducto(false);
@@ -289,20 +318,52 @@ export default function NuevaVentaPage() {
       return;
     }
     const item = carrito.find(i => i.producto.id === productoId);
-    if (item && nuevaCantidad > item.producto.stockActual) {
+    if (!item) return;
+
+    if (nuevaCantidad > item.producto.stockActual) {
       toast({ title: 'Stock insuficiente', variant: 'destructive' });
       return;
     }
-    setCarrito(carrito.map(item =>
-      item.producto.id === productoId
-        ? {
-            ...item,
-            cantidad: nuevaCantidad,
-            // Limpiar seriales si la cantidad cambia y hay más seriales que cantidad
-            serialesSeleccionados: item.serialesSeleccionados.slice(0, nuevaCantidad)
-          }
-        : item
-    ));
+
+    // Verificar si hay suficientes seriales disponibles en BD
+    if (nuevaCantidad > item.serialesDisponibles.length) {
+      toast({
+        title: 'Seriales insuficientes',
+        description: `Solo hay ${item.serialesDisponibles.length} serial(es) disponibles en el sistema`,
+        variant: 'destructive'
+      });
+      return;
+    }
+
+    setCarrito(carrito.map(cartItem => {
+      if (cartItem.producto.id !== productoId) return cartItem;
+
+      // Auto-seleccionar seriales según la nueva cantidad
+      // Tomar los primeros N seriales disponibles que no estén ya seleccionados
+      let nuevosSeriales = [...cartItem.serialesSeleccionados];
+
+      if (nuevaCantidad > nuevosSeriales.length) {
+        // Necesitamos agregar más seriales
+        const serialesNoSeleccionados = cartItem.serialesDisponibles
+          .map(u => u.serial)
+          .filter(s => !nuevosSeriales.includes(s));
+
+        const cantidadAAgregar = nuevaCantidad - nuevosSeriales.length;
+        nuevosSeriales = [
+          ...nuevosSeriales,
+          ...serialesNoSeleccionados.slice(0, cantidadAAgregar)
+        ];
+      } else if (nuevaCantidad < nuevosSeriales.length) {
+        // Necesitamos quitar seriales
+        nuevosSeriales = nuevosSeriales.slice(0, nuevaCantidad);
+      }
+
+      return {
+        ...cartItem,
+        cantidad: nuevaCantidad,
+        serialesSeleccionados: nuevosSeriales,
+      };
+    }));
   };
 
   const actualizarPrecioUnitario = (productoId: number, precio: number) => {
@@ -361,30 +422,53 @@ export default function NuevaVentaPage() {
     }));
   };
 
-  const agregarSerialManual = (productoId: number, serial: string) => {
-    if (!serial) return;
+  const agregarSerialManual = (productoId: number, serialInput: string) => {
+    if (!serialInput) return;
+
+    // Separar seriales por "/" para permitir múltiples seriales en una entrada
+    const serialesNuevos = serialInput
+      .split('/')
+      .map(s => s.trim().toUpperCase())
+      .filter(s => s.length > 0);
+
+    if (serialesNuevos.length === 0) return;
 
     setCarrito(carrito.map(item => {
       if (item.producto.id !== productoId) return item;
 
-      // Verificar si ya existe
-      if (item.serialesSeleccionados.includes(serial)) {
-        toast({ title: 'Serial ya agregado', variant: 'destructive' });
-        return item;
+      let serialesActualizados = [...item.serialesSeleccionados];
+      let agregados = 0;
+      let duplicados = 0;
+
+      for (const serial of serialesNuevos) {
+        // Verificar si ya existe
+        if (serialesActualizados.includes(serial)) {
+          duplicados++;
+          continue;
+        }
+
+        // Verificar stock
+        if (serialesActualizados.length >= item.producto.stockActual) {
+          toast({ title: 'Stock insuficiente', variant: 'destructive' });
+          break;
+        }
+
+        serialesActualizados.push(serial);
+        agregados++;
       }
 
-      // Verificar stock
-      if (item.serialesSeleccionados.length >= item.producto.stockActual) {
-        toast({ title: 'Stock insuficiente', variant: 'destructive' });
-        return item;
+      if (duplicados > 0) {
+        toast({ title: `${duplicados} serial(es) ya estaban agregados`, variant: 'destructive' });
       }
 
-      toast({ title: `Serial ${serial} agregado`, variant: 'success' });
+      if (agregados > 0) {
+        toast({ title: `${agregados} serial(es) agregado(s)`, variant: 'success' });
+      }
 
       return {
         ...item,
-        serialesSeleccionados: [...item.serialesSeleccionados, serial],
-        cantidad: item.serialesSeleccionados.length + 1,
+        serialesSeleccionados: serialesActualizados,
+        cantidad: serialesActualizados.length,
       };
     }));
   };
@@ -597,8 +681,19 @@ export default function NuevaVentaPage() {
 
                     {/* Sección de Seriales */}
                     <div className="mt-2">
+                      {/* Alerta de seriales faltantes para este producto */}
+                      {item.cantidad > 0 && item.serialesSeleccionados.length !== item.cantidad && (
+                        <div className="mb-2 flex items-center gap-2 rounded border border-red-200 bg-red-50 px-2 py-1 text-xs text-red-700 dark:border-red-900 dark:bg-red-950 dark:text-red-300">
+                          <span className="font-medium">
+                            Faltan {item.cantidad - item.serialesSeleccionados.length} serial(es)
+                          </span>
+                          <span className="text-red-500">
+                            (tiene {item.serialesSeleccionados.length} de {item.cantidad} requeridos)
+                          </span>
+                        </div>
+                      )}
                       <Button
-                        variant="ghost"
+                        variant={item.serialesSeleccionados.length !== item.cantidad ? "destructive" : "ghost"}
                         size="sm"
                         className="h-7 px-2 text-xs"
                         onClick={() => toggleMostrarSeriales(item.producto.id)}
@@ -609,7 +704,7 @@ export default function NuevaVentaPage() {
                           <Loader2 className="h-3 w-3 animate-spin" />
                         ) : (
                           <>
-                            Seriales ({item.serialesSeleccionados.length}/{item.serialesDisponibles.length} disp.)
+                            Seriales ({item.serialesSeleccionados.length}/{item.cantidad} req.)
                             {item.mostrarSeriales ? (
                               <ChevronUp className="ml-1 h-3 w-3" />
                             ) : (
@@ -917,6 +1012,18 @@ export default function NuevaVentaPage() {
           </CardContent>
         </Card>
 
+        {/* Alerta de seriales faltantes */}
+        {carrito.length > 0 && !validacionSeriales.todosConSeriales && (
+          <div className="rounded-lg border border-red-200 bg-red-50 p-3 dark:border-red-900 dark:bg-red-950">
+            <p className="text-sm font-medium text-red-800 dark:text-red-200">
+              Faltan {validacionSeriales.serialesFaltantes} serial(es)
+            </p>
+            <p className="text-xs text-red-600 dark:text-red-400">
+              Cada producto debe tener seriales asignados igual a su cantidad.
+            </p>
+          </div>
+        )}
+
         {/* Botones de Acción */}
         <div className="flex gap-2">
           <Button
@@ -929,7 +1036,7 @@ export default function NuevaVentaPage() {
           <Button
             className={`flex-1 ${esConsignacion ? 'bg-orange-600 hover:bg-orange-700' : ''}`}
             size="lg"
-            disabled={!clienteSeleccionado || carrito.length === 0 || crearVentaMutation.isPending}
+            disabled={!clienteSeleccionado || carrito.length === 0 || crearVentaMutation.isPending || !validacionSeriales.todosConSeriales}
             onClick={() => crearVentaMutation.mutate()}
           >
             {crearVentaMutation.isPending ? (
