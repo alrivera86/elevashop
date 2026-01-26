@@ -10,6 +10,7 @@ import { Label } from '@/components/ui/label';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
 import { useAuthStore } from '@/stores/auth-store';
 import { toast } from '@/hooks/use-toast';
+import { APP_CONFIG } from '@/lib/config';
 
 export default function LoginPage() {
   const router = useRouter();
@@ -48,14 +49,18 @@ export default function LoginPage() {
       <Card className="w-full max-w-md">
         <CardHeader className="space-y-1 text-center">
           <div className="mx-auto mb-8">
-            <Image
-              src="/logo.png"
-              alt="Elevashop"
-              width={500}
-              height={200}
-              className="h-56 w-auto object-contain"
-              priority
-            />
+            {APP_CONFIG.showLogo ? (
+              <Image
+                src={APP_CONFIG.logoUrl}
+                alt={APP_CONFIG.appName}
+                width={500}
+                height={200}
+                className="h-56 w-auto object-contain"
+                priority
+              />
+            ) : (
+              <h1 className="text-3xl font-bold text-primary">{APP_CONFIG.appName}</h1>
+            )}
           </div>
           <CardDescription>
             Ingresa tus credenciales para acceder al sistema
@@ -68,7 +73,7 @@ export default function LoginPage() {
               <Input
                 id="email"
                 type="email"
-                placeholder="admin@elevashop.com"
+                placeholder="correo@ejemplo.com"
                 value={formData.email}
                 onChange={(e) => setFormData({ ...formData, email: e.target.value })}
                 required

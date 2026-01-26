@@ -6,8 +6,8 @@ import { Providers } from './providers';
 const inter = Inter({ subsets: ['latin'] });
 
 export const metadata: Metadata = {
-  title: 'Elevashop - Sistema de Gestión',
-  description: 'Sistema de gestión empresarial para Elevapartes/Elevashop - Ascensores confiables con piezas de calidad',
+  title: process.env.NEXT_PUBLIC_APP_NAME || 'Sistema de Gestión',
+  description: process.env.NEXT_PUBLIC_APP_DESCRIPTION || 'Sistema de gestión de inventario y ventas',
   icons: {
     icon: [
       { url: '/favicon.ico', sizes: 'any' },

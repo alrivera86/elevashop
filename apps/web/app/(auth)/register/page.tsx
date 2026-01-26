@@ -11,6 +11,7 @@ import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle }
 import { authApi } from '@/lib/api';
 import { toast } from '@/hooks/use-toast';
 import { useAuthStore } from '@/stores/auth-store';
+import { APP_CONFIG } from '@/lib/config';
 
 export default function RegisterPage() {
   const router = useRouter();
@@ -70,18 +71,22 @@ export default function RegisterPage() {
       <Card className="w-full max-w-md">
         <CardHeader className="space-y-1 text-center">
           <div className="mx-auto mb-6">
-            <Image
-              src="/logo.png"
-              alt="Elevashop"
-              width={400}
-              height={150}
-              className="h-40 w-auto object-contain"
-              priority
-            />
+            {APP_CONFIG.showLogo ? (
+              <Image
+                src={APP_CONFIG.logoUrl}
+                alt={APP_CONFIG.appName}
+                width={400}
+                height={150}
+                className="h-40 w-auto object-contain"
+                priority
+              />
+            ) : (
+              <h1 className="text-3xl font-bold text-primary">{APP_CONFIG.appName}</h1>
+            )}
           </div>
           <CardTitle className="text-2xl font-bold">Crear cuenta</CardTitle>
           <CardDescription>
-            Ingresa tus datos para registrarte en Elevashop
+            Ingresa tus datos para registrarte en el sistema
           </CardDescription>
         </CardHeader>
         <form onSubmit={handleSubmit}>

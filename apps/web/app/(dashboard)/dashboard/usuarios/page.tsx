@@ -235,7 +235,7 @@ function UsuarioForm({
           type="email"
           value={formData.email}
           onChange={(e) => setFormData({ ...formData, email: e.target.value })}
-          placeholder="usuario@elevashop.com"
+          placeholder="usuario@ejemplo.com"
           required
         />
       </div>

@@ -168,7 +168,7 @@ function BuscarGarantia() {
               )}
               <span className="font-medium">
                 {resultado.vendidoPorNosotros
-                  ? 'Vendido por Elevashop'
+                  ? 'Vendido'
                   : 'No vendido (en inventario)'}
               </span>
             </div>

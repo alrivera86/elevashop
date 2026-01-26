@@ -4,6 +4,7 @@ import Link from 'next/link';
 import Image from 'next/image';
 import { usePathname } from 'next/navigation';
 import { cn } from '@/lib/utils';
+import { APP_CONFIG } from '@/lib/config';
 import {
   LayoutDashboard,
   Package,
@@ -60,16 +61,23 @@ function SidebarContent({ onNavigate }: { onNavigate?: () => void }) {
   return (
     <div className="flex h-full flex-col">
       {/* Logo */}
-      <div className="flex h-56 items-center justify-center border-b px-1">
+      <div className={cn(
+        "flex items-center justify-center border-b px-1",
+        APP_CONFIG.showLogo ? "h-56" : "h-16"
+      )}>
         <Link href="/dashboard" className="flex items-center">
-          <Image
-            src="/logo.png"
-            alt="Elevashop"
-            width={400}
-            height={200}
-            className="h-52 w-auto object-contain"
-            priority
-          />
+          {APP_CONFIG.showLogo ? (
+            <Image
+              src={APP_CONFIG.logoUrl}
+              alt={APP_CONFIG.appName}
+              width={400}
+              height={200}
+              className="h-52 w-auto object-contain"
+              priority
+            />
+          ) : (
+            <span className="text-xl font-bold text-primary">{APP_CONFIG.appName}</span>
+          )}
         </Link>
       </div>
 
