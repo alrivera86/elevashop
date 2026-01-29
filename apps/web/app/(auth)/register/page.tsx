@@ -70,18 +70,18 @@ export default function RegisterPage() {
     <div className="flex min-h-screen items-center justify-center bg-muted/30 p-4">
       <Card className="w-full max-w-md">
         <CardHeader className="space-y-1 text-center">
-          <div className="mx-auto mb-6">
+          <div className="mx-auto mb-4 sm:mb-6">
             {APP_CONFIG.showLogo ? (
               <Image
                 src={APP_CONFIG.logoUrl}
                 alt={APP_CONFIG.appName}
                 width={400}
                 height={150}
-                className="h-40 w-auto object-contain"
+                className="h-24 sm:h-32 md:h-40 w-auto object-contain"
                 priority
               />
             ) : (
-              <h1 className="text-3xl font-bold text-primary">{APP_CONFIG.appName}</h1>
+              <h1 className="text-2xl sm:text-3xl font-bold text-primary">{APP_CONFIG.appName}</h1>
             )}
           </div>
           <CardTitle className="text-2xl font-bold">Crear cuenta</CardTitle>

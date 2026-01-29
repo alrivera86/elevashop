@@ -113,7 +113,7 @@ function VentaDetalleDialog({
 
   return (
     <Dialog open={open} onOpenChange={onClose}>
-      <DialogContent className="max-w-2xl">
+      <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
             {esConsignacion ? (
@@ -391,13 +391,13 @@ export default function VentasPage() {
 
   return (
     <div className="space-y-6">
-      <div className="flex items-center justify-between">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
         <div>
-          <h1 className="text-3xl font-bold tracking-tight">Ventas y Consignaciones</h1>
-          <p className="text-muted-foreground">Historial de ventas y mercancía en consignación</p>
+          <h1 className="text-2xl sm:text-3xl font-bold tracking-tight">Ventas y Consignaciones</h1>
+          <p className="text-sm text-muted-foreground">Historial de ventas y mercancía en consignación</p>
         </div>
         <Link href="/dashboard/ventas/nueva">
-          <Button>
+          <Button className="w-full sm:w-auto">
             <Plus className="mr-2 h-4 w-4" />
             Nueva Operación
           </Button>
@@ -405,7 +405,7 @@ export default function VentasPage() {
       </div>
 
       {/* Stats */}
-      <div className="grid gap-4 md:grid-cols-4">
+      <div className="grid gap-4 grid-cols-2 md:grid-cols-4">
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
             <CardTitle className="text-sm font-medium">Ventas del Mes</CardTitle>
@@ -486,10 +486,10 @@ export default function VentasPage() {
             <TableHeader>
               <TableRow>
                 <TableHead>Número</TableHead>
-                <TableHead>Tipo</TableHead>
-                <TableHead>Fecha</TableHead>
+                <TableHead className="hidden sm:table-cell">Tipo</TableHead>
+                <TableHead className="hidden md:table-cell">Fecha</TableHead>
                 <TableHead>Cliente</TableHead>
-                <TableHead>Productos</TableHead>
+                <TableHead className="hidden lg:table-cell">Productos</TableHead>
                 <TableHead className="text-right">Total</TableHead>
                 <TableHead className="text-center">Estado</TableHead>
                 <TableHead className="text-right">Acciones</TableHead>
@@ -525,7 +525,7 @@ export default function VentasPage() {
                       <TableCell className="font-mono text-sm font-medium">
                         #{venta.numero}
                       </TableCell>
-                      <TableCell>
+                      <TableCell className="hidden sm:table-cell">
                         {esConsignacion ? (
                           <Badge variant="outline" className="border-orange-500 text-orange-600">
                             <PackageOpen className="mr-1 h-3 w-3" />
@@ -538,9 +538,11 @@ export default function VentasPage() {
                           </Badge>
                         )}
                       </TableCell>
-                      <TableCell>{formatDateTime(venta.fecha)}</TableCell>
-                      <TableCell>{venta.cliente?.nombre || 'Cliente general'}</TableCell>
+                      <TableCell className="hidden md:table-cell">{formatDateTime(venta.fecha)}</TableCell>
                       <TableCell>
+                        <span className="truncate block max-w-[120px] sm:max-w-none">{venta.cliente?.nombre || 'Cliente general'}</span>
+                      </TableCell>
+                      <TableCell className="hidden lg:table-cell">
                         <div className="max-w-[200px]">
                           {venta.detalles.slice(0, 2).map((d, i) => (
                             <p key={i} className="text-sm truncate">

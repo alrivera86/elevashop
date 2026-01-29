@@ -63,7 +63,7 @@ function SidebarContent({ onNavigate }: { onNavigate?: () => void }) {
       {/* Logo */}
       <div className={cn(
         "flex items-center justify-center border-b px-1",
-        APP_CONFIG.showLogo ? "h-56" : "h-16"
+        APP_CONFIG.showLogo ? "h-32 lg:h-56" : "h-14 lg:h-16"
       )}>
         <Link href="/dashboard" className="flex items-center">
           {APP_CONFIG.showLogo ? (
@@ -72,11 +72,11 @@ function SidebarContent({ onNavigate }: { onNavigate?: () => void }) {
               alt={APP_CONFIG.appName}
               width={400}
               height={200}
-              className="h-52 w-auto object-contain"
+              className="h-28 lg:h-52 w-auto object-contain"
               priority
             />
           ) : (
-            <span className="text-xl font-bold text-primary">{APP_CONFIG.appName}</span>
+            <span className="text-lg lg:text-xl font-bold text-primary">{APP_CONFIG.appName}</span>
           )}
         </Link>
       </div>

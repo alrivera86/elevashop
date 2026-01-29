@@ -150,7 +150,7 @@ function ProductoForm({
 
   return (
     <form onSubmit={handleSubmit} className="space-y-4">
-      <div className="grid grid-cols-2 gap-4">
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
         <div className="space-y-2">
           <Label htmlFor="codigo">Código</Label>
           <Input
@@ -180,7 +180,7 @@ function ProductoForm({
         />
       </div>
 
-      <div className="grid grid-cols-2 gap-4">
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
         <div className="space-y-2">
           <Label htmlFor="precioMercadoLibre">Precio MercadoLibre ($)</Label>
           <Input
@@ -205,7 +205,7 @@ function ProductoForm({
         </div>
       </div>
 
-      <div className="grid grid-cols-2 gap-4">
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
         <div className="space-y-2">
           <Label htmlFor="precioElevapartes">Precio Elevapartes ($)</Label>
           <Input
@@ -230,7 +230,7 @@ function ProductoForm({
         </div>
       </div>
 
-      <div className="grid grid-cols-3 gap-4">
+      <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
         <div className="space-y-2">
           <Label htmlFor="stockActual">Stock Actual</Label>
           <Input
@@ -483,20 +483,21 @@ export default function InventarioPage() {
 
   return (
     <div className="space-y-6">
-      <div className="flex items-center justify-between">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
         <div>
-          <h1 className="text-3xl font-bold tracking-tight">Inventario</h1>
-          <p className="text-muted-foreground">Gestiona tus productos y stock</p>
+          <h1 className="text-2xl sm:text-3xl font-bold tracking-tight">Inventario</h1>
+          <p className="text-sm text-muted-foreground">Gestiona tus productos y stock</p>
         </div>
-        <div className="flex gap-2">
+        <div className="flex flex-wrap gap-2">
           <Link href="/dashboard/inventario/importar">
-            <Button variant="outline">
+            <Button variant="outline" size="sm" className="sm:size-default">
               <Upload className="mr-2 h-4 w-4" />
-              Importar Stock
+              <span className="hidden sm:inline">Importar Stock</span>
+              <span className="sm:hidden">Importar</span>
             </Button>
           </Link>
           <Link href="/dashboard/inventario/seriales">
-            <Button variant="outline">
+            <Button variant="outline" size="sm" className="sm:size-default">
               <ScanBarcode className="mr-2 h-4 w-4" />
               Seriales
             </Button>
@@ -564,12 +565,12 @@ export default function InventarioPage() {
           <Table>
             <TableHeader>
               <TableRow>
-                <TableHead>Código</TableHead>
+                <TableHead className="hidden sm:table-cell">Código</TableHead>
                 <TableHead>Nombre</TableHead>
-                <TableHead className="text-right">P. Compra</TableHead>
+                <TableHead className="hidden md:table-cell text-right">P. Compra</TableHead>
                 <TableHead className="text-right">P. Venta</TableHead>
                 <TableHead className="text-center">Stock</TableHead>
-                <TableHead className="text-center">Estado</TableHead>
+                <TableHead className="text-center hidden sm:table-cell">Estado</TableHead>
                 <TableHead className="text-right">Acciones</TableHead>
               </TableRow>
             </TableHeader>
@@ -609,11 +610,14 @@ export default function InventarioPage() {
                   };
                   return (
                     <TableRow key={producto.id}>
-                      <TableCell className="font-mono text-sm">
+                      <TableCell className="font-mono text-sm hidden sm:table-cell">
                         {producto.codigo}
                       </TableCell>
-                      <TableCell className="font-medium">{producto.nombre}</TableCell>
-                      <TableCell className="text-right">
+                      <TableCell className="font-medium">
+                        <span className="block truncate max-w-[150px] sm:max-w-none">{producto.nombre}</span>
+                        <span className="sm:hidden text-xs text-muted-foreground font-mono">{producto.codigo}</span>
+                      </TableCell>
+                      <TableCell className="text-right hidden md:table-cell">
                         {formatCurrency(Number(producto.precioMercado) || 0)}
                       </TableCell>
                       <TableCell className="text-right">
@@ -622,7 +626,7 @@ export default function InventarioPage() {
                       <TableCell className="text-center font-medium">
                         {producto.stockActual}
                       </TableCell>
-                      <TableCell className="text-center">
+                      <TableCell className="text-center hidden sm:table-cell">
                         <Badge variant={getEstadoVariant(producto.estado) as any}>
                           {getEstadoLabel(producto.estado)}
                         </Badge>

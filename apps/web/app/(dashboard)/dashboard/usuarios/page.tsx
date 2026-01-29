@@ -88,7 +88,7 @@ function StatsCards({ stats }: { stats: { total: number; activos: number; inacti
   }
 
   return (
-    <div className="grid gap-4 md:grid-cols-4">
+    <div className="grid gap-4 grid-cols-2 md:grid-cols-4">
       <Card>
         <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
           <CardTitle className="text-sm font-medium">Total Usuarios</CardTitle>
@@ -540,10 +540,10 @@ export default function UsuariosPage() {
   return (
     <div className="space-y-6">
       {/* Header */}
-      <div className="flex items-center justify-between">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
         <div>
-          <h1 className="text-3xl font-bold tracking-tight">Usuarios</h1>
-          <p className="text-muted-foreground">
+          <h1 className="text-2xl sm:text-3xl font-bold tracking-tight">Usuarios</h1>
+          <p className="text-sm text-muted-foreground">
             Administracion de usuarios y permisos del sistema
           </p>
         </div>
@@ -578,7 +578,7 @@ export default function UsuariosPage() {
       {/* Search and Table */}
       <Card>
         <CardHeader>
-          <div className="flex items-center justify-between">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
             <div>
               <CardTitle className="flex items-center gap-2">
                 <Users className="h-5 w-5" />
@@ -589,10 +589,10 @@ export default function UsuariosPage() {
               </CardDescription>
             </div>
             <Input
-              placeholder="Buscar por nombre, email o rol..."
+              placeholder="Buscar..."
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
-              className="max-w-xs"
+              className="w-full sm:max-w-xs"
             />
           </div>
         </CardHeader>
@@ -601,10 +601,10 @@ export default function UsuariosPage() {
             <TableHeader>
               <TableRow>
                 <TableHead>Usuario</TableHead>
-                <TableHead>Email</TableHead>
+                <TableHead className="hidden sm:table-cell">Email</TableHead>
                 <TableHead>Rol</TableHead>
-                <TableHead>Estado</TableHead>
-                <TableHead>Ultimo Login</TableHead>
+                <TableHead className="hidden md:table-cell">Estado</TableHead>
+                <TableHead className="hidden lg:table-cell">Ultimo Login</TableHead>
                 <TableHead className="text-right">Acciones</TableHead>
               </TableRow>
             </TableHeader>
@@ -629,14 +629,17 @@ export default function UsuariosPage() {
               ) : (
                 filteredUsuarios?.map((usuario) => (
                   <TableRow key={usuario.id} className={!usuario.activo ? 'opacity-50' : ''}>
-                    <TableCell className="font-medium">{usuario.nombreCompleto}</TableCell>
-                    <TableCell className="text-muted-foreground">{usuario.email}</TableCell>
+                    <TableCell className="font-medium">
+                      {usuario.nombreCompleto}
+                      <span className="sm:hidden block text-xs text-muted-foreground truncate">{usuario.email}</span>
+                    </TableCell>
+                    <TableCell className="text-muted-foreground hidden sm:table-cell">{usuario.email}</TableCell>
                     <TableCell>
                       <Badge variant="outline" className={getRolBadgeColor(usuario.rol.nombre)}>
                         {usuario.rol.nombre}
                       </Badge>
                     </TableCell>
-                    <TableCell>
+                    <TableCell className="hidden md:table-cell">
                       {usuario.activo ? (
                         <Badge variant="outline" className="bg-green-50 text-green-700 border-green-200">
                           Activo
@@ -647,7 +650,7 @@ export default function UsuariosPage() {
                         </Badge>
                       )}
                     </TableCell>
-                    <TableCell className="text-muted-foreground text-sm">
+                    <TableCell className="text-muted-foreground text-sm hidden lg:table-cell">
                       {usuario.ultimoLogin ? formatDate(usuario.ultimoLogin) : 'Nunca'}
                     </TableCell>
                     <TableCell className="text-right">

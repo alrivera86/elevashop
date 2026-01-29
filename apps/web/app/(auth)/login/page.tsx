@@ -48,18 +48,18 @@ export default function LoginPage() {
     <div className="flex min-h-screen items-center justify-center bg-muted/30 p-4">
       <Card className="w-full max-w-md">
         <CardHeader className="space-y-1 text-center">
-          <div className="mx-auto mb-8">
+          <div className="mx-auto mb-4 sm:mb-8">
             {APP_CONFIG.showLogo ? (
               <Image
                 src={APP_CONFIG.logoUrl}
                 alt={APP_CONFIG.appName}
                 width={500}
                 height={200}
-                className="h-56 w-auto object-contain"
+                className="h-28 sm:h-40 md:h-56 w-auto object-contain"
                 priority
               />
             ) : (
-              <h1 className="text-3xl font-bold text-primary">{APP_CONFIG.appName}</h1>
+              <h1 className="text-2xl sm:text-3xl font-bold text-primary">{APP_CONFIG.appName}</h1>
             )}
           </div>
           <CardDescription>

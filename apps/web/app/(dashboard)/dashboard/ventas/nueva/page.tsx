@@ -535,9 +535,9 @@ export default function NuevaVentaPage() {
   };
 
   return (
-    <div className="flex h-[calc(100vh-120px)] gap-4">
+    <div className="flex flex-col lg:flex-row lg:h-[calc(100vh-120px)] gap-4">
       {/* Panel Izquierdo - Productos y Carrito */}
-      <div className="flex flex-1 flex-col gap-4">
+      <div className="flex flex-1 flex-col gap-4 min-h-0">
         {/* Búsqueda de Producto */}
         <Card>
           <CardContent className="p-4">
@@ -600,15 +600,26 @@ export default function NuevaVentaPage() {
               <div className="divide-y pb-4">
                 {carrito.map((item) => (
                   <div key={item.producto.id} className="p-4">
-                    <div className="flex items-center gap-4">
-                      {/* Info producto */}
+                    {/* Info producto + eliminar */}
+                    <div className="flex items-center gap-2">
                       <div className="flex-1 min-w-0">
-                        <p className="font-medium truncate">{item.producto.nombre}</p>
+                        <p className="font-medium truncate text-sm sm:text-base">{item.producto.nombre}</p>
                         <p className="text-xs text-muted-foreground">
                           Precio lista: {formatCurrency(Number(item.producto.precioElevapartes))}
                         </p>
                       </div>
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        className="h-8 w-8 text-destructive shrink-0"
+                        onClick={() => eliminarProducto(item.producto.id)}
+                      >
+                        <Trash2 className="h-4 w-4" />
+                      </Button>
+                    </div>
 
+                    {/* Controles: precio, cantidad, descuento, subtotal */}
+                    <div className="flex flex-wrap items-center gap-2 mt-2">
                       {/* Precio Unitario Editable */}
                       <div className="flex items-center gap-1">
                         <span className="text-xs text-muted-foreground">$</span>
@@ -618,7 +629,7 @@ export default function NuevaVentaPage() {
                           min="0"
                           value={item.precioUnitario || ''}
                           onChange={(e) => actualizarPrecioUnitario(item.producto.id, parseFloat(e.target.value) || 0)}
-                          className="h-8 w-20 text-center"
+                          className="h-9 w-24 text-center"
                           placeholder="Precio"
                         />
                       </div>
@@ -628,7 +639,7 @@ export default function NuevaVentaPage() {
                         <Button
                           variant="outline"
                           size="icon"
-                          className="h-8 w-8"
+                          className="h-9 w-9"
                           onClick={() => actualizarCantidad(item.producto.id, item.cantidad - 1)}
                         >
                           <Minus className="h-4 w-4" />
@@ -637,12 +648,12 @@ export default function NuevaVentaPage() {
                           type="number"
                           value={item.cantidad}
                           onChange={(e) => actualizarCantidad(item.producto.id, parseInt(e.target.value) || 0)}
-                          className="h-8 w-16 text-center"
+                          className="h-9 w-14 text-center"
                         />
                         <Button
                           variant="outline"
                           size="icon"
-                          className="h-8 w-8"
+                          className="h-9 w-9"
                           onClick={() => actualizarCantidad(item.producto.id, item.cantidad + 1)}
                         >
                           <Plus className="h-4 w-4" />
@@ -655,7 +666,7 @@ export default function NuevaVentaPage() {
                           type="number"
                           value={item.descuentoPorcentaje || ''}
                           onChange={(e) => actualizarDescuentoLinea(item.producto.id, parseFloat(e.target.value) || 0)}
-                          className="h-8 w-16 text-center"
+                          className="h-9 w-16 text-center"
                           placeholder="0"
                           min="0"
                           max="100"
@@ -664,19 +675,9 @@ export default function NuevaVentaPage() {
                       </div>
 
                       {/* Subtotal línea */}
-                      <div className="w-24 text-right font-bold">
+                      <div className="ml-auto text-right font-bold">
                         {formatCurrency((item.cantidad * item.precioUnitario) * (1 - item.descuentoPorcentaje / 100))}
                       </div>
-
-                      {/* Eliminar */}
-                      <Button
-                        variant="ghost"
-                        size="icon"
-                        className="h-8 w-8 text-destructive"
-                        onClick={() => eliminarProducto(item.producto.id)}
-                      >
-                        <Trash2 className="h-4 w-4" />
-                      </Button>
                     </div>
 
                     {/* Sección de Seriales */}
@@ -811,7 +812,7 @@ export default function NuevaVentaPage() {
       </div>
 
       {/* Panel Derecho - Cliente y Resumen */}
-      <div className="flex w-96 flex-col gap-4">
+      <div className="flex w-full lg:w-96 flex-col gap-4">
         {/* Tipo de Operación */}
         <Card>
           <CardContent className="p-4">

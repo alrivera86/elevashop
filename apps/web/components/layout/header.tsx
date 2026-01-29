@@ -1,6 +1,7 @@
 'use client';
 
-import { Bell, Search } from 'lucide-react';
+import { useState } from 'react';
+import { Bell, Search, X } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { MobileSidebar } from './sidebar';
@@ -16,6 +17,7 @@ import { useAuthStore } from '@/stores/auth-store';
 
 export function Header() {
   const { user, logout } = useAuthStore();
+  const [mobileSearchOpen, setMobileSearchOpen] = useState(false);
 
   const handleLogout = () => {
     logout();
@@ -23,10 +25,10 @@ export function Header() {
   };
 
   return (
-    <header className="sticky top-0 z-40 flex h-16 items-center gap-4 border-b bg-background px-4 lg:px-6">
+    <header className="sticky top-0 z-40 flex h-14 sm:h-16 items-center gap-2 sm:gap-4 border-b bg-background px-3 sm:px-4 lg:px-6">
       <MobileSidebar />
 
-      {/* Search */}
+      {/* Search - Desktop */}
       <div className="hidden flex-1 md:block">
         <form className="relative">
           <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
@@ -38,7 +40,30 @@ export function Header() {
         </form>
       </div>
 
-      <div className="flex flex-1 items-center justify-end gap-4">
+      {/* Search - Mobile (expandible) */}
+      {mobileSearchOpen && (
+        <div className="flex flex-1 md:hidden">
+          <form className="relative flex-1">
+            <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
+            <Input
+              type="search"
+              placeholder="Buscar..."
+              className="w-full pl-8 h-9"
+              autoFocus
+            />
+          </form>
+          <Button variant="ghost" size="icon" className="ml-1 shrink-0" onClick={() => setMobileSearchOpen(false)}>
+            <X className="h-4 w-4" />
+          </Button>
+        </div>
+      )}
+
+      <div className={`flex items-center justify-end gap-2 sm:gap-4 ${mobileSearchOpen ? 'hidden md:flex' : 'flex-1'}`}>
+        {/* Search toggle - Mobile */}
+        <Button variant="ghost" size="icon" className="md:hidden" onClick={() => setMobileSearchOpen(true)}>
+          <Search className="h-5 w-5" />
+        </Button>
+
         {/* Notifications */}
         <Button variant="ghost" size="icon" className="relative">
           <Bell className="h-5 w-5" />
