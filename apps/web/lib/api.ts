@@ -584,13 +584,14 @@ export interface Venta {
 }
 
 export interface VentaDetalle {
-  id: string;
+  id: number;
   producto: { id: string; nombre: string; codigo: string };
   cantidad: number;
   precioUnitario: number;
   descuento?: number;
   subtotal: number;
   serial?: string;
+  liquidado?: boolean; // Para consignaciones: indica si el item ya fue pagado
 }
 
 export interface VentaPago {
@@ -955,7 +956,15 @@ export const consignacionApi = {
   getConsignaciones: (params?: { page?: number; limit?: number; clienteId?: number }) =>
     get<{ ventas: Venta[]; pagination: Pagination }>('/ventas/consignaciones', { params }),
 
-  // Liquidar consignación (registrar pago)
+  // Liquidar consignación completa (registrar pago)
   liquidar: (ventaId: number, pagos: { metodoPago: MetodoPago; monto: number; moneda?: 'USD' | 'VES'; referencia?: string }[]) =>
     post<Venta>(`/ventas/${ventaId}/liquidar`, { pagos }),
+
+  // Liquidar un item específico
+  liquidarItem: (ventaId: number, detalleId: number, pago: { metodoPago: MetodoPago; monto?: number; moneda?: 'USD' | 'VES'; referencia?: string }) =>
+    post<Venta>(`/ventas/${ventaId}/liquidar-item/${detalleId}`, pago),
+
+  // Liquidar múltiples items seleccionados
+  liquidarItems: (ventaId: number, detalleIds: number[], pago: { metodoPago: MetodoPago; monto?: number; moneda?: 'USD' | 'VES'; referencia?: string }) =>
+    post<Venta>(`/ventas/${ventaId}/liquidar-items`, { detalleIds, pago }),
 };

@@ -82,12 +82,31 @@ export class VentasController {
   }
 
   @Post(':id/liquidar')
-  @ApiOperation({ summary: 'Liquidar consignación (registrar pago)' })
+  @ApiOperation({ summary: 'Liquidar consignación completa (registrar pago)' })
   liquidarConsignacion(
     @Param('id', ParseIntPipe) id: number,
     @Body() body: { pagos: any[] },
   ) {
     return this.ventasService.liquidarConsignacion(id, body.pagos);
+  }
+
+  @Post(':id/liquidar-item/:detalleId')
+  @ApiOperation({ summary: 'Liquidar un item específico de consignación' })
+  liquidarItem(
+    @Param('id', ParseIntPipe) id: number,
+    @Param('detalleId', ParseIntPipe) detalleId: number,
+    @Body() body: any,
+  ) {
+    return this.ventasService.liquidarItem(id, detalleId, body);
+  }
+
+  @Post(':id/liquidar-items')
+  @ApiOperation({ summary: 'Liquidar múltiples items de consignación' })
+  liquidarItems(
+    @Param('id', ParseIntPipe) id: number,
+    @Body() body: { detalleIds: number[]; pago: any },
+  ) {
+    return this.ventasService.liquidarItems(id, body.detalleIds, body.pago);
   }
 
   @Get(':id')

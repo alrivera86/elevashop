@@ -267,22 +267,26 @@ model VentaDetalle {
   descuento      Decimal  @default(0) @db.Decimal(12, 2)
   subtotal       Decimal  @db.Decimal(12, 2)
   serial         String?  // Serial del producto vendido
+  liquidado      Boolean  @default(false) // Para consignaciones: indica si el item ya fue pagado
+  pagos          VentaPago[] // Pagos asociados a este item específico
 
   @@map("ventas_detalle")
 }
 
 // Tabla para pagos múltiples por venta (EFECTIVO $ / ZELLE, etc.)
 model VentaPago {
-  id         Int        @id @default(autoincrement())
-  ventaId    Int        @map("venta_id")
-  venta      Venta      @relation(fields: [ventaId], references: [id], onDelete: Cascade)
-  metodoPago MetodoPago @map("metodo_pago")
-  monto      Decimal    @db.Decimal(12, 2)
-  moneda     Moneda     @default(USD)
-  tasaCambio Decimal?   @map("tasa_cambio") @db.Decimal(10, 4)
-  montoBs    Decimal?   @map("monto_bs") @db.Decimal(12, 2)
-  referencia String?    // Número de referencia de transferencia
-  createdAt  DateTime   @default(now()) @map("created_at")
+  id         Int           @id @default(autoincrement())
+  ventaId    Int           @map("venta_id")
+  venta      Venta         @relation(fields: [ventaId], references: [id], onDelete: Cascade)
+  detalleId  Int?          @map("detalle_id") // Opcional: para pagos por item específico
+  detalle    VentaDetalle? @relation(fields: [detalleId], references: [id], onDelete: Cascade)
+  metodoPago MetodoPago    @map("metodo_pago")
+  monto      Decimal       @db.Decimal(12, 2)
+  moneda     Moneda        @default(USD)
+  tasaCambio Decimal?      @map("tasa_cambio") @db.Decimal(10, 4)
+  montoBs    Decimal?      @map("monto_bs") @db.Decimal(12, 2)
+  referencia String?       // Número de referencia de transferencia
+  createdAt  DateTime      @default(now()) @map("created_at")
 
   @@map("ventas_pagos")
 }

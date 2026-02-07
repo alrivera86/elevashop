@@ -242,62 +242,206 @@ function LiquidarDialog({
 }) {
   const [metodoPago, setMetodoPago] = useState<MetodoPago>('EFECTIVO_USD');
   const [referencia, setReferencia] = useState('');
+  const [modoLiquidacion, setModoLiquidacion] = useState<'todo' | 'items'>('todo');
+  const [itemsSeleccionados, setItemsSeleccionados] = useState<number[]>([]);
   const queryClient = useQueryClient();
 
-  const liquidarMutation = useMutation({
+  // Items pendientes (no liquidados)
+  const itemsPendientes = venta?.detalles.filter(d => !d.liquidado) || [];
+  const itemsLiquidados = venta?.detalles.filter(d => d.liquidado) || [];
+
+  // Monto a cobrar según selección
+  const montoSeleccionado = modoLiquidacion === 'todo'
+    ? itemsPendientes.reduce((sum, d) => sum + Number(d.subtotal), 0)
+    : itemsSeleccionados.reduce((sum, id) => {
+        const item = itemsPendientes.find(d => d.id === id);
+        return sum + (item ? Number(item.subtotal) : 0);
+      }, 0);
+
+  const toggleItem = (id: number) => {
+    setItemsSeleccionados(prev =>
+      prev.includes(id) ? prev.filter(x => x !== id) : [...prev, id]
+    );
+  };
+
+  const seleccionarTodos = () => {
+    setItemsSeleccionados(itemsPendientes.map(d => d.id));
+  };
+
+  const deseleccionarTodos = () => {
+    setItemsSeleccionados([]);
+  };
+
+  // Mutation para liquidar todo
+  const liquidarTodoMutation = useMutation({
     mutationFn: () => {
       if (!venta) throw new Error('No hay venta seleccionada');
       return consignacionApi.liquidar(venta.id, [{
         metodoPago,
-        monto: Number(venta.total),
+        monto: montoSeleccionado,
         moneda: metodoPago.includes('BS') ? 'VES' : 'USD',
         referencia: referencia || undefined,
       }]);
     },
-    onSuccess: () => {
-      toast({ title: 'Consignación liquidada exitosamente' });
-      queryClient.invalidateQueries({ queryKey: ['ventas'] });
-      queryClient.invalidateQueries({ queryKey: ['consignacion-dashboard'] });
-      onSuccess();
-      onClose();
-    },
-    onError: (error: any) => {
-      toast({
-        title: error.response?.data?.message || 'Error al liquidar consignación',
-        variant: 'destructive',
+    onSuccess: handleSuccess,
+    onError: handleError,
+  });
+
+  // Mutation para liquidar items seleccionados
+  const liquidarItemsMutation = useMutation({
+    mutationFn: () => {
+      if (!venta) throw new Error('No hay venta seleccionada');
+      return consignacionApi.liquidarItems(venta.id, itemsSeleccionados, {
+        metodoPago,
+        monto: montoSeleccionado,
+        moneda: metodoPago.includes('BS') ? 'VES' : 'USD',
+        referencia: referencia || undefined,
       });
     },
+    onSuccess: handleSuccess,
+    onError: handleError,
   });
+
+  function handleSuccess() {
+    const msg = modoLiquidacion === 'todo'
+      ? 'Consignación liquidada exitosamente'
+      : `${itemsSeleccionados.length} item(s) liquidados`;
+    toast({ title: msg });
+    queryClient.invalidateQueries({ queryKey: ['ventas'] });
+    queryClient.invalidateQueries({ queryKey: ['consignacion-dashboard'] });
+    setItemsSeleccionados([]);
+    onSuccess();
+    onClose();
+  }
+
+  function handleError(error: any) {
+    toast({
+      title: error.response?.data?.message || 'Error al liquidar',
+      variant: 'destructive',
+    });
+  }
+
+  const handleLiquidar = () => {
+    if (modoLiquidacion === 'todo') {
+      liquidarTodoMutation.mutate();
+    } else {
+      liquidarItemsMutation.mutate();
+    }
+  };
+
+  const isPending = liquidarTodoMutation.isPending || liquidarItemsMutation.isPending;
+  const canLiquidar = modoLiquidacion === 'todo'
+    ? itemsPendientes.length > 0
+    : itemsSeleccionados.length > 0;
 
   if (!venta) return null;
 
   return (
     <Dialog open={open} onOpenChange={onClose}>
-      <DialogContent className="max-w-md">
+      <DialogContent className="max-w-lg">
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
             <CheckCircle className="h-5 w-5 text-green-600" />
             Liquidar Consignación
           </DialogTitle>
           <DialogDescription>
-            Registrar el pago de la consignación #{venta.numero}
+            Consignación #{venta.numero} - {venta.cliente?.nombre || 'Cliente general'}
           </DialogDescription>
         </DialogHeader>
 
         <div className="space-y-4 py-4">
-          {/* Resumen */}
+          {/* Selector de modo */}
+          <div className="flex gap-2">
+            <Button
+              variant={modoLiquidacion === 'todo' ? 'default' : 'outline'}
+              size="sm"
+              onClick={() => setModoLiquidacion('todo')}
+              className={modoLiquidacion === 'todo' ? 'bg-green-600 hover:bg-green-700' : ''}
+            >
+              Liquidar Todo
+            </Button>
+            <Button
+              variant={modoLiquidacion === 'items' ? 'default' : 'outline'}
+              size="sm"
+              onClick={() => setModoLiquidacion('items')}
+              className={modoLiquidacion === 'items' ? 'bg-orange-600 hover:bg-orange-700' : ''}
+            >
+              Por Item
+            </Button>
+          </div>
+
+          {/* Items liquidados previamente */}
+          {itemsLiquidados.length > 0 && (
+            <div className="rounded-lg border bg-green-50 p-3 dark:bg-green-950">
+              <p className="text-xs font-medium text-green-700 dark:text-green-300 mb-2">
+                Items ya liquidados ({itemsLiquidados.length})
+              </p>
+              {itemsLiquidados.map(item => (
+                <div key={item.id} className="flex justify-between text-sm text-green-600">
+                  <span className="truncate">{item.producto.nombre}</span>
+                  <span>{formatCurrency(item.subtotal)}</span>
+                </div>
+              ))}
+            </div>
+          )}
+
+          {/* Lista de items pendientes */}
+          {modoLiquidacion === 'items' && (
+            <div className="space-y-2">
+              <div className="flex items-center justify-between">
+                <Label>Seleccionar items a liquidar</Label>
+                <div className="flex gap-2">
+                  <Button variant="ghost" size="sm" onClick={seleccionarTodos}>
+                    Todos
+                  </Button>
+                  <Button variant="ghost" size="sm" onClick={deseleccionarTodos}>
+                    Ninguno
+                  </Button>
+                </div>
+              </div>
+              <div className="rounded-lg border max-h-48 overflow-y-auto">
+                {itemsPendientes.map(item => (
+                  <label
+                    key={item.id}
+                    className={`flex items-center justify-between p-3 hover:bg-muted cursor-pointer border-b last:border-0 ${
+                      itemsSeleccionados.includes(item.id) ? 'bg-orange-50 dark:bg-orange-950' : ''
+                    }`}
+                  >
+                    <div className="flex items-center gap-3">
+                      <input
+                        type="checkbox"
+                        checked={itemsSeleccionados.includes(item.id)}
+                        onChange={() => toggleItem(item.id)}
+                        className="h-4 w-4 rounded border-gray-300"
+                      />
+                      <div>
+                        <p className="font-medium text-sm">{item.producto.nombre}</p>
+                        {item.serial && (
+                          <p className="text-xs text-muted-foreground">Serial: {item.serial}</p>
+                        )}
+                      </div>
+                    </div>
+                    <span className="font-medium">{formatCurrency(item.subtotal)}</span>
+                  </label>
+                ))}
+              </div>
+            </div>
+          )}
+
+          {/* Resumen de monto */}
           <div className="rounded-lg border bg-orange-50 p-4 dark:bg-orange-950">
             <div className="flex items-center justify-between">
-              <span className="text-sm text-muted-foreground">Cliente:</span>
-              <span className="font-medium">{venta.cliente?.nombre || 'Cliente general'}</span>
-            </div>
-            <div className="flex items-center justify-between mt-1">
-              <span className="text-sm text-muted-foreground">Productos:</span>
-              <span className="font-medium">{venta.detalles.length} items</span>
+              <span className="text-sm text-muted-foreground">
+                {modoLiquidacion === 'todo'
+                  ? `${itemsPendientes.length} items pendientes`
+                  : `${itemsSeleccionados.length} items seleccionados`}
+              </span>
             </div>
             <div className="flex items-center justify-between mt-2 pt-2 border-t">
               <span className="font-medium">Total a cobrar:</span>
-              <span className="text-xl font-bold text-green-600">{formatCurrency(venta.total)}</span>
+              <span className="text-xl font-bold text-green-600">
+                {formatCurrency(montoSeleccionado)}
+              </span>
             </div>
           </div>
 
@@ -334,11 +478,11 @@ function LiquidarDialog({
             Cancelar
           </Button>
           <Button
-            onClick={() => liquidarMutation.mutate()}
-            disabled={liquidarMutation.isPending}
+            onClick={handleLiquidar}
+            disabled={isPending || !canLiquidar}
             className="bg-green-600 hover:bg-green-700"
           >
-            {liquidarMutation.isPending ? (
+            {isPending ? (
               <>
                 <Loader2 className="mr-2 h-4 w-4 animate-spin" />
                 Procesando...
@@ -346,7 +490,7 @@ function LiquidarDialog({
             ) : (
               <>
                 <CheckCircle className="mr-2 h-4 w-4" />
-                Confirmar Pago
+                {modoLiquidacion === 'todo' ? 'Liquidar Todo' : `Liquidar ${itemsSeleccionados.length} items`}
               </>
             )}
           </Button>

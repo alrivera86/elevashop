@@ -698,4 +698,213 @@ export class VentasService {
       return this.findOne(ventaId);
     });
   }
+
+  // Liquidar un item específico de una consignación
+  async liquidarItem(ventaId: number, detalleId: number, pago: any) {
+    const venta = await this.findOne(ventaId);
+
+    if (venta.tipoVenta !== 'CONSIGNACION') {
+      throw new BadRequestException('Esta venta no es una consignación');
+    }
+
+    const detalle = venta.detalles.find((d) => d.id === detalleId);
+    if (!detalle) {
+      throw new BadRequestException('Item no encontrado en esta consignación');
+    }
+
+    if (detalle.liquidado) {
+      throw new BadRequestException('Este item ya fue liquidado');
+    }
+
+    return this.prisma.$transaction(async (tx: any) => {
+      // Registrar el pago vinculado al item
+      await tx.ventaPago.create({
+        data: {
+          ventaId,
+          detalleId,
+          metodoPago: pago.metodoPago,
+          monto: pago.monto || detalle.subtotal,
+          moneda: pago.moneda || 'USD',
+          tasaCambio: pago.tasaCambio,
+          montoBs: pago.montoBs,
+          referencia: pago.referencia,
+        },
+      });
+
+      // Marcar item como liquidado
+      await tx.ventaDetalle.update({
+        where: { id: detalleId },
+        data: { liquidado: true },
+      });
+
+      // Actualizar unidad de inventario si tiene serial
+      if (detalle.serial) {
+        const unidad = await tx.unidadInventario.findUnique({
+          where: { serial: detalle.serial.toUpperCase().trim() },
+        });
+
+        if (unidad && unidad.estado === 'CONSIGNADO') {
+          const utilidad = Number(detalle.precioUnitario) - Number(unidad.costoUnitario);
+          const garantiaHasta = unidad.garantiaMeses
+            ? new Date(Date.now() + unidad.garantiaMeses * 30 * 24 * 60 * 60 * 1000)
+            : null;
+
+          await tx.unidadInventario.update({
+            where: { id: unidad.id },
+            data: {
+              estado: 'VENDIDO',
+              fechaVenta: new Date(),
+              metodoPago: pago.metodoPago,
+              utilidad,
+              garantiaHasta,
+            },
+          });
+        }
+      }
+
+      // Verificar si todos los items están liquidados
+      const itemsPendientes = await tx.ventaDetalle.count({
+        where: { ventaId, liquidado: false },
+      });
+
+      // Calcular total pagado
+      const totalPagos = await tx.ventaPago.aggregate({
+        where: { ventaId },
+        _sum: { monto: true },
+      });
+
+      const totalPagado = Number(totalPagos._sum.monto) || 0;
+      const estadoPago =
+        itemsPendientes === 0
+          ? 'PAGADO'
+          : totalPagado > 0
+          ? 'PARCIAL'
+          : 'PENDIENTE';
+
+      // Actualizar estado de la venta
+      await tx.venta.update({
+        where: { id: ventaId },
+        data: { estadoPago },
+      });
+
+      // Si todos los items están liquidados, actualizar estadísticas del cliente
+      if (itemsPendientes === 0) {
+        await tx.cliente.update({
+          where: { id: venta.clienteId },
+          data: {
+            totalCompras: { increment: Number(venta.total) },
+            cantidadOrdenes: { increment: 1 },
+          },
+        });
+      }
+
+      return this.findOne(ventaId);
+    });
+  }
+
+  // Liquidar múltiples items de una consignación
+  async liquidarItems(ventaId: number, detalleIds: number[], pago: any) {
+    const venta = await this.findOne(ventaId);
+
+    if (venta.tipoVenta !== 'CONSIGNACION') {
+      throw new BadRequestException('Esta venta no es una consignación');
+    }
+
+    // Validar que todos los items existen y no están liquidados
+    const detalles = venta.detalles.filter((d) => detalleIds.includes(d.id));
+    if (detalles.length !== detalleIds.length) {
+      throw new BadRequestException('Algunos items no fueron encontrados');
+    }
+
+    const yaLiquidados = detalles.filter((d) => d.liquidado);
+    if (yaLiquidados.length > 0) {
+      throw new BadRequestException('Algunos items ya fueron liquidados');
+    }
+
+    // Calcular monto total de los items seleccionados
+    const montoItems = detalles.reduce((sum, d) => sum + Number(d.subtotal), 0);
+
+    return this.prisma.$transaction(async (tx: any) => {
+      // Registrar un solo pago para los items seleccionados
+      await tx.ventaPago.create({
+        data: {
+          ventaId,
+          metodoPago: pago.metodoPago,
+          monto: pago.monto || montoItems,
+          moneda: pago.moneda || 'USD',
+          tasaCambio: pago.tasaCambio,
+          montoBs: pago.montoBs,
+          referencia: pago.referencia,
+        },
+      });
+
+      // Marcar items como liquidados y actualizar seriales
+      for (const detalle of detalles) {
+        await tx.ventaDetalle.update({
+          where: { id: detalle.id },
+          data: { liquidado: true },
+        });
+
+        if (detalle.serial) {
+          const unidad = await tx.unidadInventario.findUnique({
+            where: { serial: detalle.serial.toUpperCase().trim() },
+          });
+
+          if (unidad && unidad.estado === 'CONSIGNADO') {
+            const utilidad = Number(detalle.precioUnitario) - Number(unidad.costoUnitario);
+            const garantiaHasta = unidad.garantiaMeses
+              ? new Date(Date.now() + unidad.garantiaMeses * 30 * 24 * 60 * 60 * 1000)
+              : null;
+
+            await tx.unidadInventario.update({
+              where: { id: unidad.id },
+              data: {
+                estado: 'VENDIDO',
+                fechaVenta: new Date(),
+                metodoPago: pago.metodoPago,
+                utilidad,
+                garantiaHasta,
+              },
+            });
+          }
+        }
+      }
+
+      // Verificar si todos los items están liquidados
+      const itemsPendientes = await tx.ventaDetalle.count({
+        where: { ventaId, liquidado: false },
+      });
+
+      // Calcular total pagado
+      const totalPagos = await tx.ventaPago.aggregate({
+        where: { ventaId },
+        _sum: { monto: true },
+      });
+
+      const totalPagado = Number(totalPagos._sum.monto) || 0;
+      const estadoPago =
+        itemsPendientes === 0
+          ? 'PAGADO'
+          : totalPagado > 0
+          ? 'PARCIAL'
+          : 'PENDIENTE';
+
+      await tx.venta.update({
+        where: { id: ventaId },
+        data: { estadoPago },
+      });
+
+      if (itemsPendientes === 0) {
+        await tx.cliente.update({
+          where: { id: venta.clienteId },
+          data: {
+            totalCompras: { increment: Number(venta.total) },
+            cantidadOrdenes: { increment: 1 },
+          },
+        });
+      }
+
+      return this.findOne(ventaId);
+    });
+  }
 }
