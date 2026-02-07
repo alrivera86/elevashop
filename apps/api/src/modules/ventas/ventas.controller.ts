@@ -23,13 +23,15 @@ export class VentasController {
   @ApiQuery({ name: 'limit', required: false })
   @ApiQuery({ name: 'clienteId', required: false })
   @ApiQuery({ name: 'tipoVenta', required: false, enum: ['VENTA', 'CONSIGNACION'] })
+  @ApiQuery({ name: 'search', required: false, description: 'Buscar por número de orden o cliente' })
   findAll(
     @Query('page') page?: number,
     @Query('limit') limit?: number,
     @Query('clienteId') clienteId?: number,
     @Query('tipoVenta') tipoVenta?: 'VENTA' | 'CONSIGNACION',
+    @Query('search') search?: string,
   ) {
-    return this.ventasService.findAll({ page, limit, clienteId, tipoVenta });
+    return this.ventasService.findAll({ page, limit, clienteId, tipoVenta, search });
   }
 
   @Get('estadisticas')

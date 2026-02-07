@@ -266,8 +266,9 @@ export class VentasService {
     fechaDesde?: Date;
     fechaHasta?: Date;
     tipoVenta?: 'VENTA' | 'CONSIGNACION';
+    search?: string;
   }) {
-    const { page = 1, limit = 20, clienteId, fechaDesde, fechaHasta, tipoVenta } = options || {};
+    const { page = 1, limit = 20, clienteId, fechaDesde, fechaHasta, tipoVenta, search } = options || {};
     const skip = (page - 1) * limit;
 
     const where: any = {};
@@ -278,6 +279,16 @@ export class VentasService {
       where.fecha = {};
       if (fechaDesde) where.fecha.gte = fechaDesde;
       if (fechaHasta) where.fecha.lte = fechaHasta;
+    }
+
+    // Búsqueda por número de orden o nombre de cliente
+    if (search && search.trim()) {
+      const searchTerm = search.trim();
+      where.OR = [
+        { numeroOrden: { contains: searchTerm, mode: 'insensitive' } },
+        { cliente: { nombre: { contains: searchTerm, mode: 'insensitive' } } },
+        { cliente: { telefono: { contains: searchTerm, mode: 'insensitive' } } },
+      ];
     }
 
     const [ventas, total] = await Promise.all([

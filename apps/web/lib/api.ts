@@ -608,6 +608,7 @@ export interface VentasParams {
   clienteId?: string;
   desde?: string;
   hasta?: string;
+  search?: string;
 }
 
 export interface CreateVentaData {

@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import {
   ShoppingCart,
@@ -508,9 +508,20 @@ export default function VentasPage() {
   const [liquidarOpen, setLiquidarOpen] = useState(false);
   const [ventaALiquidar, setVentaALiquidar] = useState<Venta | null>(null);
 
+  // Debounce search para no hacer muchas requests
+  const [debouncedSearch, setDebouncedSearch] = useState('');
+
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      setDebouncedSearch(search);
+      setPage(1); // Reset page cuando cambia la búsqueda
+    }, 300);
+    return () => clearTimeout(timer);
+  }, [search]);
+
   const { data, isLoading } = useQuery({
-    queryKey: ['ventas', { page }],
-    queryFn: () => ventasApi.getAll({ page, limit: 10 }),
+    queryKey: ['ventas', { page, search: debouncedSearch }],
+    queryFn: () => ventasApi.getAll({ page, limit: 10, search: debouncedSearch || undefined }),
   });
 
   const { data: resumen } = useQuery({
