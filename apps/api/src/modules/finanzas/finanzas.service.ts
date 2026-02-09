@@ -293,4 +293,225 @@ export class FinanzasService {
       },
     };
   }
+
+  // ============ GASTOS OPERATIVOS (Vista Excel) ============
+
+  // Obtener todas las categorías de gastos
+  async getCategorias() {
+    return this.prisma.categoriaGasto.findMany({
+      orderBy: { nombre: 'asc' },
+    });
+  }
+
+  // Crear o actualizar categoría
+  async upsertCategoria(nombre: string, tipo: string = 'OPERATIVO') {
+    return this.prisma.categoriaGasto.upsert({
+      where: { nombre },
+      update: { tipo: tipo as any },
+      create: { nombre, tipo: tipo as any },
+    });
+  }
+
+  // Obtener gastos en formato matriz (para vista Excel)
+  async getGastosMatriz(anioInicio: number, anioFin: number) {
+    // Obtener todas las categorías
+    const categorias = await this.prisma.categoriaGasto.findMany({
+      orderBy: { nombre: 'asc' },
+    });
+
+    // Obtener todos los gastos del rango
+    const gastos = await this.prisma.gasto.findMany({
+      where: {
+        anio: { gte: anioInicio, lte: anioFin },
+      },
+      include: { categoria: true },
+      orderBy: [{ anio: 'asc' }, { mes: 'asc' }],
+    });
+
+    // Generar lista de meses
+    const meses: { anio: number; mes: number; label: string }[] = [];
+    const nombresMeses = ['enero', 'febrero', 'marzo', 'abril', 'mayo', 'junio',
+                         'julio', 'agosto', 'septiembre', 'octubre', 'noviembre', 'diciembre'];
+
+    for (let anio = anioInicio; anio <= anioFin; anio++) {
+      for (let mes = 1; mes <= 12; mes++) {
+        meses.push({
+          anio,
+          mes,
+          label: `${nombresMeses[mes - 1]} ${anio}`,
+        });
+      }
+    }
+
+    // Crear matriz de datos
+    const matriz: Record<string, Record<string, number>> = {};
+    const totalesPorMes: Record<string, number> = {};
+
+    // Inicializar matriz con ceros
+    for (const cat of categorias) {
+      matriz[cat.nombre] = {};
+      for (const m of meses) {
+        const key = `${m.anio}-${m.mes}`;
+        matriz[cat.nombre][key] = 0;
+        totalesPorMes[key] = 0;
+      }
+    }
+
+    // Llenar matriz con datos
+    for (const gasto of gastos) {
+      const key = `${gasto.anio}-${gasto.mes}`;
+      const nombreCat = gasto.categoria?.nombre || 'Sin categoría';
+
+      if (!matriz[nombreCat]) {
+        matriz[nombreCat] = {};
+        for (const m of meses) {
+          const k = `${m.anio}-${m.mes}`;
+          matriz[nombreCat][k] = 0;
+        }
+      }
+
+      matriz[nombreCat][key] = (matriz[nombreCat][key] || 0) + Number(gasto.monto);
+      totalesPorMes[key] = (totalesPorMes[key] || 0) + Number(gasto.monto);
+    }
+
+    return {
+      categorias: categorias.map(c => ({ id: c.id, nombre: c.nombre, tipo: c.tipo })),
+      meses,
+      matriz,
+      totalesPorMes,
+    };
+  }
+
+  // Obtener gastos de un mes específico
+  async getGastosMes(anio: number, mes: number) {
+    const gastos = await this.prisma.gasto.findMany({
+      where: { anio, mes },
+      include: { categoria: true },
+      orderBy: { categoria: { nombre: 'asc' } },
+    });
+
+    const total = gastos.reduce((sum, g) => sum + Number(g.monto), 0);
+
+    return {
+      anio,
+      mes,
+      gastos: gastos.map(g => ({
+        id: g.id,
+        categoria: g.categoria?.nombre || 'Sin categoría',
+        categoriaId: g.categoriaId,
+        monto: Number(g.monto),
+        descripcion: g.descripcion,
+        fecha: g.fecha,
+      })),
+      total,
+    };
+  }
+
+  // Crear o actualizar gasto de un mes/categoría específico
+  async upsertGastoMensual(data: {
+    categoriaId: number;
+    anio: number;
+    mes: number;
+    monto: number;
+    descripcion?: string;
+  }) {
+    // Buscar si ya existe un gasto para esta categoría/mes/año
+    const existente = await this.prisma.gasto.findFirst({
+      where: {
+        categoriaId: data.categoriaId,
+        anio: data.anio,
+        mes: data.mes,
+      },
+    });
+
+    if (existente) {
+      return this.prisma.gasto.update({
+        where: { id: existente.id },
+        data: {
+          monto: data.monto,
+          descripcion: data.descripcion,
+        },
+        include: { categoria: true },
+      });
+    }
+
+    return this.prisma.gasto.create({
+      data: {
+        categoriaId: data.categoriaId,
+        anio: data.anio,
+        mes: data.mes,
+        monto: data.monto,
+        descripcion: data.descripcion,
+        fecha: new Date(data.anio, data.mes - 1, 15), // Mitad del mes
+        moneda: 'USD',
+      },
+      include: { categoria: true },
+    });
+  }
+
+  // Eliminar gasto
+  async deleteGasto(id: number) {
+    return this.prisma.gasto.delete({ where: { id } });
+  }
+
+  // Importar gastos masivos (para migración del Excel)
+  async importarGastos(datos: {
+    categoria: string;
+    tipo?: string;
+    gastos: { anio: number; mes: number; monto: number }[];
+  }[]) {
+    const resultados: any[] = [];
+
+    for (const item of datos) {
+      // Crear o buscar categoría
+      const categoria = await this.upsertCategoria(item.categoria, item.tipo || 'OPERATIVO');
+
+      // Crear gastos
+      for (const gasto of item.gastos) {
+        if (gasto.monto > 0) {
+          const result = await this.upsertGastoMensual({
+            categoriaId: categoria.id,
+            anio: gasto.anio,
+            mes: gasto.mes,
+            monto: gasto.monto,
+          });
+          resultados.push(result);
+        }
+      }
+    }
+
+    return { importados: resultados.length };
+  }
+
+  // Obtener resumen anual de gastos
+  async getResumenAnual(anio: number) {
+    const gastos = await this.prisma.gasto.findMany({
+      where: { anio },
+      include: { categoria: true },
+    });
+
+    const porCategoria: Record<string, number> = {};
+    let total = 0;
+
+    for (const g of gastos) {
+      const cat = g.categoria?.nombre || 'Sin categoría';
+      porCategoria[cat] = (porCategoria[cat] || 0) + Number(g.monto);
+      total += Number(g.monto);
+    }
+
+    const porMes: Record<number, number> = {};
+    for (let m = 1; m <= 12; m++) {
+      porMes[m] = gastos
+        .filter(g => g.mes === m)
+        .reduce((sum, g) => sum + Number(g.monto), 0);
+    }
+
+    return {
+      anio,
+      total,
+      porCategoria,
+      porMes,
+      promedio: total / 12,
+    };
+  }
 }

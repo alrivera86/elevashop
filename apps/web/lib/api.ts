@@ -260,6 +260,37 @@ export interface TasaDolar {
   nextUpdate: string;
 }
 
+// Tipos para gastos operativos
+export interface CategoriaGasto {
+  id: number;
+  nombre: string;
+  tipo: string;
+}
+
+export interface GastoOperativo {
+  id: number;
+  categoria: string;
+  categoriaId: number;
+  monto: number;
+  descripcion?: string;
+  fecha: string;
+}
+
+export interface GastosMatriz {
+  categorias: CategoriaGasto[];
+  meses: { anio: number; mes: number; label: string }[];
+  matriz: Record<string, Record<string, number>>;
+  totalesPorMes: Record<string, number>;
+}
+
+export interface ResumenAnualGastos {
+  anio: number;
+  total: number;
+  porCategoria: Record<string, number>;
+  porMes: Record<number, number>;
+  promedio: number;
+}
+
 export const finanzasApi = {
   getTasaCambio: () => get<TasaCambio>('/finanzas/tasa-cambio'),
   setTasaCambio: (tasa: number) => post<TasaCambio>('/finanzas/tasa-cambio', { tasa }),
@@ -271,6 +302,37 @@ export const finanzasApi = {
   getDistribucionFondos: () => get<DistribucionFondos>('/finanzas/distribucion-fondos'),
   getTasaDolar: () => get<TasaDolar>('/finanzas/tasa-dolar'),
   actualizarTasaDolar: () => post<TasaDolar>('/finanzas/tasa-dolar/actualizar'),
+
+  // Gastos operativos
+  getCategorias: () => get<CategoriaGasto[]>('/finanzas/categorias'),
+  createCategoria: (nombre: string, tipo?: string) =>
+    post<CategoriaGasto>('/finanzas/categorias', { nombre, tipo }),
+  getGastosMatriz: (anioInicio: number, anioFin: number) =>
+    get<GastosMatriz>('/finanzas/gastos-operativos/matriz', {
+      params: { anioInicio, anioFin },
+    }),
+  getGastosMes: (anio: number, mes: number) =>
+    get<{ anio: number; mes: number; gastos: GastoOperativo[]; total: number }>(
+      '/finanzas/gastos-operativos/mes',
+      { params: { anio, mes } }
+    ),
+  upsertGastoMensual: (data: {
+    categoriaId: number;
+    anio: number;
+    mes: number;
+    monto: number;
+    descripcion?: string;
+  }) => post<GastoOperativo>('/finanzas/gastos-operativos', data),
+  deleteGasto: (id: number) => del<void>(`/finanzas/gastos-operativos/${id}`),
+  importarGastos: (datos: {
+    categoria: string;
+    tipo?: string;
+    gastos: { anio: number; mes: number; monto: number }[];
+  }[]) => post<{ importados: number }>('/finanzas/gastos-operativos/importar', datos),
+  getResumenAnual: (anio: number) =>
+    get<ResumenAnualGastos>('/finanzas/gastos-operativos/resumen-anual', {
+      params: { anio },
+    }),
 };
 
 export const reportesApi = {

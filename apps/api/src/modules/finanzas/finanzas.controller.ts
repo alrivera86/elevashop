@@ -1,4 +1,4 @@
-import { Controller, Get, Post, Body, Query, UseGuards, ParseIntPipe } from '@nestjs/common';
+import { Controller, Get, Post, Delete, Body, Query, Param, UseGuards, ParseIntPipe } from '@nestjs/common';
 import { ApiTags, ApiOperation, ApiBearerAuth, ApiQuery } from '@nestjs/swagger';
 import { FinanzasService } from './finanzas.service';
 import { BinanceP2PService } from './binance-p2p.service';
@@ -116,5 +116,80 @@ export class FinanzasController {
   @ApiOperation({ summary: 'Forzar actualización de la tasa desde Binance P2P' })
   actualizarTasaDolar() {
     return this.binanceP2PService.updateRate();
+  }
+
+  // ============ GASTOS OPERATIVOS ============
+
+  @Get('categorias')
+  @ApiOperation({ summary: 'Listar categorías de gastos' })
+  getCategorias() {
+    return this.finanzasService.getCategorias();
+  }
+
+  @Post('categorias')
+  @ApiOperation({ summary: 'Crear o actualizar categoría' })
+  upsertCategoria(@Body() body: { nombre: string; tipo?: string }) {
+    return this.finanzasService.upsertCategoria(body.nombre, body.tipo);
+  }
+
+  @Get('gastos-operativos/matriz')
+  @ApiOperation({ summary: 'Gastos en formato matriz (estilo Excel)' })
+  @ApiQuery({ name: 'anioInicio', type: Number })
+  @ApiQuery({ name: 'anioFin', type: Number })
+  getGastosMatriz(
+    @Query('anioInicio', ParseIntPipe) anioInicio: number,
+    @Query('anioFin', ParseIntPipe) anioFin: number,
+  ) {
+    return this.finanzasService.getGastosMatriz(anioInicio, anioFin);
+  }
+
+  @Get('gastos-operativos/mes')
+  @ApiOperation({ summary: 'Gastos de un mes específico' })
+  @ApiQuery({ name: 'anio', type: Number })
+  @ApiQuery({ name: 'mes', type: Number })
+  getGastosMes(
+    @Query('anio', ParseIntPipe) anio: number,
+    @Query('mes', ParseIntPipe) mes: number,
+  ) {
+    return this.finanzasService.getGastosMes(anio, mes);
+  }
+
+  @Post('gastos-operativos')
+  @ApiOperation({ summary: 'Crear o actualizar gasto mensual' })
+  upsertGastoMensual(
+    @Body() body: {
+      categoriaId: number;
+      anio: number;
+      mes: number;
+      monto: number;
+      descripcion?: string;
+    },
+  ) {
+    return this.finanzasService.upsertGastoMensual(body);
+  }
+
+  @Delete('gastos-operativos/:id')
+  @ApiOperation({ summary: 'Eliminar gasto' })
+  deleteGasto(@Param('id', ParseIntPipe) id: number) {
+    return this.finanzasService.deleteGasto(id);
+  }
+
+  @Post('gastos-operativos/importar')
+  @ApiOperation({ summary: 'Importar gastos masivos (migración Excel)' })
+  importarGastos(
+    @Body() datos: {
+      categoria: string;
+      tipo?: string;
+      gastos: { anio: number; mes: number; monto: number }[];
+    }[],
+  ) {
+    return this.finanzasService.importarGastos(datos);
+  }
+
+  @Get('gastos-operativos/resumen-anual')
+  @ApiOperation({ summary: 'Resumen anual de gastos' })
+  @ApiQuery({ name: 'anio', type: Number })
+  getResumenAnual(@Query('anio', ParseIntPipe) anio: number) {
+    return this.finanzasService.getResumenAnual(anio);
   }
 }
