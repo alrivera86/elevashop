@@ -57,7 +57,7 @@ import {
   MetodoPago,
   EstadisticasSeriales,
 } from '@/lib/api';
-import { formatCurrency } from '@/lib/utils';
+import { useMonto } from '@/components/ui/monto';
 import { toast } from '@/hooks/use-toast';
 
 const ESTADOS_UNIDAD: { value: EstadoUnidad; label: string; color: string }[] = [
@@ -237,6 +237,7 @@ function BuscarGarantia() {
 
 // Componente para estadisticas
 function EstadisticasCard({ stats }: { stats?: EstadisticasSeriales }) {
+  const { formatMonto } = useMonto();
   if (!stats) return null;
 
   return (
@@ -274,7 +275,7 @@ function EstadisticasCard({ stats }: { stats?: EstadisticasSeriales }) {
             <DollarSign className="h-4 w-4 text-green-600" />
             <span className="text-sm text-muted-foreground">Utilidad Total</span>
           </div>
-          <p className="text-2xl font-bold text-green-600">{formatCurrency(stats.utilidadTotal)}</p>
+          <p className="text-2xl font-bold text-green-600">{formatMonto(stats.utilidadTotal)}</p>
         </CardContent>
       </Card>
     </div>
@@ -291,6 +292,7 @@ function RegistrarSerialForm({
   onClose: () => void;
   onSuccess: () => void;
 }) {
+  const { formatMonto } = useMonto();
   const [formData, setFormData] = useState({
     serial: '',
     costoUnitario: '',
@@ -505,6 +507,7 @@ function VenderSerialForm({
   onClose: () => void;
   onSuccess: () => void;
 }) {
+  const { formatMonto } = useMonto();
   const [formData, setFormData] = useState({
     clienteId: '',
     precioVenta: '',
@@ -560,7 +563,7 @@ function VenderSerialForm({
         <p className="font-medium">{unidad.producto?.nombre}</p>
         <p className="text-sm text-muted-foreground font-mono">Serial: {unidad.serial}</p>
         <p className="text-sm text-muted-foreground">
-          Costo: {formatCurrency(Number(unidad.costoUnitario))}
+          Costo: {formatMonto(Number(unidad.costoUnitario))}
         </p>
       </div>
 
@@ -596,7 +599,7 @@ function VenderSerialForm({
           />
           {precioSugerido && (
             <p className="text-xs text-muted-foreground">
-              Precio sugerido: {formatCurrency(Number(precioSugerido))}
+              Precio sugerido: {formatMonto(Number(precioSugerido))}
             </p>
           )}
         </div>
@@ -625,7 +628,7 @@ function VenderSerialForm({
           <p className="text-sm">
             Utilidad estimada:{' '}
             <span className={`font-bold ${utilidadEstimada >= 0 ? 'text-green-700' : 'text-red-700'}`}>
-              {formatCurrency(utilidadEstimada)}
+              {formatMonto(utilidadEstimada)}
             </span>
           </p>
         </div>
@@ -654,6 +657,7 @@ function VenderSerialForm({
 
 // Pagina principal
 export default function SerialesPage() {
+  const { formatMonto } = useMonto();
   const [productoSeleccionado, setProductoSeleccionado] = useState<number | null>(null);
   const [estadoFiltro, setEstadoFiltro] = useState<EstadoUnidad | 'ALL'>('ALL');
   const [registrarDialogOpen, setRegistrarDialogOpen] = useState(false);
@@ -810,17 +814,17 @@ export default function SerialesPage() {
                         <TableCell className="font-mono font-medium">{unidad.serial}</TableCell>
                         <TableCell>{getEstadoBadge(unidad.estado)}</TableCell>
                         <TableCell className="text-right">
-                          {formatCurrency(Number(unidad.costoUnitario))}
+                          {formatMonto(Number(unidad.costoUnitario))}
                         </TableCell>
                         <TableCell className="text-right">
                           {unidad.precioVenta
-                            ? formatCurrency(Number(unidad.precioVenta))
+                            ? formatMonto(Number(unidad.precioVenta))
                             : '-'}
                         </TableCell>
                         <TableCell className="text-right">
                           {unidad.utilidad ? (
                             <span className={Number(unidad.utilidad) >= 0 ? 'text-green-600' : 'text-red-600'}>
-                              {formatCurrency(Number(unidad.utilidad))}
+                              {formatMonto(Number(unidad.utilidad))}
                             </span>
                           ) : '-'}
                         </TableCell>

@@ -301,8 +301,9 @@ export default function DashboardPage() {
                     <div key={cuenta.codigo} className="flex justify-between">
                       <span className="text-muted-foreground">{cuenta.nombre}:</span>
                       <span className="font-medium">
-                        {cuenta.moneda === 'BS' ? 'Bs ' : '$'}
-                        {cuenta.monto.toLocaleString('es-VE', { minimumFractionDigits: 2 })}
+                        {cuenta.moneda === 'BS'
+                          ? formatMonto(cuenta.monto, 'VES').replace('VES', 'Bs')
+                          : formatMonto(cuenta.monto)}
                       </span>
                     </div>
                   ))}
@@ -595,12 +596,13 @@ export default function DashboardPage() {
                       <div className="mt-2">
                         <p className="text-xs text-muted-foreground">{cuenta.nombre}</p>
                         <p className="text-lg font-bold">
-                          {cuenta.moneda === 'BS' ? 'Bs ' : '$'}
-                          {cuenta.monto.toLocaleString('es-VE', { minimumFractionDigits: 2 })}
+                          {cuenta.moneda === 'BS'
+                            ? formatMonto(cuenta.monto, 'VES').replace('VES', 'Bs')
+                            : formatMonto(cuenta.monto)}
                         </p>
                         {cuenta.montoUsd && (
                           <p className="text-xs text-muted-foreground">
-                            ~${cuenta.montoUsd.toLocaleString('es-VE', { minimumFractionDigits: 2 })} USD
+                            ~{formatMonto(cuenta.montoUsd)} USD
                           </p>
                         )}
                       </div>
@@ -621,7 +623,7 @@ export default function DashboardPage() {
                   <div className="rounded-lg bg-muted/50 p-3">
                     <p className="text-xs text-muted-foreground">Total en Bolívares</p>
                     <p className="text-xl font-bold text-yellow-600">
-                      Bs {(distribucionFondos?.resumen?.enBs || 0).toLocaleString('es-VE', { minimumFractionDigits: 2 })}
+                      {formatMonto(distribucionFondos?.resumen?.enBs || 0, 'VES').replace('VES', 'Bs')}
                     </p>
                     <p className="text-xs text-muted-foreground">
                       ~{formatMonto(distribucionFondos?.resumen?.enBsEquivalenteUsd || 0)} USD
