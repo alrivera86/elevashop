@@ -1,5 +1,6 @@
 'use client';
 
+import { useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { useParams, useRouter } from 'next/navigation';
 import Link from 'next/link';
@@ -19,6 +20,8 @@ import {
   ShieldCheck,
   ShieldX,
   FileText,
+  Filter,
+  X,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
@@ -33,6 +36,8 @@ import {
 import { Badge } from '@/components/ui/badge';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
 import { clientesApi, ClienteDetalle } from '@/lib/api';
 import { formatCurrency, formatDate } from '@/lib/utils';
 
@@ -97,11 +102,26 @@ export default function ClienteDetallePage() {
   const router = useRouter();
   const clienteId = params.id as string;
 
+  // Estado para filtros de fecha
+  const [fechaInicio, setFechaInicio] = useState<string>('');
+  const [fechaFin, setFechaFin] = useState<string>('');
+  const [filtrosActivos, setFiltrosActivos] = useState(false);
+
   const { data: cliente, isLoading, error } = useQuery({
-    queryKey: ['cliente', clienteId],
-    queryFn: () => clientesApi.getOne(clienteId),
+    queryKey: ['cliente', clienteId, fechaInicio, fechaFin],
+    queryFn: () => clientesApi.getOne(clienteId, { fechaInicio, fechaFin }),
     enabled: !!clienteId,
   });
+
+  const aplicarFiltros = () => {
+    setFiltrosActivos(!!fechaInicio || !!fechaFin);
+  };
+
+  const limpiarFiltros = () => {
+    setFechaInicio('');
+    setFechaFin('');
+    setFiltrosActivos(false);
+  };
 
   if (isLoading) {
     return (
@@ -228,10 +248,43 @@ export default function ClienteDetallePage() {
         <TabsContent value="historial">
           <Card>
             <CardHeader>
-              <CardTitle>Historial de Compras</CardTitle>
-              <CardDescription>
-                Ultimas {cliente.ventas?.length || 0} ordenes del cliente
-              </CardDescription>
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+                <div>
+                  <CardTitle>Historial de Compras</CardTitle>
+                  <CardDescription>
+                    {filtrosActivos
+                      ? `${cliente.ventas?.length || 0} ordenes en el rango seleccionado`
+                      : `Todas las ordenes del cliente (${cliente.ventas?.length || 0})`
+                    }
+                  </CardDescription>
+                </div>
+                <div className="flex flex-wrap items-end gap-2">
+                  <div className="space-y-1">
+                    <Label className="text-xs">Desde</Label>
+                    <Input
+                      type="date"
+                      value={fechaInicio}
+                      onChange={(e) => setFechaInicio(e.target.value)}
+                      className="h-9 w-36"
+                    />
+                  </div>
+                  <div className="space-y-1">
+                    <Label className="text-xs">Hasta</Label>
+                    <Input
+                      type="date"
+                      value={fechaFin}
+                      onChange={(e) => setFechaFin(e.target.value)}
+                      className="h-9 w-36"
+                    />
+                  </div>
+                  {filtrosActivos && (
+                    <Button variant="ghost" size="sm" onClick={limpiarFiltros}>
+                      <X className="h-4 w-4 mr-1" />
+                      Limpiar
+                    </Button>
+                  )}
+                </div>
+              </div>
             </CardHeader>
             <CardContent>
               {cliente.ventas?.length === 0 ? (

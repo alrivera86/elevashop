@@ -225,7 +225,8 @@ export const ventasApi = {
 export const clientesApi = {
   getAll: (params?: ClientesParams) =>
     get<{ clientes: Cliente[]; pagination: Pagination }>('/clientes', { params }),
-  getOne: (id: string) => get<ClienteDetalle>(`/clientes/${id}`),
+  getOne: (id: string, filtros?: { fechaInicio?: string; fechaFin?: string }) =>
+    get<ClienteDetalle>(`/clientes/${id}`, { params: filtros }),
   create: (data: CreateClienteData) => post<Cliente>('/clientes', data),
   update: (id: string, data: Partial<CreateClienteData>) => patch<Cliente>(`/clientes/${id}`, data),
   delete: (id: string) => del<void>(`/clientes/${id}`),

@@ -80,7 +80,22 @@ export class ClientesService {
     };
   }
 
-  async findOne(id: number) {
+  async findOne(id: number, filtros?: { fechaInicio?: string; fechaFin?: string }) {
+    // Construir filtro de fechas para ventas
+    const ventasWhere: any = {};
+    if (filtros?.fechaInicio || filtros?.fechaFin) {
+      ventasWhere.fecha = {};
+      if (filtros.fechaInicio) {
+        ventasWhere.fecha.gte = new Date(filtros.fechaInicio);
+      }
+      if (filtros.fechaFin) {
+        // Agregar un día para incluir todo el día final
+        const fechaFin = new Date(filtros.fechaFin);
+        fechaFin.setDate(fechaFin.getDate() + 1);
+        ventasWhere.fecha.lt = fechaFin;
+      }
+    }
+
     const cliente = await this.prisma.cliente.findUnique({
       where: { id },
       include: {
@@ -92,7 +107,7 @@ export class ClientesService {
           }
         },
         ventas: {
-          take: 20,
+          where: Object.keys(ventasWhere).length > 0 ? ventasWhere : undefined,
           orderBy: { fecha: 'desc' },
           include: {
             detalles: {

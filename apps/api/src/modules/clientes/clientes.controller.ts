@@ -41,8 +41,14 @@ export class ClientesController {
 
   @Get(':id')
   @ApiOperation({ summary: 'Obtener cliente por ID' })
-  findOne(@Param('id', ParseIntPipe) id: number) {
-    return this.clientesService.findOne(id);
+  @ApiQuery({ name: 'fechaInicio', required: false, description: 'Fecha inicio (YYYY-MM-DD)' })
+  @ApiQuery({ name: 'fechaFin', required: false, description: 'Fecha fin (YYYY-MM-DD)' })
+  findOne(
+    @Param('id', ParseIntPipe) id: number,
+    @Query('fechaInicio') fechaInicio?: string,
+    @Query('fechaFin') fechaFin?: string,
+  ) {
+    return this.clientesService.findOne(id, { fechaInicio, fechaFin });
   }
 
   @Patch(':id')
