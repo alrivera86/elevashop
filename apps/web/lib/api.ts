@@ -564,10 +564,13 @@ export interface CreateClienteData {
 
 export type TipoVenta = 'VENTA' | 'CONSIGNACION';
 export type EstadoPago = 'PENDIENTE' | 'PARCIAL' | 'PAGADO';
+export type EstadoConsignacion = 'ACTIVA' | 'DEVUELTA' | 'PERDIDA';
+export type NivelAlerta = 'normal' | 'advertencia' | 'critico';
 
 export interface Venta {
   id: number;
   numero: string;
+  numeroOrden?: string;
   tipoVenta: TipoVenta;
   estadoPago: EstadoPago;
   fecha: string;
@@ -581,6 +584,13 @@ export interface Venta {
   detalles: VentaDetalle[];
   pagos: VentaPago[];
   createdAt: string;
+  // Campos de consignación
+  estadoConsignacion?: EstadoConsignacion;
+  fechaCierre?: string;
+  motivoCierre?: string;
+  // Campos calculados (del endpoint de alertas)
+  diasPendiente?: number;
+  nivelAlerta?: NivelAlerta;
 }
 
 export interface VentaDetalle {
@@ -968,4 +978,27 @@ export const consignacionApi = {
   // Liquidar múltiples items seleccionados
   liquidarItems: (ventaId: number, detalleIds: number[], pago: { metodoPago: MetodoPago; monto?: number; moneda?: 'USD' | 'VES'; referencia?: string }) =>
     post<Venta>(`/ventas/${ventaId}/liquidar-items`, { detalleIds, pago }),
+
+  // Devolver consignación - recupera mercancía al inventario
+  devolver: (ventaId: number, motivo: string) =>
+    post<Venta>(`/ventas/${ventaId}/devolver`, { motivo }),
+
+  // Marcar consignación como pérdida/incobrable
+  marcarPerdida: (ventaId: number, motivo: string) =>
+    post<Venta>(`/ventas/${ventaId}/marcar-perdida`, { motivo }),
+
+  // Obtener consignaciones con alertas por antigüedad
+  getAlertas: () =>
+    get<{
+      consignaciones: Venta[];
+      resumen: {
+        total: number;
+        normales: number;
+        advertencias: number;
+        criticas: number;
+        montoTotal: number;
+        montoAdvertencia: number;
+        montoCritico: number;
+      };
+    }>('/ventas/consignaciones/alertas'),
 };

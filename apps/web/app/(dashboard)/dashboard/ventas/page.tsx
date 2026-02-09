@@ -13,6 +13,11 @@ import {
   CheckCircle,
   Loader2,
   Download,
+  AlertTriangle,
+  AlertCircle,
+  RotateCcw,
+  XCircle,
+  Clock,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -500,6 +505,205 @@ function LiquidarDialog({
   );
 }
 
+// Diálogo para devolver consignación o marcar como pérdida
+function AccionConsignacionDialog({
+  venta,
+  open,
+  onClose,
+  onSuccess,
+}: {
+  venta: Venta | null;
+  open: boolean;
+  onClose: () => void;
+  onSuccess: () => void;
+}) {
+  const [accion, setAccion] = useState<'devolver' | 'perdida'>('devolver');
+  const [motivo, setMotivo] = useState('');
+  const queryClient = useQueryClient();
+
+  const devolverMutation = useMutation({
+    mutationFn: () => {
+      if (!venta) throw new Error('No hay consignación seleccionada');
+      return consignacionApi.devolver(venta.id, motivo || 'Sin motivo especificado');
+    },
+    onSuccess: () => {
+      toast({ title: 'Consignación devuelta - Mercancía recuperada al inventario' });
+      queryClient.invalidateQueries({ queryKey: ['ventas'] });
+      queryClient.invalidateQueries({ queryKey: ['consignacion-dashboard'] });
+      queryClient.invalidateQueries({ queryKey: ['consignacion-alertas'] });
+      setMotivo('');
+      onSuccess();
+      onClose();
+    },
+    onError: (error: any) => {
+      toast({
+        title: error.response?.data?.message || 'Error al devolver consignación',
+        variant: 'destructive',
+      });
+    },
+  });
+
+  const perdidaMutation = useMutation({
+    mutationFn: () => {
+      if (!venta) throw new Error('No hay consignación seleccionada');
+      return consignacionApi.marcarPerdida(venta.id, motivo || 'Sin motivo especificado');
+    },
+    onSuccess: () => {
+      toast({ title: 'Consignación marcada como pérdida', variant: 'destructive' });
+      queryClient.invalidateQueries({ queryKey: ['ventas'] });
+      queryClient.invalidateQueries({ queryKey: ['consignacion-dashboard'] });
+      queryClient.invalidateQueries({ queryKey: ['consignacion-alertas'] });
+      setMotivo('');
+      onSuccess();
+      onClose();
+    },
+    onError: (error: any) => {
+      toast({
+        title: error.response?.data?.message || 'Error al marcar pérdida',
+        variant: 'destructive',
+      });
+    },
+  });
+
+  const handleConfirmar = () => {
+    if (accion === 'devolver') {
+      devolverMutation.mutate();
+    } else {
+      perdidaMutation.mutate();
+    }
+  };
+
+  const isPending = devolverMutation.isPending || perdidaMutation.isPending;
+
+  if (!venta) return null;
+
+  const diasPendiente = Math.floor((Date.now() - new Date(venta.fecha).getTime()) / (24 * 60 * 60 * 1000));
+
+  return (
+    <Dialog open={open} onOpenChange={onClose}>
+      <DialogContent className="max-w-md">
+        <DialogHeader>
+          <DialogTitle className="flex items-center gap-2">
+            {diasPendiente >= 60 ? (
+              <AlertCircle className="h-5 w-5 text-red-600" />
+            ) : diasPendiente >= 30 ? (
+              <AlertTriangle className="h-5 w-5 text-yellow-600" />
+            ) : (
+              <Clock className="h-5 w-5 text-orange-600" />
+            )}
+            Gestionar Consignación
+          </DialogTitle>
+          <DialogDescription>
+            Consignación #{venta.numero || venta.numeroOrden} - {diasPendiente} días pendiente
+          </DialogDescription>
+        </DialogHeader>
+
+        <div className="space-y-4 py-4">
+          {/* Info de la consignación */}
+          <div className={`rounded-lg border p-4 ${
+            diasPendiente >= 60 ? 'bg-red-50 dark:bg-red-950 border-red-200' :
+            diasPendiente >= 30 ? 'bg-yellow-50 dark:bg-yellow-950 border-yellow-200' :
+            'bg-orange-50 dark:bg-orange-950 border-orange-200'
+          }`}>
+            <div className="flex items-center justify-between">
+              <span className="text-sm text-muted-foreground">Cliente:</span>
+              <span className="font-medium">{venta.cliente?.nombre || 'Cliente general'}</span>
+            </div>
+            <div className="flex items-center justify-between mt-1">
+              <span className="text-sm text-muted-foreground">Productos:</span>
+              <span className="font-medium">{venta.detalles.length} items</span>
+            </div>
+            <div className="flex items-center justify-between mt-2 pt-2 border-t">
+              <span className="font-medium">Total:</span>
+              <span className="text-xl font-bold">{formatCurrency(venta.total)}</span>
+            </div>
+          </div>
+
+          {/* Selector de acción */}
+          <div className="space-y-2">
+            <Label>¿Qué deseas hacer?</Label>
+            <div className="grid grid-cols-2 gap-2">
+              <Button
+                variant={accion === 'devolver' ? 'default' : 'outline'}
+                className={accion === 'devolver' ? 'bg-blue-600 hover:bg-blue-700' : ''}
+                onClick={() => setAccion('devolver')}
+              >
+                <RotateCcw className="mr-2 h-4 w-4" />
+                Devolver
+              </Button>
+              <Button
+                variant={accion === 'perdida' ? 'default' : 'outline'}
+                className={accion === 'perdida' ? 'bg-red-600 hover:bg-red-700' : ''}
+                onClick={() => setAccion('perdida')}
+              >
+                <XCircle className="mr-2 h-4 w-4" />
+                Pérdida
+              </Button>
+            </div>
+          </div>
+
+          {/* Descripción de la acción */}
+          <div className={`rounded-lg p-3 text-sm ${
+            accion === 'devolver'
+              ? 'bg-blue-50 text-blue-800 dark:bg-blue-950 dark:text-blue-200'
+              : 'bg-red-50 text-red-800 dark:bg-red-950 dark:text-red-200'
+          }`}>
+            {accion === 'devolver' ? (
+              <>
+                <strong>Devolver mercancía:</strong> Los productos volverán al inventario como disponibles.
+                Los seriales se liberarán para poder venderlos nuevamente.
+              </>
+            ) : (
+              <>
+                <strong>Marcar como pérdida:</strong> La mercancía se considera perdida o incobrable.
+                Los seriales se marcarán como defectuosos. Esta acción es irreversible.
+              </>
+            )}
+          </div>
+
+          {/* Motivo */}
+          <div className="space-y-2">
+            <Label>Motivo {accion === 'perdida' && <span className="text-red-500">*</span>}</Label>
+            <Input
+              placeholder={accion === 'devolver' ? 'Ej: Cliente no vendió los productos' : 'Ej: Cliente no contactable, mercancía extraviada'}
+              value={motivo}
+              onChange={(e) => setMotivo(e.target.value)}
+            />
+          </div>
+        </div>
+
+        <DialogFooter>
+          <Button variant="outline" onClick={onClose}>
+            Cancelar
+          </Button>
+          <Button
+            onClick={handleConfirmar}
+            disabled={isPending || (accion === 'perdida' && !motivo.trim())}
+            className={accion === 'devolver' ? 'bg-blue-600 hover:bg-blue-700' : 'bg-red-600 hover:bg-red-700'}
+          >
+            {isPending ? (
+              <>
+                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                Procesando...
+              </>
+            ) : accion === 'devolver' ? (
+              <>
+                <RotateCcw className="mr-2 h-4 w-4" />
+                Confirmar Devolución
+              </>
+            ) : (
+              <>
+                <XCircle className="mr-2 h-4 w-4" />
+                Confirmar Pérdida
+              </>
+            )}
+          </Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
+  );
+}
+
 export default function VentasPage() {
   const [search, setSearch] = useState('');
   const [page, setPage] = useState(1);
@@ -507,6 +711,8 @@ export default function VentasPage() {
   const [detalleOpen, setDetalleOpen] = useState(false);
   const [liquidarOpen, setLiquidarOpen] = useState(false);
   const [ventaALiquidar, setVentaALiquidar] = useState<Venta | null>(null);
+  const [accionOpen, setAccionOpen] = useState(false);
+  const [ventaAccion, setVentaAccion] = useState<Venta | null>(null);
 
   // Debounce search para no hacer muchas requests
   const [debouncedSearch, setDebouncedSearch] = useState('');
@@ -534,6 +740,11 @@ export default function VentasPage() {
     queryFn: () => consignacionApi.getDashboard(),
   });
 
+  const { data: alertasData } = useQuery({
+    queryKey: ['consignacion-alertas'],
+    queryFn: () => consignacionApi.getAlertas(),
+  });
+
   const handleVerDetalle = (venta: Venta) => {
     setSelectedVenta(venta);
     setDetalleOpen(true);
@@ -542,6 +753,16 @@ export default function VentasPage() {
   const handleLiquidar = (venta: Venta) => {
     setVentaALiquidar(venta);
     setLiquidarOpen(true);
+  };
+
+  const handleAccion = (venta: Venta) => {
+    setVentaAccion(venta);
+    setAccionOpen(true);
+  };
+
+  // Función para calcular días pendientes
+  const getDiasPendientes = (fecha: string) => {
+    return Math.floor((Date.now() - new Date(fecha).getTime()) / (24 * 60 * 60 * 1000));
   };
 
   return (
@@ -599,19 +820,81 @@ export default function VentasPage() {
             </p>
           </CardContent>
         </Card>
-        <Card className="border-orange-200 dark:border-orange-800">
+        <Card className={`${(alertasData?.resumen?.advertencias || 0) + (alertasData?.resumen?.criticas || 0) > 0 ? 'border-red-300 dark:border-red-800' : 'border-orange-200 dark:border-orange-800'}`}>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Unidades Consignadas</CardTitle>
-            <PackageOpen className="h-4 w-4 text-orange-600" />
+            <CardTitle className="text-sm font-medium">Alertas</CardTitle>
+            {(alertasData?.resumen?.criticas || 0) > 0 ? (
+              <AlertCircle className="h-4 w-4 text-red-600" />
+            ) : (alertasData?.resumen?.advertencias || 0) > 0 ? (
+              <AlertTriangle className="h-4 w-4 text-yellow-600" />
+            ) : (
+              <CheckCircle className="h-4 w-4 text-green-600" />
+            )}
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold text-orange-600">
-              {consignacionData?.unidadesConsignadas || 0}
+            <div className="flex items-center gap-2">
+              {(alertasData?.resumen?.criticas || 0) > 0 && (
+                <Badge variant="destructive" className="text-xs">
+                  {alertasData?.resumen?.criticas} críticas
+                </Badge>
+              )}
+              {(alertasData?.resumen?.advertencias || 0) > 0 && (
+                <Badge className="bg-yellow-500 text-xs">
+                  {alertasData?.resumen?.advertencias} +30d
+                </Badge>
+              )}
+              {(alertasData?.resumen?.criticas || 0) === 0 && (alertasData?.resumen?.advertencias || 0) === 0 && (
+                <span className="text-sm text-green-600">Todo al día</span>
+              )}
             </div>
-            <p className="text-xs text-muted-foreground">Con clientes externos</p>
+            <p className="text-xs text-muted-foreground mt-1">
+              {(alertasData?.resumen?.criticas || 0) > 0
+                ? `${formatCurrency(alertasData?.resumen?.montoCritico || 0)} en riesgo`
+                : 'Consignaciones al día'}
+            </p>
           </CardContent>
         </Card>
       </div>
+
+      {/* Alerta destacada si hay consignaciones críticas */}
+      {(alertasData?.resumen?.criticas || 0) > 0 && (
+        <Card className="border-red-300 bg-red-50 dark:bg-red-950 dark:border-red-800">
+          <CardContent className="p-4">
+            <div className="flex items-start gap-3">
+              <AlertCircle className="h-5 w-5 text-red-600 mt-0.5" />
+              <div className="flex-1">
+                <h3 className="font-semibold text-red-800 dark:text-red-200">
+                  {alertasData?.resumen?.criticas} consignaciones con más de 60 días
+                </h3>
+                <p className="text-sm text-red-700 dark:text-red-300 mt-1">
+                  Total en riesgo: {formatCurrency(alertasData?.resumen?.montoCritico || 0)}.
+                  Considera contactar a los clientes o devolver la mercancía.
+                </p>
+                <div className="flex flex-wrap gap-2 mt-3">
+                  {alertasData?.consignaciones
+                    .filter(c => c.nivelAlerta === 'critico')
+                    .slice(0, 3)
+                    .map(c => (
+                      <Badge
+                        key={c.id}
+                        variant="outline"
+                        className="cursor-pointer border-red-300 hover:bg-red-100"
+                        onClick={() => handleVerDetalle(c)}
+                      >
+                        {c.cliente?.nombre} - {c.diasPendiente}d - {formatCurrency(c.total)}
+                      </Badge>
+                    ))}
+                  {(alertasData?.resumen?.criticas || 0) > 3 && (
+                    <Badge variant="outline" className="border-red-300">
+                      +{(alertasData?.resumen?.criticas || 0) - 3} más
+                    </Badge>
+                  )}
+                </div>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+      )}
 
       {/* Filters */}
       <Card>
@@ -674,18 +957,46 @@ export default function VentasPage() {
                 data?.ventas?.map((venta) => {
                   const esConsignacion = venta.tipoVenta === 'CONSIGNACION';
                   const pendientePago = venta.estadoPago === 'PENDIENTE' || venta.estadoPago === 'PARCIAL';
+                  const cerrada = venta.estadoConsignacion === 'DEVUELTA' || venta.estadoConsignacion === 'PERDIDA';
+                  const dias = esConsignacion ? getDiasPendientes(venta.fecha) : 0;
+                  const esCritica = esConsignacion && pendientePago && !cerrada && dias >= 60;
+                  const esAdvertencia = esConsignacion && pendientePago && !cerrada && dias >= 30 && dias < 60;
 
                   return (
-                    <TableRow key={venta.id} className={esConsignacion && pendientePago ? 'bg-orange-50/50 dark:bg-orange-950/20' : ''}>
+                    <TableRow
+                      key={venta.id}
+                      className={
+                        esCritica ? 'bg-red-50/50 dark:bg-red-950/20' :
+                        esAdvertencia ? 'bg-yellow-50/50 dark:bg-yellow-950/20' :
+                        esConsignacion && pendientePago && !cerrada ? 'bg-orange-50/50 dark:bg-orange-950/20' :
+                        cerrada ? 'bg-gray-50/50 dark:bg-gray-950/20 opacity-60' : ''
+                      }
+                    >
                       <TableCell className="font-mono text-sm font-medium">
-                        #{venta.numero}
+                        <div className="flex items-center gap-1">
+                          #{venta.numero}
+                          {esCritica && <AlertCircle className="h-3 w-3 text-red-600" />}
+                          {esAdvertencia && <AlertTriangle className="h-3 w-3 text-yellow-600" />}
+                        </div>
                       </TableCell>
                       <TableCell className="hidden sm:table-cell">
                         {esConsignacion ? (
-                          <Badge variant="outline" className="border-orange-500 text-orange-600">
-                            <PackageOpen className="mr-1 h-3 w-3" />
-                            Consignación
-                          </Badge>
+                          <div className="flex flex-col gap-1">
+                            <Badge variant="outline" className={
+                              cerrada ? 'border-gray-400 text-gray-500' :
+                              esCritica ? 'border-red-500 text-red-600' :
+                              esAdvertencia ? 'border-yellow-500 text-yellow-600' :
+                              'border-orange-500 text-orange-600'
+                            }>
+                              <PackageOpen className="mr-1 h-3 w-3" />
+                              {cerrada ? (venta.estadoConsignacion === 'DEVUELTA' ? 'Devuelta' : 'Pérdida') : 'Consignación'}
+                            </Badge>
+                            {esConsignacion && pendientePago && !cerrada && (
+                              <span className={`text-xs ${esCritica ? 'text-red-600' : esAdvertencia ? 'text-yellow-600' : 'text-orange-600'}`}>
+                                {dias}d pendiente
+                              </span>
+                            )}
+                          </div>
                         ) : (
                           <Badge variant="outline" className="border-green-500 text-green-600">
                             <ShoppingCart className="mr-1 h-3 w-3" />
@@ -715,7 +1026,18 @@ export default function VentasPage() {
                         {formatCurrency(venta.total)}
                       </TableCell>
                       <TableCell className="text-center">
-                        {venta.estadoPago === 'PAGADO' ? (
+                        {cerrada ? (
+                          <Badge className={venta.estadoConsignacion === 'DEVUELTA'
+                            ? 'bg-blue-100 text-blue-700 dark:bg-blue-900 dark:text-blue-300'
+                            : 'bg-gray-100 text-gray-700 dark:bg-gray-900 dark:text-gray-300'
+                          }>
+                            {venta.estadoConsignacion === 'DEVUELTA' ? (
+                              <><RotateCcw className="mr-1 h-3 w-3" />Devuelta</>
+                            ) : (
+                              <><XCircle className="mr-1 h-3 w-3" />Pérdida</>
+                            )}
+                          </Badge>
+                        ) : venta.estadoPago === 'PAGADO' ? (
                           <Badge className="bg-green-100 text-green-700 dark:bg-green-900 dark:text-green-300">
                             <CheckCircle className="mr-1 h-3 w-3" />
                             Pagado
@@ -725,23 +1047,37 @@ export default function VentasPage() {
                             Parcial
                           </Badge>
                         ) : (
-                          <Badge className="bg-orange-100 text-orange-700 dark:bg-orange-900 dark:text-orange-300">
+                          <Badge className={
+                            esCritica ? 'bg-red-100 text-red-700 dark:bg-red-900 dark:text-red-300' :
+                            esAdvertencia ? 'bg-yellow-100 text-yellow-700 dark:bg-yellow-900 dark:text-yellow-300' :
+                            'bg-orange-100 text-orange-700 dark:bg-orange-900 dark:text-orange-300'
+                          }>
                             Pendiente
                           </Badge>
                         )}
                       </TableCell>
                       <TableCell className="text-right">
                         <div className="flex justify-end gap-1">
-                          {esConsignacion && pendientePago && (
-                            <Button
-                              variant="outline"
-                              size="sm"
-                              onClick={() => handleLiquidar(venta)}
-                              className="text-green-600 border-green-600 hover:bg-green-50"
-                            >
-                              <DollarSign className="mr-1 h-3 w-3" />
-                              Liquidar
-                            </Button>
+                          {esConsignacion && pendientePago && !cerrada && (
+                            <>
+                              <Button
+                                variant="outline"
+                                size="sm"
+                                onClick={() => handleLiquidar(venta)}
+                                className="text-green-600 border-green-600 hover:bg-green-50"
+                              >
+                                <DollarSign className="mr-1 h-3 w-3" />
+                                <span className="hidden sm:inline">Liquidar</span>
+                              </Button>
+                              <Button
+                                variant="outline"
+                                size="sm"
+                                onClick={() => handleAccion(venta)}
+                                className={esCritica ? 'text-red-600 border-red-600 hover:bg-red-50' : 'text-gray-600 border-gray-400 hover:bg-gray-50'}
+                              >
+                                <RotateCcw className="h-3 w-3" />
+                              </Button>
+                            </>
                           )}
                           <Button
                             variant="ghost"
@@ -805,6 +1141,19 @@ export default function VentasPage() {
         }}
         onSuccess={() => {
           setVentaALiquidar(null);
+        }}
+      />
+
+      {/* Acción Consignación Dialog (devolver/pérdida) */}
+      <AccionConsignacionDialog
+        venta={ventaAccion}
+        open={accionOpen}
+        onClose={() => {
+          setAccionOpen(false);
+          setVentaAccion(null);
+        }}
+        onSuccess={() => {
+          setVentaAccion(null);
         }}
       />
     </div>

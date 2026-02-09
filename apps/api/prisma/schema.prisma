@@ -247,11 +247,17 @@ model Venta {
   createdAt    DateTime      @default(now()) @map("created_at")
   updatedAt    DateTime      @updatedAt @map("updated_at")
 
+  // Campos para consignaciones
+  estadoConsignacion EstadoConsignacion? @map("estado_consignacion") // Solo para consignaciones
+  fechaCierre        DateTime?           @map("fecha_cierre")        // Fecha de devolución o pérdida
+  motivoCierre       String?             @map("motivo_cierre")       // Razón del cierre
+
   // Relaciones
   detalles VentaDetalle[]
   pagos    VentaPago[]
 
   @@index([tipoVenta])
+  @@index([estadoConsignacion])
   @@map("ventas")
 }
 
@@ -561,6 +567,12 @@ enum EstadoPago {
   PENDIENTE
   PARCIAL
   PAGADO
+}
+
+enum EstadoConsignacion {
+  ACTIVA      // Consignación vigente
+  DEVUELTA    // Mercancía devuelta al inventario
+  PERDIDA     // Marcada como pérdida/incobrable
 }
 
 enum EstadoVenta {

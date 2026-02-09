@@ -918,4 +918,210 @@ export class VentasService {
       return this.findOne(ventaId);
     });
   }
+
+  // Devolver consignación - recupera mercancía al inventario
+  async devolverConsignacion(ventaId: number, motivo: string) {
+    const venta = await this.findOne(ventaId);
+
+    if (venta.tipoVenta !== 'CONSIGNACION') {
+      throw new BadRequestException('Esta venta no es una consignación');
+    }
+
+    if (venta.estadoPago === 'PAGADO') {
+      throw new BadRequestException('No se puede devolver una consignación ya pagada');
+    }
+
+    if ((venta as any).estadoConsignacion === 'DEVUELTA') {
+      throw new BadRequestException('Esta consignación ya fue devuelta');
+    }
+
+    if ((venta as any).estadoConsignacion === 'PERDIDA') {
+      throw new BadRequestException('Esta consignación está marcada como pérdida');
+    }
+
+    return this.prisma.$transaction(async (tx: any) => {
+      // Devolver stock de cada producto
+      for (const detalle of venta.detalles) {
+        // Incrementar stock del producto
+        await tx.producto.update({
+          where: { id: detalle.productoId },
+          data: { stockActual: { increment: detalle.cantidad } },
+        });
+
+        // Registrar movimiento de entrada
+        await tx.movimientoStock.create({
+          data: {
+            productoId: detalle.productoId,
+            tipo: 'ENTRADA',
+            cantidad: detalle.cantidad,
+            motivo: `Devolución consignación #${venta.numeroOrden}: ${motivo}`,
+          },
+        });
+
+        // Si tiene serial, actualizar estado de la unidad
+        if (detalle.serial) {
+          await tx.unidadInventario.updateMany({
+            where: {
+              serial: detalle.serial.toUpperCase().trim(),
+              estado: 'CONSIGNADO',
+            },
+            data: {
+              estado: 'DISPONIBLE',
+              clienteId: null,
+              ventaId: null,
+            },
+          });
+        }
+
+        // Marcar item como no liquidado (por si estaba parcial)
+        await tx.ventaDetalle.update({
+          where: { id: detalle.id },
+          data: { liquidado: false },
+        });
+      }
+
+      // Actualizar estado de la consignación
+      await tx.venta.update({
+        where: { id: ventaId },
+        data: {
+          estadoConsignacion: 'DEVUELTA',
+          fechaCierre: new Date(),
+          motivoCierre: motivo,
+          estadoPago: 'PENDIENTE', // Reset
+        },
+      });
+
+      // Eliminar pagos parciales si existían
+      await tx.ventaPago.deleteMany({
+        where: { ventaId },
+      });
+
+      return this.findOne(ventaId);
+    });
+  }
+
+  // Marcar consignación como pérdida/incobrable
+  async marcarPerdida(ventaId: number, motivo: string) {
+    const venta = await this.findOne(ventaId);
+
+    if (venta.tipoVenta !== 'CONSIGNACION') {
+      throw new BadRequestException('Esta venta no es una consignación');
+    }
+
+    if (venta.estadoPago === 'PAGADO') {
+      throw new BadRequestException('No se puede marcar como pérdida una consignación pagada');
+    }
+
+    if ((venta as any).estadoConsignacion === 'DEVUELTA') {
+      throw new BadRequestException('Esta consignación fue devuelta');
+    }
+
+    if ((venta as any).estadoConsignacion === 'PERDIDA') {
+      throw new BadRequestException('Esta consignación ya está marcada como pérdida');
+    }
+
+    return this.prisma.$transaction(async (tx: any) => {
+      // Marcar unidades de inventario como perdidas/defectuosas
+      for (const detalle of venta.detalles) {
+        if (detalle.serial) {
+          await tx.unidadInventario.updateMany({
+            where: {
+              serial: detalle.serial.toUpperCase().trim(),
+              estado: 'CONSIGNADO',
+            },
+            data: {
+              estado: 'DEFECTUOSO', // O podríamos crear un estado PERDIDO
+              notas: `Pérdida en consignación #${venta.numeroOrden}: ${motivo}`,
+            },
+          });
+        }
+
+        // Registrar movimiento de pérdida (salida definitiva)
+        await tx.movimientoStock.create({
+          data: {
+            productoId: detalle.productoId,
+            tipo: 'SALIDA',
+            cantidad: detalle.cantidad,
+            motivo: `Pérdida consignación #${venta.numeroOrden}: ${motivo}`,
+          },
+        });
+      }
+
+      // Actualizar estado de la consignación
+      await tx.venta.update({
+        where: { id: ventaId },
+        data: {
+          estadoConsignacion: 'PERDIDA',
+          fechaCierre: new Date(),
+          motivoCierre: motivo,
+        },
+      });
+
+      return this.findOne(ventaId);
+    });
+  }
+
+  // Obtener consignaciones con alertas por antigüedad
+  async getConsignacionesConAlertas() {
+    const ahora = new Date();
+    const hace30Dias = new Date(ahora.getTime() - 30 * 24 * 60 * 60 * 1000);
+    const hace60Dias = new Date(ahora.getTime() - 60 * 24 * 60 * 60 * 1000);
+
+    const consignaciones = await this.prisma.venta.findMany({
+      where: {
+        tipoVenta: 'CONSIGNACION',
+        estadoPago: { not: 'PAGADO' },
+        OR: [
+          { estadoConsignacion: null },
+          { estadoConsignacion: 'ACTIVA' },
+        ],
+      },
+      include: {
+        cliente: true,
+        detalles: { include: { producto: true } },
+        pagos: true,
+      },
+      orderBy: { fecha: 'asc' }, // Más antiguas primero
+    });
+
+    // Calcular días y nivel de alerta para cada una
+    const consignacionesConAlerta = consignaciones.map((c) => {
+      const dias = Math.floor((ahora.getTime() - new Date(c.fecha).getTime()) / (24 * 60 * 60 * 1000));
+      let nivelAlerta: 'normal' | 'advertencia' | 'critico' = 'normal';
+
+      if (dias >= 60) {
+        nivelAlerta = 'critico';
+      } else if (dias >= 30) {
+        nivelAlerta = 'advertencia';
+      }
+
+      return {
+        ...c,
+        diasPendiente: dias,
+        nivelAlerta,
+      };
+    });
+
+    // Contadores
+    const normales = consignacionesConAlerta.filter(c => c.nivelAlerta === 'normal').length;
+    const advertencias = consignacionesConAlerta.filter(c => c.nivelAlerta === 'advertencia').length;
+    const criticas = consignacionesConAlerta.filter(c => c.nivelAlerta === 'critico').length;
+
+    return {
+      consignaciones: consignacionesConAlerta,
+      resumen: {
+        total: consignaciones.length,
+        normales,
+        advertencias,
+        criticas,
+        montoTotal: consignaciones.reduce((sum, c) => sum + Number(c.total), 0),
+        montoAdvertencia: consignacionesConAlerta
+          .filter(c => c.nivelAlerta === 'advertencia')
+          .reduce((sum, c) => sum + Number(c.total), 0),
+        montoCritico: consignacionesConAlerta
+          .filter(c => c.nivelAlerta === 'critico')
+          .reduce((sum, c) => sum + Number(c.total), 0),
+      },
+    };
+  }
 }

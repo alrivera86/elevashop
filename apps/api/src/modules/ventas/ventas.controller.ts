@@ -111,6 +111,30 @@ export class VentasController {
     return this.ventasService.liquidarItems(id, body.detalleIds, body.pago);
   }
 
+  @Post(':id/devolver')
+  @ApiOperation({ summary: 'Devolver consignación - recupera mercancía al inventario' })
+  devolverConsignacion(
+    @Param('id', ParseIntPipe) id: number,
+    @Body() body: { motivo: string },
+  ) {
+    return this.ventasService.devolverConsignacion(id, body.motivo);
+  }
+
+  @Post(':id/marcar-perdida')
+  @ApiOperation({ summary: 'Marcar consignación como pérdida/incobrable' })
+  marcarPerdida(
+    @Param('id', ParseIntPipe) id: number,
+    @Body() body: { motivo: string },
+  ) {
+    return this.ventasService.marcarPerdida(id, body.motivo);
+  }
+
+  @Get('consignaciones/alertas')
+  @ApiOperation({ summary: 'Obtener consignaciones con alertas por antigüedad' })
+  getConsignacionesConAlertas() {
+    return this.ventasService.getConsignacionesConAlertas();
+  }
+
   @Get(':id')
   @ApiOperation({ summary: 'Obtener venta por ID' })
   findOne(@Param('id', ParseIntPipe) id: number) {
