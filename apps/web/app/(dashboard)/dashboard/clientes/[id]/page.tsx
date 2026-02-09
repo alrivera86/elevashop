@@ -39,7 +39,8 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { clientesApi, ClienteDetalle } from '@/lib/api';
-import { formatCurrency, formatDate } from '@/lib/utils';
+import { formatDate } from '@/lib/utils';
+import { useMonto } from '@/components/ui/monto';
 
 const METODO_PAGO_LABELS: Record<string, string> = {
   EFECTIVO_USD: 'Efectivo USD',
@@ -98,6 +99,7 @@ function diasRestantesGarantia(garantiaHasta?: string): number {
 }
 
 export default function ClienteDetallePage() {
+  const { formatMonto } = useMonto();
   const params = useParams();
   const router = useRouter();
   const clienteId = params.id as string;
@@ -204,7 +206,7 @@ export default function ClienteDetallePage() {
       <div className="grid gap-4 md:grid-cols-5">
         <StatCard
           title="Total Gastado"
-          value={formatCurrency(cliente.estadisticas?.totalGastado || 0)}
+          value={formatMonto(cliente.estadisticas?.totalGastado || 0)}
           icon={DollarSign}
         />
         <StatCard
@@ -214,7 +216,7 @@ export default function ClienteDetallePage() {
         />
         <StatCard
           title="Promedio/Orden"
-          value={formatCurrency(cliente.estadisticas?.promedioCompra || 0)}
+          value={formatMonto(cliente.estadisticas?.promedioCompra || 0)}
           icon={TrendingUp}
         />
         <StatCard
@@ -307,7 +309,7 @@ export default function ClienteDetallePage() {
                         </div>
                         <div className="text-right">
                           <p className="text-lg font-bold text-green-600">
-                            {formatCurrency(Number(venta.total))}
+                            {formatMonto(Number(venta.total))}
                           </p>
                           <div className="flex flex-wrap justify-end gap-1">
                             {venta.pagos?.map((pago, idx) => (
@@ -337,10 +339,10 @@ export default function ClienteDetallePage() {
                               <TableCell>{detalle.producto?.nombre}</TableCell>
                               <TableCell className="text-center">{detalle.cantidad}</TableCell>
                               <TableCell className="text-right">
-                                {formatCurrency(Number(detalle.precioUnitario))}
+                                {formatMonto(Number(detalle.precioUnitario))}
                               </TableCell>
                               <TableCell className="text-right font-medium">
-                                {formatCurrency(Number(detalle.subtotal))}
+                                {formatMonto(Number(detalle.subtotal))}
                               </TableCell>
                             </TableRow>
                           ))}
@@ -403,7 +405,7 @@ export default function ClienteDetallePage() {
                           </TableCell>
                           <TableCell className="text-right">
                             {unidad.precioVenta
-                              ? formatCurrency(Number(unidad.precioVenta))
+                              ? formatMonto(Number(unidad.precioVenta))
                               : '-'}
                           </TableCell>
                           <TableCell>

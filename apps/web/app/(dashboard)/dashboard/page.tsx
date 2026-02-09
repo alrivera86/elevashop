@@ -22,7 +22,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Badge } from '@/components/ui/badge';
 import { Skeleton } from '@/components/ui/skeleton';
 import { inventarioApi, ventasApi, clientesApi, finanzasApi, consignacionApi, VentaDia, CuentaFondo, ConsignacionDashboard } from '@/lib/api';
-import { formatCurrency } from '@/lib/utils';
+import { useMonto } from '@/components/ui/monto';
 
 function StatCard({
   title,
@@ -131,6 +131,8 @@ function AlertasStock({ alertas }: { alertas: any[] }) {
 }
 
 export default function DashboardPage() {
+  const { formatMonto } = useMonto();
+
   const { data: inventario, isLoading: loadingInventario } = useQuery({
     queryKey: ['inventario-dashboard'],
     queryFn: inventarioApi.getDashboard,
@@ -208,7 +210,7 @@ export default function DashboardPage() {
             />
             <StatCard
               title="Ventas del Mes"
-              value={formatCurrency(ventasResumen?.totalVentas || 0)}
+              value={formatMonto(ventasResumen?.totalVentas || 0)}
               description={`${ventasResumen?.cantidadVentas || 0} transacciones`}
               icon={ShoppingCart}
               trend="up"
@@ -222,7 +224,7 @@ export default function DashboardPage() {
             />
             <StatCard
               title="Utilidad"
-              value={formatCurrency(finanzas?.balance || 0)}
+              value={formatMonto(finanzas?.balance || 0)}
               description={`Tasa: ${finanzas?.tasaCambioActual || 0} Bs/$`}
               icon={DollarSign}
               trend={(finanzas?.balance || 0) >= 0 ? 'up' : 'down'}
@@ -258,7 +260,7 @@ export default function DashboardPage() {
               </CardHeader>
               <CardContent>
                 <div className="text-2xl font-bold text-blue-700 dark:text-blue-400">
-                  {formatCurrency(
+                  {formatMonto(
                     (inventario?.valorInventario || 0) +
                     (finanzas?.balance || 0) +
                     (consignacion?.valorPorCobrar || 0)
@@ -267,15 +269,15 @@ export default function DashboardPage() {
                 <div className="mt-3 space-y-1 text-xs">
                   <div className="flex justify-between">
                     <span className="text-muted-foreground">Inventario:</span>
-                    <span className="font-medium">{formatCurrency(inventario?.valorInventario || 0)}</span>
+                    <span className="font-medium">{formatMonto(inventario?.valorInventario || 0)}</span>
                   </div>
                   <div className="flex justify-between">
                     <span className="text-muted-foreground">Utilidad:</span>
-                    <span className="font-medium">{formatCurrency(finanzas?.balance || 0)}</span>
+                    <span className="font-medium">{formatMonto(finanzas?.balance || 0)}</span>
                   </div>
                   <div className="flex justify-between">
                     <span className="text-muted-foreground">Por Cobrar:</span>
-                    <span className="font-medium">{formatCurrency(consignacion?.valorPorCobrar || 0)}</span>
+                    <span className="font-medium">{formatMonto(consignacion?.valorPorCobrar || 0)}</span>
                   </div>
                 </div>
               </CardContent>
@@ -289,7 +291,7 @@ export default function DashboardPage() {
               </CardHeader>
               <CardContent>
                 <div className="text-2xl font-bold text-green-700 dark:text-green-400">
-                  {formatCurrency(
+                  {formatMonto(
                     (distribucionFondos?.resumen?.enUsd || 0) +
                     (distribucionFondos?.resumen?.enBsEquivalenteUsd || 0)
                   )}
@@ -316,12 +318,12 @@ export default function DashboardPage() {
               </CardHeader>
               <CardContent>
                 <div className="text-2xl font-bold text-orange-700 dark:text-orange-400">
-                  {formatCurrency(consignacion?.valorTotalConsignado || 0)}
+                  {formatMonto(consignacion?.valorTotalConsignado || 0)}
                 </div>
                 <div className="mt-3 space-y-1 text-xs">
                   <div className="flex justify-between">
                     <span className="text-muted-foreground">Por Cobrar:</span>
-                    <span className="font-medium text-orange-600">{formatCurrency(consignacion?.valorPorCobrar || 0)}</span>
+                    <span className="font-medium text-orange-600">{formatMonto(consignacion?.valorPorCobrar || 0)}</span>
                   </div>
                   <div className="flex justify-between">
                     <span className="text-muted-foreground">Consignatarios:</span>
@@ -417,7 +419,7 @@ export default function DashboardPage() {
                   <div className="flex items-center justify-between">
                     <span className="text-sm font-medium">Valor del Inventario</span>
                     <span className="text-lg font-bold">
-                      {formatCurrency(inventario?.valorInventario || 0)}
+                      {formatMonto(inventario?.valorInventario || 0)}
                     </span>
                   </div>
                 </div>
@@ -470,7 +472,7 @@ export default function DashboardPage() {
                     {dia.total > 0 ? (
                       <>
                         <div className="mt-2 text-lg font-bold text-green-600 dark:text-green-400">
-                          {formatCurrency(dia.total)}
+                          {formatMonto(dia.total)}
                         </div>
                         <div className="text-xs text-muted-foreground">
                           {dia.cantidad} venta{dia.cantidad !== 1 ? 's' : ''}
@@ -509,7 +511,7 @@ export default function DashboardPage() {
                           </div>
                           <div className="text-right">
                             <span className="text-sm font-medium">
-                              {formatCurrency(producto.total)}
+                              {formatMonto(producto.total)}
                             </span>
                             <span className="ml-2 text-xs text-muted-foreground">
                               x{producto.cantidad}
@@ -536,7 +538,7 @@ export default function DashboardPage() {
                 <div className="flex items-center justify-between border-t pt-4">
                   <span className="text-sm font-medium">Total últimos 7 días</span>
                   <span className="text-lg font-bold text-green-600 dark:text-green-400">
-                    {formatCurrency(ventas7Dias?.totalPeriodo || 0)}
+                    {formatMonto(ventas7Dias?.totalPeriodo || 0)}
                   </span>
                 </div>
               )}
@@ -613,7 +615,7 @@ export default function DashboardPage() {
                   <div className="rounded-lg bg-muted/50 p-3">
                     <p className="text-xs text-muted-foreground">Total en Cuentas USD</p>
                     <p className="text-xl font-bold text-green-600">
-                      {formatCurrency(distribucionFondos?.resumen?.enUsd || 0)}
+                      {formatMonto(distribucionFondos?.resumen?.enUsd || 0)}
                     </p>
                   </div>
                   <div className="rounded-lg bg-muted/50 p-3">
@@ -622,13 +624,13 @@ export default function DashboardPage() {
                       Bs {(distribucionFondos?.resumen?.enBs || 0).toLocaleString('es-VE', { minimumFractionDigits: 2 })}
                     </p>
                     <p className="text-xs text-muted-foreground">
-                      ~{formatCurrency(distribucionFondos?.resumen?.enBsEquivalenteUsd || 0)} USD
+                      ~{formatMonto(distribucionFondos?.resumen?.enBsEquivalenteUsd || 0)} USD
                     </p>
                   </div>
                   <div className="rounded-lg bg-primary/10 p-3">
                     <p className="text-xs text-muted-foreground">Ventas Totales</p>
                     <p className="text-xl font-bold">
-                      {formatCurrency(distribucionFondos?.totalVentas || 0)}
+                      {formatMonto(distribucionFondos?.totalVentas || 0)}
                     </p>
                     <p className="text-xs text-muted-foreground">
                       Tasa: {distribucionFondos?.tasaCambio?.toFixed(2) || 0} Bs/$

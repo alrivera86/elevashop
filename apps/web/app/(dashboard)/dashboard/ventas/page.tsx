@@ -50,7 +50,8 @@ import { Label } from '@/components/ui/label';
 import { Skeleton } from '@/components/ui/skeleton';
 import { toast } from '@/hooks/use-toast';
 import { ventasApi, consignacionApi, Venta, MetodoPago } from '@/lib/api';
-import { formatCurrency, formatDateTime } from '@/lib/utils';
+import { formatDateTime } from '@/lib/utils';
+import { useMonto } from '@/components/ui/monto';
 import { generarOrdenSalida, VentaPDF } from '@/lib/generate-pdf';
 import Link from 'next/link';
 
@@ -73,6 +74,8 @@ function VentaDetalleDialog({
   open: boolean;
   onClose: () => void;
 }) {
+  const { formatMonto } = useMonto();
+
   if (!venta) return null;
 
   const esConsignacion = venta.tipoVenta === 'CONSIGNACION';
@@ -165,10 +168,10 @@ function VentaDetalleDialog({
                       </TableCell>
                       <TableCell className="text-center">{detalle.cantidad}</TableCell>
                       <TableCell className="text-right">
-                        {formatCurrency(detalle.precioUnitario)}
+                        {formatMonto(detalle.precioUnitario)}
                       </TableCell>
                       <TableCell className="text-right">
-                        {formatCurrency(detalle.subtotal)}
+                        {formatMonto(detalle.subtotal)}
                       </TableCell>
                     </TableRow>
                   ))}
@@ -196,7 +199,7 @@ function VentaDetalleDialog({
                     )}
                   </div>
                   <span className="font-medium">
-                    {formatCurrency(pago.monto, pago.moneda)}
+                    {formatMonto(pago.monto, pago.moneda)}
                   </span>
                 </div>
               ))}
@@ -208,17 +211,17 @@ function VentaDetalleDialog({
             <div className="space-y-2">
               <div className="flex items-center justify-between">
                 <span>Subtotal</span>
-                <span>{formatCurrency(venta.subtotal)}</span>
+                <span>{formatMonto(venta.subtotal)}</span>
               </div>
               {venta.descuento > 0 && (
                 <div className="flex items-center justify-between text-destructive">
                   <span>Descuento</span>
-                  <span>-{formatCurrency(venta.descuento)}</span>
+                  <span>-{formatMonto(venta.descuento)}</span>
                 </div>
               )}
               <div className="flex items-center justify-between border-t pt-2 text-lg font-bold">
                 <span>Total</span>
-                <span>{formatCurrency(venta.total)}</span>
+                <span>{formatMonto(venta.total)}</span>
               </div>
             </div>
           </div>
@@ -245,6 +248,7 @@ function LiquidarDialog({
   onClose: () => void;
   onSuccess: () => void;
 }) {
+  const { formatMonto } = useMonto();
   const [metodoPago, setMetodoPago] = useState<MetodoPago>('EFECTIVO_USD');
   const [referencia, setReferencia] = useState('');
   const [modoLiquidacion, setModoLiquidacion] = useState<'todo' | 'items'>('todo');
@@ -384,7 +388,7 @@ function LiquidarDialog({
               {itemsLiquidados.map(item => (
                 <div key={item.id} className="flex justify-between text-sm text-green-600">
                   <span className="truncate">{item.producto.nombre}</span>
-                  <span>{formatCurrency(item.subtotal)}</span>
+                  <span>{formatMonto(item.subtotal)}</span>
                 </div>
               ))}
             </div>
@@ -426,7 +430,7 @@ function LiquidarDialog({
                         )}
                       </div>
                     </div>
-                    <span className="font-medium">{formatCurrency(item.subtotal)}</span>
+                    <span className="font-medium">{formatMonto(item.subtotal)}</span>
                   </label>
                 ))}
               </div>
@@ -445,7 +449,7 @@ function LiquidarDialog({
             <div className="flex items-center justify-between mt-2 pt-2 border-t">
               <span className="font-medium">Total a cobrar:</span>
               <span className="text-xl font-bold text-green-600">
-                {formatCurrency(montoSeleccionado)}
+                {formatMonto(montoSeleccionado)}
               </span>
             </div>
           </div>
@@ -517,6 +521,7 @@ function AccionConsignacionDialog({
   onClose: () => void;
   onSuccess: () => void;
 }) {
+  const { formatMonto } = useMonto();
   const [accion, setAccion] = useState<'devolver' | 'perdida'>('devolver');
   const [motivo, setMotivo] = useState('');
   const queryClient = useQueryClient();
@@ -615,7 +620,7 @@ function AccionConsignacionDialog({
             </div>
             <div className="flex items-center justify-between mt-2 pt-2 border-t">
               <span className="font-medium">Total:</span>
-              <span className="text-xl font-bold">{formatCurrency(venta.total)}</span>
+              <span className="text-xl font-bold">{formatMonto(venta.total)}</span>
             </div>
           </div>
 
@@ -705,6 +710,7 @@ function AccionConsignacionDialog({
 }
 
 export default function VentasPage() {
+  const { formatMonto } = useMonto();
   const [search, setSearch] = useState('');
   const [page, setPage] = useState(1);
   const [selectedVenta, setSelectedVenta] = useState<Venta | null>(null);
@@ -789,7 +795,7 @@ export default function VentasPage() {
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold text-green-600">
-              {formatCurrency(resumen?.totalVentas || 0)}
+              {formatMonto(resumen?.totalVentas || 0)}
             </div>
             <p className="text-xs text-muted-foreground">{resumen?.cantidadVentas || 0} transacciones</p>
           </CardContent>
@@ -801,7 +807,7 @@ export default function VentasPage() {
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold">
-              {formatCurrency(resumen?.ticketPromedio || 0)}
+              {formatMonto(resumen?.ticketPromedio || 0)}
             </div>
             <p className="text-xs text-muted-foreground">Por operación</p>
           </CardContent>
@@ -813,7 +819,7 @@ export default function VentasPage() {
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold text-orange-600">
-              {formatCurrency(consignacionData?.porCobrar || 0)}
+              {formatMonto(consignacionData?.porCobrar || 0)}
             </div>
             <p className="text-xs text-muted-foreground">
               {consignacionData?.cantidadConsignaciones || 0} pendientes de cobro
@@ -849,7 +855,7 @@ export default function VentasPage() {
             </div>
             <p className="text-xs text-muted-foreground mt-1">
               {(alertasData?.resumen?.criticas || 0) > 0
-                ? `${formatCurrency(alertasData?.resumen?.montoCritico || 0)} en riesgo`
+                ? `${formatMonto(alertasData?.resumen?.montoCritico || 0)} en riesgo`
                 : 'Consignaciones al día'}
             </p>
           </CardContent>
@@ -867,7 +873,7 @@ export default function VentasPage() {
                   {alertasData?.resumen?.criticas} consignaciones con más de 60 días
                 </h3>
                 <p className="text-sm text-red-700 dark:text-red-300 mt-1">
-                  Total en riesgo: {formatCurrency(alertasData?.resumen?.montoCritico || 0)}.
+                  Total en riesgo: {formatMonto(alertasData?.resumen?.montoCritico || 0)}.
                   Considera contactar a los clientes o devolver la mercancía.
                 </p>
                 <div className="flex flex-wrap gap-2 mt-3">
@@ -881,7 +887,7 @@ export default function VentasPage() {
                         className="cursor-pointer border-red-300 hover:bg-red-100"
                         onClick={() => handleVerDetalle(c)}
                       >
-                        {c.cliente?.nombre} - {c.diasPendiente}d - {formatCurrency(c.total)}
+                        {c.cliente?.nombre} - {c.diasPendiente}d - {formatMonto(c.total)}
                       </Badge>
                     ))}
                   {(alertasData?.resumen?.criticas || 0) > 3 && (
@@ -1023,7 +1029,7 @@ export default function VentasPage() {
                         </div>
                       </TableCell>
                       <TableCell className="text-right font-medium">
-                        {formatCurrency(venta.total)}
+                        {formatMonto(venta.total)}
                       </TableCell>
                       <TableCell className="text-center">
                         {cerrada ? (

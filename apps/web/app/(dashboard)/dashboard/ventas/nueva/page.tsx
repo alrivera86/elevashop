@@ -43,7 +43,7 @@ import {
   DialogTitle,
 } from '@/components/ui/dialog';
 import { productosApi, clientesApi, ventasApi, inventarioApi, Producto, Cliente, UnidadInventario, Venta } from '@/lib/api';
-import { formatCurrency } from '@/lib/utils';
+import { useMonto } from '@/components/ui/monto';
 import { toast } from '@/hooks/use-toast';
 import { generarOrdenSalida, VentaPDF } from '@/lib/generate-pdf';
 
@@ -74,6 +74,7 @@ const METODOS_PAGO: { value: MetodoPago; label: string }[] = [
 const IVA_RATE = 0.16; // 16% IVA
 
 export default function NuevaVentaPage() {
+  const { formatMonto } = useMonto();
   const router = useRouter();
   const queryClient = useQueryClient();
 
@@ -571,7 +572,7 @@ export default function NuevaVentaPage() {
                           Stock: {producto.stockActual}
                         </Badge>
                         <span className="font-bold text-green-600">
-                          {formatCurrency(Number(producto.precioElevapartes))}
+                          {formatMonto(Number(producto.precioElevapartes))}
                         </span>
                       </div>
                     </button>
@@ -605,7 +606,7 @@ export default function NuevaVentaPage() {
                       <div className="flex-1 min-w-0">
                         <p className="font-medium truncate text-sm sm:text-base">{item.producto.nombre}</p>
                         <p className="text-xs text-muted-foreground">
-                          Precio lista: {formatCurrency(Number(item.producto.precioElevapartes))}
+                          Precio lista: {formatMonto(Number(item.producto.precioElevapartes))}
                         </p>
                       </div>
                       <Button
@@ -676,7 +677,7 @@ export default function NuevaVentaPage() {
 
                       {/* Subtotal línea */}
                       <div className="ml-auto text-right font-bold">
-                        {formatCurrency((item.cantidad * item.precioUnitario) * (1 - item.descuentoPorcentaje / 100))}
+                        {formatMonto((item.cantidad * item.precioUnitario) * (1 - item.descuentoPorcentaje / 100))}
                       </div>
                     </div>
 
@@ -917,7 +918,7 @@ export default function NuevaVentaPage() {
             {/* Subtotal */}
             <div className="flex justify-between">
               <span className="text-muted-foreground">Subtotal</span>
-              <span>{formatCurrency(calculos.subtotalProductos)}</span>
+              <span>{formatMonto(calculos.subtotalProductos)}</span>
             </div>
 
             {/* Descuento Global */}
@@ -939,7 +940,7 @@ export default function NuevaVentaPage() {
                 <span className="text-muted-foreground">%</span>
                 {descuentoGlobal > 0 && (
                   <span className="text-sm text-destructive">
-                    (-{formatCurrency(calculos.descuentoGlobalMonto)})
+                    (-{formatMonto(calculos.descuentoGlobalMonto)})
                   </span>
                 )}
               </div>
@@ -958,7 +959,7 @@ export default function NuevaVentaPage() {
                 </Label>
               </div>
               <span className={aplicarIva ? '' : 'text-muted-foreground'}>
-                {formatCurrency(calculos.montoIva)}
+                {formatMonto(calculos.montoIva)}
               </span>
             </div>
 
@@ -967,7 +968,7 @@ export default function NuevaVentaPage() {
             {/* Total */}
             <div className="flex justify-between text-xl font-bold">
               <span>TOTAL</span>
-              <span className="text-green-600">{formatCurrency(calculos.total)}</span>
+              <span className="text-green-600">{formatMonto(calculos.total)}</span>
             </div>
 
             {/* Método de Pago - Solo para ventas */}
@@ -1081,8 +1082,8 @@ export default function NuevaVentaPage() {
             </DialogTitle>
             <DialogDescription>
               {esConsignacion
-                ? `La consignación #${ventaCompletada?.numero || ventaCompletada?.id} ha sido registrada. El cliente debe ${formatCurrency(Number(ventaCompletada?.total) || 0)}.`
-                : `La venta #${ventaCompletada?.numero || ventaCompletada?.id} ha sido registrada exitosamente por ${formatCurrency(Number(ventaCompletada?.total) || 0)}.`
+                ? `La consignación #${ventaCompletada?.numero || ventaCompletada?.id} ha sido registrada. El cliente debe ${formatMonto(Number(ventaCompletada?.total) || 0)}.`
+                : `La venta #${ventaCompletada?.numero || ventaCompletada?.id} ha sido registrada exitosamente por ${formatMonto(Number(ventaCompletada?.total) || 0)}.`
               }
             </DialogDescription>
           </DialogHeader>
@@ -1099,7 +1100,7 @@ export default function NuevaVentaPage() {
             <div className="flex items-center justify-between text-sm mt-1">
               <span className="text-muted-foreground">{esConsignacion ? 'Por cobrar:' : 'Total:'}</span>
               <span className={`font-bold ${esConsignacion ? 'text-orange-600' : 'text-green-600'}`}>
-                {formatCurrency(Number(ventaCompletada?.total) || 0)}
+                {formatMonto(Number(ventaCompletada?.total) || 0)}
               </span>
             </div>
             {esConsignacion && (

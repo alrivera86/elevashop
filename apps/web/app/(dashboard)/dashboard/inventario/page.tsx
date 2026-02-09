@@ -57,7 +57,8 @@ import {
 import { Label } from '@/components/ui/label';
 import { Skeleton } from '@/components/ui/skeleton';
 import { productosApi, inventarioApi, Producto } from '@/lib/api';
-import { formatCurrency, getStockStatus, getStockStatusLabel } from '@/lib/utils';
+import { getStockStatus, getStockStatusLabel } from '@/lib/utils';
+import { useMonto } from '@/components/ui/monto';
 import { toast } from '@/hooks/use-toast';
 
 function ProductoForm({
@@ -420,6 +421,7 @@ function MovimientoForm({
 }
 
 export default function InventarioPage() {
+  const { formatMonto } = useMonto();
   const [search, setSearch] = useState('');
   const [estadoFilter, setEstadoFilter] = useState<string>('');
   const [page, setPage] = useState(1);
@@ -618,10 +620,10 @@ export default function InventarioPage() {
                         <span className="sm:hidden text-xs text-muted-foreground font-mono">{producto.codigo}</span>
                       </TableCell>
                       <TableCell className="text-right hidden md:table-cell">
-                        {formatCurrency(Number(producto.precioMercado) || 0)}
+                        {formatMonto(Number(producto.precioMercado) || 0)}
                       </TableCell>
                       <TableCell className="text-right">
-                        {formatCurrency(Number(producto.precioElevapartes) || 0)}
+                        {formatMonto(Number(producto.precioElevapartes) || 0)}
                       </TableCell>
                       <TableCell className="text-center font-medium">
                         {producto.stockActual}

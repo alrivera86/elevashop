@@ -35,7 +35,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { reportesApi } from '@/lib/api';
-import { formatCurrency } from '@/lib/utils';
+import { useMonto } from '@/components/ui/monto';
 
 // Tipos de filtro de fecha
 type FiltroFecha = 'este_mes' | 'mes_anterior' | 'todo' | 'personalizado';
@@ -127,6 +127,7 @@ function KPICard({
 }
 
 export default function ReportesPage() {
+  const { formatMonto } = useMonto();
   const [filtroFecha, setFiltroFecha] = useState<FiltroFecha>('todo');
   // Fechas temporales (mientras el usuario edita)
   const [fechaDesdeTmp, setFechaDesdeTmp] = useState('');
@@ -262,14 +263,14 @@ export default function ReportesPage() {
       <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
         <KPICard
           title={`Ventas ${filtroFecha === 'todo' ? 'Totales' : 'del Periodo'}`}
-          value={formatCurrency(kpis?.ventasMes || 0)}
+          value={formatMonto(kpis?.ventasMes || 0)}
           subtitle={`${kpis?.unidadesVendidas || 0} unidades vendidas`}
           icon={ShoppingCart}
           color="blue"
         />
         <KPICard
           title={`Utilidad ${filtroFecha === 'todo' ? 'Total' : 'del Periodo'}`}
-          value={formatCurrency(kpis?.utilidadMes || 0)}
+          value={formatMonto(kpis?.utilidadMes || 0)}
           subtitle={`Margen: ${(kpis?.margenPromedio || 0).toFixed(1)}%`}
           icon={TrendingUp}
           trend={`${Math.abs(kpis?.cambioVsMesAnterior || 0).toFixed(1)}% vs mes anterior`}
@@ -337,7 +338,7 @@ export default function ReportesPage() {
                         <div>
                           <p className="font-medium">{cliente.nombre}</p>
                           <p className="text-xs text-muted-foreground">
-                            Ticket prom: {formatCurrency(cliente.ticketPromedio)}
+                            Ticket prom: {formatMonto(cliente.ticketPromedio)}
                           </p>
                         </div>
                       </TableCell>
@@ -345,7 +346,7 @@ export default function ReportesPage() {
                         <Badge variant="secondary">{cliente.cantidadOrdenes}</Badge>
                       </TableCell>
                       <TableCell className="text-right font-bold text-green-600">
-                        {formatCurrency(cliente.totalCompras)}
+                        {formatMonto(cliente.totalCompras)}
                       </TableCell>
                     </TableRow>
                   ))
@@ -406,7 +407,7 @@ export default function ReportesPage() {
                         <Badge variant="outline">{producto.unidadesVendidas}</Badge>
                       </TableCell>
                       <TableCell className="text-right font-bold text-green-600">
-                        {formatCurrency(producto.ingresos)}
+                        {formatMonto(producto.ingresos)}
                       </TableCell>
                     </TableRow>
                   ))
@@ -444,7 +445,7 @@ export default function ReportesPage() {
                           {mp.transacciones} trans.
                         </Badge>
                       </div>
-                      <span className="font-bold">{formatCurrency(mp.monto)}</span>
+                      <span className="font-bold">{formatMonto(mp.monto)}</span>
                     </div>
                     <div className="h-2 w-full rounded-full bg-muted">
                       <div
@@ -478,7 +479,7 @@ export default function ReportesPage() {
                 <div className="rounded-lg border p-4">
                   <p className="text-sm text-muted-foreground">Este Mes</p>
                   <p className="text-2xl font-bold text-green-600">
-                    {formatCurrency(dashboard?.utilidades?.mesActual.utilidad || 0)}
+                    {formatMonto(dashboard?.utilidades?.mesActual.utilidad || 0)}
                   </p>
                   <p className="text-xs text-muted-foreground">
                     {dashboard?.utilidades?.mesActual.unidades || 0} unidades
@@ -487,7 +488,7 @@ export default function ReportesPage() {
                 <div className="rounded-lg border p-4">
                   <p className="text-sm text-muted-foreground">Mes Anterior</p>
                   <p className="text-2xl font-bold">
-                    {formatCurrency(dashboard?.utilidades?.mesAnterior.utilidad || 0)}
+                    {formatMonto(dashboard?.utilidades?.mesAnterior.utilidad || 0)}
                   </p>
                   <p className="text-xs text-muted-foreground">
                     {dashboard?.utilidades?.mesAnterior.unidades || 0} unidades
@@ -516,15 +517,15 @@ export default function ReportesPage() {
                 <div className="grid grid-cols-3 gap-2 text-center">
                   <div>
                     <p className="text-xs text-muted-foreground">Ventas</p>
-                    <p className="font-bold">{formatCurrency(dashboard?.utilidades?.acumulado.ventas || 0)}</p>
+                    <p className="font-bold">{formatMonto(dashboard?.utilidades?.acumulado.ventas || 0)}</p>
                   </div>
                   <div>
                     <p className="text-xs text-muted-foreground">Costo</p>
-                    <p className="font-bold">{formatCurrency(dashboard?.utilidades?.acumulado.costo || 0)}</p>
+                    <p className="font-bold">{formatMonto(dashboard?.utilidades?.acumulado.costo || 0)}</p>
                   </div>
                   <div>
                     <p className="text-xs text-muted-foreground">Utilidad</p>
-                    <p className="font-bold text-green-600">{formatCurrency(dashboard?.utilidades?.acumulado.utilidad || 0)}</p>
+                    <p className="font-bold text-green-600">{formatMonto(dashboard?.utilidades?.acumulado.utilidad || 0)}</p>
                   </div>
                 </div>
               </div>

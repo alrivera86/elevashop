@@ -26,7 +26,8 @@ import { Badge } from '@/components/ui/badge';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Input } from '@/components/ui/input';
 import { inventarioApi } from '@/lib/api';
-import { formatCurrency, formatDate } from '@/lib/utils';
+import { formatDate } from '@/lib/utils';
+import { useMonto } from '@/components/ui/monto';
 
 const ORIGEN_LABELS: Record<string, { label: string; color: string }> = {
   IMPORTACION: { label: 'Importacion', color: 'bg-blue-500' },
@@ -38,6 +39,7 @@ const ORIGEN_LABELS: Record<string, { label: string; color: string }> = {
 };
 
 export default function ImportacionesPage() {
+  const { formatMonto } = useMonto();
   const [dias, setDias] = useState(30);
   const [busqueda, setBusqueda] = useState('');
 
@@ -104,7 +106,7 @@ export default function ImportacionesPage() {
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold">
-              {formatCurrency(estadisticas?.valorInventarioCosto || 0)}
+              {formatMonto(estadisticas?.valorInventarioCosto || 0)}
             </div>
             <p className="text-xs text-muted-foreground">Costo total</p>
           </CardContent>
@@ -120,7 +122,7 @@ export default function ImportacionesPage() {
               {estadisticas?.vendidas || 0}
             </div>
             <p className="text-xs text-muted-foreground">
-              {formatCurrency(estadisticas?.totalVendido || 0)} total
+              {formatMonto(estadisticas?.totalVendido || 0)} total
             </p>
           </CardContent>
         </Card>
@@ -132,7 +134,7 @@ export default function ImportacionesPage() {
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold text-green-600">
-              {formatCurrency(estadisticas?.utilidadTotal || 0)}
+              {formatMonto(estadisticas?.utilidadTotal || 0)}
             </div>
             <p className="text-xs text-muted-foreground">Ganancia acumulada</p>
           </CardContent>
@@ -193,7 +195,7 @@ export default function ImportacionesPage() {
                       <div className="text-right">
                         <p className="font-bold">{item.cantidad} unidades</p>
                         <p className="text-xs text-muted-foreground">
-                          {formatCurrency(item.costoTotal)} costo
+                          {formatMonto(item.costoTotal)} costo
                         </p>
                       </div>
                     </div>
@@ -320,7 +322,7 @@ export default function ImportacionesPage() {
                         {formatDate(unidad.fechaEntrada)}
                       </TableCell>
                       <TableCell className="text-right">
-                        {formatCurrency(Number(unidad.costoUnitario))}
+                        {formatMonto(Number(unidad.costoUnitario))}
                       </TableCell>
                       <TableCell>
                         <Badge

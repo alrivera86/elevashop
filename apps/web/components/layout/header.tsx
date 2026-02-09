@@ -1,7 +1,7 @@
 'use client';
 
 import { useState } from 'react';
-import { Bell, Search, X } from 'lucide-react';
+import { Bell, Search, X, Eye, EyeOff } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { MobileSidebar } from './sidebar';
@@ -13,10 +13,18 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from '@/components/ui/tooltip';
 import { useAuthStore } from '@/stores/auth-store';
+import { useUIStore } from '@/stores/ui-store';
 
 export function Header() {
   const { user, logout } = useAuthStore();
+  const { montosOcultos, toggleMontos } = useUIStore();
   const [mobileSearchOpen, setMobileSearchOpen] = useState(false);
 
   const handleLogout = () => {
@@ -63,6 +71,25 @@ export function Header() {
         <Button variant="ghost" size="icon" className="md:hidden" onClick={() => setMobileSearchOpen(true)}>
           <Search className="h-5 w-5" />
         </Button>
+
+        {/* Toggle montos */}
+        <TooltipProvider>
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <Button
+                variant={montosOcultos ? 'default' : 'ghost'}
+                size="icon"
+                onClick={toggleMontos}
+                className={montosOcultos ? 'bg-orange-500 hover:bg-orange-600 text-white' : ''}
+              >
+                {montosOcultos ? <EyeOff className="h-5 w-5" /> : <Eye className="h-5 w-5" />}
+              </Button>
+            </TooltipTrigger>
+            <TooltipContent>
+              <p>{montosOcultos ? 'Mostrar montos' : 'Ocultar montos'}</p>
+            </TooltipContent>
+          </Tooltip>
+        </TooltipProvider>
 
         {/* Notifications */}
         <Button variant="ghost" size="icon" className="relative">

@@ -54,7 +54,8 @@ import {
 import { Label } from '@/components/ui/label';
 import { Skeleton } from '@/components/ui/skeleton';
 import { finanzasApi } from '@/lib/api';
-import { formatCurrency, formatDate } from '@/lib/utils';
+import { formatDate } from '@/lib/utils';
+import { useMonto } from '@/components/ui/monto';
 import { toast } from '@/hooks/use-toast';
 
 const tiposGasto = [
@@ -467,6 +468,7 @@ function GastosRapidosTable() {
 }
 
 export default function FinanzasPage() {
+  const { formatMonto } = useMonto();
   const [page, setPage] = useState(1);
   const [tasaDialogOpen, setTasaDialogOpen] = useState(false);
   const [gastoDialogOpen, setGastoDialogOpen] = useState(false);
@@ -571,7 +573,7 @@ export default function FinanzasPage() {
               </CardHeader>
               <CardContent>
                 <div className="text-2xl font-bold text-green-600">
-                  {formatCurrency(resumen?.ingresos || 0)}
+                  {formatMonto(resumen?.ingresos || 0)}
                 </div>
                 <p className="text-xs text-muted-foreground">Este mes</p>
               </CardContent>
@@ -584,7 +586,7 @@ export default function FinanzasPage() {
               </CardHeader>
               <CardContent>
                 <div className="text-2xl font-bold text-red-600">
-                  {formatCurrency(resumen?.gastos || 0)}
+                  {formatMonto(resumen?.gastos || 0)}
                 </div>
                 <p className="text-xs text-muted-foreground">Este mes</p>
               </CardContent>
@@ -601,7 +603,7 @@ export default function FinanzasPage() {
                     (resumen?.balance || 0) >= 0 ? 'text-green-600' : 'text-red-600'
                   }`}
                 >
-                  {formatCurrency(resumen?.balance || 0)}
+                  {formatMonto(resumen?.balance || 0)}
                 </div>
                 <p className="text-xs text-muted-foreground">Ingresos - Gastos</p>
               </CardContent>
@@ -676,7 +678,7 @@ export default function FinanzasPage() {
                       </Badge>
                     </TableCell>
                     <TableCell className="text-right font-medium text-red-600">
-                      -{formatCurrency(gasto.monto, gasto.moneda)}
+                      -{formatMonto(gasto.monto, gasto.moneda)}
                     </TableCell>
                   </TableRow>
                 ))

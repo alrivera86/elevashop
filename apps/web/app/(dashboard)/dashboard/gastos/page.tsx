@@ -47,7 +47,7 @@ import { Label } from '@/components/ui/label';
 import { Skeleton } from '@/components/ui/skeleton';
 import { toast } from '@/hooks/use-toast';
 import { finanzasApi, CategoriaGasto, GastosMatriz } from '@/lib/api';
-import { formatCurrency } from '@/lib/utils';
+import { useMonto } from '@/components/ui/monto';
 
 const MESES = [
   'Ene', 'Feb', 'Mar', 'Abr', 'May', 'Jun',
@@ -60,6 +60,7 @@ const MESES_COMPLETO = [
 ];
 
 export default function GastosOperativosPage() {
+  const { formatMonto } = useMonto();
   const [anioSeleccionado, setAnioSeleccionado] = useState(new Date().getFullYear());
   const [editingCell, setEditingCell] = useState<{ categoria: string; mes: string } | null>(null);
   const [editValue, setEditValue] = useState('');
@@ -188,10 +189,10 @@ export default function GastosOperativosPage() {
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold text-red-600">
-              {formatCurrency(resumenAnual?.total || 0)}
+              {formatMonto(resumenAnual?.total || 0)}
             </div>
             <p className="text-xs text-muted-foreground">
-              Promedio: {formatCurrency(resumenAnual?.promedio || 0)}/mes
+              Promedio: {formatMonto(resumenAnual?.promedio || 0)}/mes
             </p>
           </CardContent>
         </Card>
@@ -223,7 +224,7 @@ export default function GastosOperativosPage() {
             </div>
             <p className="text-xs text-muted-foreground">
               {resumenAnual?.porCategoria
-                ? formatCurrency(Object.entries(resumenAnual.porCategoria)
+                ? formatMonto(Object.entries(resumenAnual.porCategoria)
                     .sort((a, b) => b[1] - a[1])[0]?.[1] || 0)
                 : '$0'}
             </p>
@@ -237,7 +238,7 @@ export default function GastosOperativosPage() {
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold">
-              {formatCurrency(getTotalMes(new Date().getMonth() + 1))}
+              {formatMonto(getTotalMes(new Date().getMonth() + 1))}
             </div>
             <p className="text-xs text-muted-foreground">
               {MESES_COMPLETO[new Date().getMonth()]} {anioSeleccionado}
@@ -346,7 +347,7 @@ export default function GastosOperativosPage() {
                         );
                       })}
                       <TableCell className="text-center font-bold bg-muted/30">
-                        {formatCurrency(getTotalCategoria(cat.nombre))}
+                        {formatMonto(getTotalCategoria(cat.nombre))}
                       </TableCell>
                     </TableRow>
                   ))}
@@ -355,11 +356,11 @@ export default function GastosOperativosPage() {
                     <TableCell className="sticky left-0 bg-muted/50">TOTAL</TableCell>
                     {MESES.map((_, idx) => (
                       <TableCell key={idx} className="text-center">
-                        {formatCurrency(getTotalMes(idx + 1))}
+                        {formatMonto(getTotalMes(idx + 1))}
                       </TableCell>
                     ))}
                     <TableCell className="text-center bg-muted text-lg">
-                      {formatCurrency(resumenAnual?.total || 0)}
+                      {formatMonto(resumenAnual?.total || 0)}
                     </TableCell>
                   </TableRow>
                 </>
