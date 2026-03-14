@@ -23,6 +23,8 @@ import {
   PlusCircle,
   UserCog,
   Receipt,
+  ArrowLeftRight,
+  Briefcase,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Sheet, SheetContent, SheetTrigger } from '@/components/ui/sheet';
@@ -41,6 +43,8 @@ const navigation = [
   { name: 'Clientes', href: '/dashboard/clientes', icon: Users, roles: ['ADMIN', 'VENDEDOR'] },
   { name: 'Importaciones', href: '/dashboard/importaciones', icon: Ship, roles: ['ADMIN'] },
   { name: 'Finanzas', href: '/dashboard/finanzas', icon: DollarSign, roles: ['ADMIN'] },
+  { name: 'Conversiones', href: '/dashboard/finanzas/conversiones', icon: ArrowLeftRight, roles: ['ADMIN'] },
+  { name: 'Operaciones', href: '/dashboard/finanzas/operaciones', icon: Briefcase, roles: ['ADMIN'] },
   { name: 'Gastos Operativos', href: '/dashboard/gastos', icon: Receipt, roles: ['ADMIN'] },
   { name: 'Reportes', href: '/dashboard/reportes', icon: BarChart3, roles: ['ADMIN', 'REPORTES'] },
   { name: 'Usuarios', href: '/dashboard/usuarios', icon: UserCog, roles: ['ADMIN'] },
