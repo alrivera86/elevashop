@@ -254,6 +254,92 @@ export interface DistribucionFondos {
   };
 }
 
+export interface DistribucionFondosCompleta extends DistribucionFondos {
+  operacionesActivas: {
+    cantidad: number;
+    montoTotal: number;
+    operaciones: {
+      id: number;
+      nombre: string;
+      tipo: TipoOperacionExterna;
+      monto: number;
+      fechaInicio: string;
+    }[];
+  };
+}
+
+// Conversiones
+export interface ConversionMoneda {
+  id: number;
+  fecha: string;
+  cuentaOrigen: MetodoPago;
+  montoOrigen: number;
+  monedaOrigen: Moneda;
+  cuentaDestino: MetodoPago;
+  montoDestino: number;
+  monedaDestino: Moneda;
+  tasaCambio: number;
+  notas?: string;
+  createdAt: string;
+}
+
+export interface CreateConversionData {
+  cuentaOrigen: MetodoPago;
+  montoOrigen: number;
+  monedaOrigen: Moneda;
+  cuentaDestino: MetodoPago;
+  montoDestino: number;
+  monedaDestino: Moneda;
+  tasaCambio: number;
+  fecha?: string;
+  notas?: string;
+}
+
+// Operaciones Externas
+export interface OperacionExterna {
+  id: number;
+  nombre: string;
+  tipo: TipoOperacionExterna;
+  estado: EstadoOperacionExterna;
+  cuentaOrigen: MetodoPago;
+  montoSalida: number;
+  monedaSalida: Moneda;
+  fechaInicio: string;
+  cuentaDestino?: MetodoPago;
+  montoEntrada?: number;
+  monedaEntrada?: Moneda;
+  fechaCierre?: string;
+  gananciaPerdida?: number;
+  notas?: string;
+  createdAt: string;
+}
+
+export interface CreateOperacionExternaData {
+  nombre: string;
+  tipo: TipoOperacionExterna;
+  cuentaOrigen: MetodoPago;
+  montoSalida: number;
+  monedaSalida?: Moneda;
+  fechaInicio?: string;
+  notas?: string;
+}
+
+export interface CerrarOperacionExternaData {
+  cuentaDestino: MetodoPago;
+  montoEntrada: number;
+  monedaEntrada?: Moneda;
+  fechaCierre?: string;
+  notas?: string;
+}
+
+export interface CreateAjusteManualData {
+  metodoPago: MetodoPago;
+  monto: number;
+  moneda?: Moneda;
+  descripcion: string;
+  fecha?: string;
+}
+
 export interface TasaDolar {
   rate: number;
   source: string;
@@ -301,6 +387,7 @@ export const finanzasApi = {
   getResumen: (params?: { desde?: string; hasta?: string }) =>
     get<FinanzasResumen>('/finanzas/resumen', { params }),
   getDistribucionFondos: () => get<DistribucionFondos>('/finanzas/distribucion-fondos'),
+  getDistribucionFondosCompleta: () => get<DistribucionFondosCompleta>('/finanzas/distribucion-fondos-completa'),
   getTasaDolar: () => get<TasaDolar>('/finanzas/tasa-dolar'),
   actualizarTasaDolar: () => post<TasaDolar>('/finanzas/tasa-dolar/actualizar'),
 
@@ -334,6 +421,31 @@ export const finanzasApi = {
     get<ResumenAnualGastos>('/finanzas/gastos-operativos/resumen-anual', {
       params: { anio },
     }),
+
+  // Conversiones
+  getConversiones: (params?: { page?: number; limit?: number }) =>
+    get<PaginatedResponse<ConversionMoneda>>('/finanzas/conversiones', { params }),
+  createConversion: (data: CreateConversionData) =>
+    post<ConversionMoneda>('/finanzas/conversiones', data),
+  deleteConversion: (id: number) => del<void>(`/finanzas/conversiones/${id}`),
+
+  // Operaciones Externas
+  getOperacionesExternas: (estado?: EstadoOperacionExterna) =>
+    get<OperacionExterna[]>('/finanzas/operaciones-externas', { params: estado ? { estado } : undefined }),
+  getOperacionesActivas: () =>
+    get<OperacionExterna[]>('/finanzas/operaciones-externas/activas'),
+  createOperacionExterna: (data: CreateOperacionExternaData) =>
+    post<OperacionExterna>('/finanzas/operaciones-externas', data),
+  cerrarOperacionExterna: (id: number, data: CerrarOperacionExternaData) =>
+    post<OperacionExterna>(`/finanzas/operaciones-externas/${id}/cerrar`, data),
+  cancelarOperacionExterna: (id: number) =>
+    post<OperacionExterna>(`/finanzas/operaciones-externas/${id}/cancelar`),
+  deleteOperacionExterna: (id: number) =>
+    del<void>(`/finanzas/operaciones-externas/${id}`),
+
+  // Ajustes manuales
+  createAjusteManual: (data: CreateAjusteManualData) =>
+    post<any>('/finanzas/ajustes', data),
 };
 
 export const reportesApi = {
@@ -809,7 +921,11 @@ export interface ReporteClientes {
 
 export type EstadoUnidad = 'DISPONIBLE' | 'RESERVADO' | 'VENDIDO' | 'DEFECTUOSO' | 'DEVUELTO';
 export type OrigenUnidad = 'COMPRA' | 'PRODUCCION' | 'IMPORTACION' | 'DEVOLUCION' | 'AJUSTE';
-export type MetodoPago = 'EFECTIVO_USD' | 'EFECTIVO_BS' | 'ZELLE' | 'BANESCO' | 'TRANSFERENCIA_BS' | 'TRANSFERENCIA_USD' | 'PAGO_MOVIL' | 'BINANCE' | 'MIXTO';
+export type MetodoPago = 'EFECTIVO_USD' | 'EFECTIVO_BS' | 'ZELLE' | 'BANESCO' | 'TRANSFERENCIA_BS' | 'TRANSFERENCIA_USD' | 'PAGO_MOVIL' | 'BINANCE' | 'MIXTO' | 'BINANCE_USDT' | 'BINANCE_ELEVASHOP' | 'EFECTIVO_CHILE';
+
+export type TipoOperacionExterna = 'INVERSION' | 'CAMBIO' | 'PRESTAMO' | 'OTRO';
+export type EstadoOperacionExterna = 'ACTIVA' | 'COMPLETADA' | 'CANCELADA';
+export type Moneda = 'USD' | 'VES';
 
 export interface UnidadInventario {
   id: number;

@@ -4,6 +4,8 @@ import { FinanzasService } from './finanzas.service';
 import { BinanceP2PService } from './binance-p2p.service';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { SetTasaCambioDto, CreateGastoDto } from './dto/finanzas.dto';
+import { CreateConversionDto } from './dto/conversion.dto';
+import { CreateOperacionExternaDto, CerrarOperacionExternaDto, CreateAjusteManualDto } from './dto/operacion-externa.dto';
 
 @ApiTags('finanzas')
 @Controller('finanzas')
@@ -191,5 +193,91 @@ export class FinanzasController {
   @ApiQuery({ name: 'anio', type: Number })
   getResumenAnual(@Query('anio', ParseIntPipe) anio: number) {
     return this.finanzasService.getResumenAnual(anio);
+  }
+
+  // ============ CONVERSIONES ============
+
+  @Get('conversiones')
+  @ApiOperation({ summary: 'Listar conversiones de moneda' })
+  @ApiQuery({ name: 'page', required: false })
+  @ApiQuery({ name: 'limit', required: false })
+  getConversiones(
+    @Query('page') page?: string,
+    @Query('limit') limit?: string,
+  ) {
+    return this.finanzasService.getConversiones({
+      page: page ? parseInt(page) : 1,
+      limit: limit ? parseInt(limit) : 20,
+    });
+  }
+
+  @Post('conversiones')
+  @ApiOperation({ summary: 'Crear nueva conversion de moneda' })
+  createConversion(@Body() dto: CreateConversionDto) {
+    return this.finanzasService.createConversion(dto);
+  }
+
+  @Delete('conversiones/:id')
+  @ApiOperation({ summary: 'Eliminar conversion' })
+  deleteConversion(@Param('id', ParseIntPipe) id: number) {
+    return this.finanzasService.deleteConversion(id);
+  }
+
+  // ============ OPERACIONES EXTERNAS ============
+
+  @Get('operaciones-externas')
+  @ApiOperation({ summary: 'Listar todas las operaciones externas' })
+  @ApiQuery({ name: 'estado', required: false })
+  getOperacionesExternas(@Query('estado') estado?: string) {
+    return this.finanzasService.getOperacionesExternas({ estado });
+  }
+
+  @Get('operaciones-externas/activas')
+  @ApiOperation({ summary: 'Listar operaciones externas activas' })
+  getOperacionesActivas() {
+    return this.finanzasService.getOperacionesActivas();
+  }
+
+  @Post('operaciones-externas')
+  @ApiOperation({ summary: 'Crear nueva operacion externa' })
+  createOperacionExterna(@Body() dto: CreateOperacionExternaDto) {
+    return this.finanzasService.createOperacionExterna(dto);
+  }
+
+  @Post('operaciones-externas/:id/cerrar')
+  @ApiOperation({ summary: 'Cerrar una operacion externa' })
+  cerrarOperacionExterna(
+    @Param('id', ParseIntPipe) id: number,
+    @Body() dto: CerrarOperacionExternaDto,
+  ) {
+    return this.finanzasService.cerrarOperacionExterna(id, dto);
+  }
+
+  @Post('operaciones-externas/:id/cancelar')
+  @ApiOperation({ summary: 'Cancelar una operacion externa' })
+  cancelarOperacionExterna(@Param('id', ParseIntPipe) id: number) {
+    return this.finanzasService.cancelarOperacionExterna(id);
+  }
+
+  @Delete('operaciones-externas/:id')
+  @ApiOperation({ summary: 'Eliminar operacion externa' })
+  deleteOperacionExterna(@Param('id', ParseIntPipe) id: number) {
+    return this.finanzasService.deleteOperacionExterna(id);
+  }
+
+  // ============ AJUSTES MANUALES ============
+
+  @Post('ajustes')
+  @ApiOperation({ summary: 'Crear ajuste manual de fondos' })
+  createAjusteManual(@Body() dto: CreateAjusteManualDto) {
+    return this.finanzasService.createAjusteManual(dto);
+  }
+
+  // ============ DISTRIBUCION CON AJUSTES ============
+
+  @Get('distribucion-fondos-completa')
+  @ApiOperation({ summary: 'Distribucion de fondos incluyendo ajustes y operaciones activas' })
+  getDistribucionFondosConAjustes() {
+    return this.finanzasService.getDistribucionFondosConAjustes();
   }
 }

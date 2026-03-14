@@ -21,7 +21,12 @@ import {
   ShoppingBag,
   CheckCircle2,
   Loader2,
+  ArrowLeftRight,
+  Briefcase,
+  Banknote,
+  Clock,
 } from 'lucide-react';
+import Link from 'next/link';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
@@ -479,6 +484,11 @@ export default function FinanzasPage() {
     queryFn: () => finanzasApi.getResumen(),
   });
 
+  const { data: distribucionCompleta } = useQuery({
+    queryKey: ['distribucion-fondos-completa'],
+    queryFn: () => finanzasApi.getDistribucionFondosCompleta(),
+  });
+
   const { data: tasaCambio, isLoading: loadingTasa } = useQuery({
     queryKey: ['tasa-cambio'],
     queryFn: finanzasApi.getTasaCambio,
@@ -499,6 +509,20 @@ export default function FinanzasPage() {
           <p className="text-muted-foreground">Control de ingresos, gastos y tasa de cambio</p>
         </div>
         <div className="flex gap-2">
+          <Link href="/dashboard/finanzas/conversiones">
+            <Button variant="outline">
+              <ArrowLeftRight className="mr-2 h-4 w-4" />
+              Conversiones
+            </Button>
+          </Link>
+
+          <Link href="/dashboard/finanzas/operaciones">
+            <Button variant="outline">
+              <Briefcase className="mr-2 h-4 w-4" />
+              Operaciones
+            </Button>
+          </Link>
+
           <Dialog open={tasaDialogOpen} onOpenChange={setTasaDialogOpen}>
             <DialogTrigger asChild>
               <Button variant="outline">
@@ -626,6 +650,54 @@ export default function FinanzasPage() {
           </>
         )}
       </div>
+
+      {/* Card de Operaciones Activas */}
+      {distribucionCompleta?.operacionesActivas && distribucionCompleta.operacionesActivas.cantidad > 0 && (
+        <Card className="bg-yellow-50 border-yellow-300">
+          <CardHeader>
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-3">
+                <div className="rounded-full p-2 bg-yellow-500">
+                  <Banknote className="h-5 w-5 text-white" />
+                </div>
+                <div>
+                  <CardTitle className="flex items-center gap-2">
+                    <Clock className="h-4 w-4" />
+                    Operaciones Externas Activas
+                  </CardTitle>
+                  <CardDescription>
+                    {distribucionCompleta.operacionesActivas.cantidad} operacion(es) pendientes de cierre
+                  </CardDescription>
+                </div>
+              </div>
+              <div className="text-right">
+                <p className="text-sm text-muted-foreground">Monto comprometido:</p>
+                <p className="text-2xl font-bold text-yellow-700">
+                  {formatMonto(distribucionCompleta.operacionesActivas.montoTotal)}
+                </p>
+              </div>
+            </div>
+          </CardHeader>
+          <CardContent>
+            <div className="flex flex-wrap gap-2 mb-4">
+              {distribucionCompleta.operacionesActivas.operaciones.slice(0, 3).map((op) => (
+                <Badge key={op.id} variant="secondary" className="bg-yellow-100">
+                  {op.nombre}: {formatMonto(op.monto)}
+                </Badge>
+              ))}
+              {distribucionCompleta.operacionesActivas.cantidad > 3 && (
+                <Badge variant="outline">+{distribucionCompleta.operacionesActivas.cantidad - 3} mas</Badge>
+              )}
+            </div>
+            <Link href="/dashboard/finanzas/operaciones">
+              <Button variant="outline" className="w-full">
+                <Briefcase className="mr-2 h-4 w-4" />
+                Ver todas las operaciones
+              </Button>
+            </Link>
+          </CardContent>
+        </Card>
+      )}
 
       {/* Tabla de Gastos Rapidos */}
       {mostrarGastosRapidos && <GastosRapidosTable />}

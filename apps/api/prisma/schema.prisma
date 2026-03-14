@@ -561,6 +561,9 @@ enum MetodoPago {
   PAGO_MOVIL
   BINANCE
   MIXTO
+  BINANCE_USDT       // USDT en Binance (cuentas personales: Sr Jose, Alberto, Wilmen)
+  BINANCE_ELEVASHOP  // USDT en Binance cuenta Elevashop
+  EFECTIVO_CHILE     // Efectivo USD en Chile
 }
 
 enum EstadoPago {
@@ -628,4 +631,88 @@ enum TipoTasa {
   PARALELO
   BCV
   BINANCE
+}
+
+// ============ ENUMS PARA CONVERSIONES Y OPERACIONES EXTERNAS ============
+
+enum TipoAjuste {
+  CONVERSION_ENTRADA
+  CONVERSION_SALIDA
+  OPERACION_SALIDA
+  OPERACION_ENTRADA
+  AJUSTE_MANUAL
+}
+
+enum TipoOperacionExterna {
+  INVERSION
+  CAMBIO
+  PRESTAMO
+  OTRO
+}
+
+enum EstadoOperacionExterna {
+  ACTIVA
+  COMPLETADA
+  CANCELADA
+}
+
+// ============ CONVERSIONES Y OPERACIONES EXTERNAS ============
+
+// Ajustes a fondos (conversiones, operaciones externas, ajustes manuales)
+model AjusteFondo {
+  id                  Int                @id @default(autoincrement())
+  fecha               DateTime           @default(now())
+  tipo                TipoAjuste
+  metodoPago          MetodoPago         @map("metodo_pago")
+  monto               Decimal            @db.Decimal(12, 2)
+  moneda              Moneda             @default(USD)
+  conversionId        Int?               @map("conversion_id")
+  conversion          ConversionMoneda?  @relation(fields: [conversionId], references: [id])
+  operacionExternaId  Int?               @map("operacion_externa_id")
+  operacionExterna    OperacionExterna?  @relation(fields: [operacionExternaId], references: [id])
+  descripcion         String?
+  createdAt           DateTime           @default(now()) @map("created_at")
+
+  @@map("ajustes_fondo")
+}
+
+// Conversiones entre cuentas/monedas
+model ConversionMoneda {
+  id              Int          @id @default(autoincrement())
+  fecha           DateTime     @default(now())
+  cuentaOrigen    MetodoPago   @map("cuenta_origen")
+  montoOrigen     Decimal      @map("monto_origen") @db.Decimal(12, 2)
+  monedaOrigen    Moneda       @map("moneda_origen")
+  cuentaDestino   MetodoPago   @map("cuenta_destino")
+  montoDestino    Decimal      @map("monto_destino") @db.Decimal(12, 2)
+  monedaDestino   Moneda       @map("moneda_destino")
+  tasaCambio      Decimal      @map("tasa_cambio") @db.Decimal(10, 4)
+  notas           String?
+  createdAt       DateTime     @default(now()) @map("created_at")
+  ajustes         AjusteFondo[]
+
+  @@map("conversiones_moneda")
+}
+
+// Operaciones externas (inversiones, préstamos, cambios)
+model OperacionExterna {
+  id                Int                     @id @default(autoincrement())
+  nombre            String
+  tipo              TipoOperacionExterna
+  estado            EstadoOperacionExterna  @default(ACTIVA)
+  cuentaOrigen      MetodoPago              @map("cuenta_origen")
+  montoSalida       Decimal                 @map("monto_salida") @db.Decimal(12, 2)
+  monedaSalida      Moneda                  @map("moneda_salida") @default(USD)
+  fechaInicio       DateTime                @map("fecha_inicio") @default(now())
+  cuentaDestino     MetodoPago?             @map("cuenta_destino")
+  montoEntrada      Decimal?                @map("monto_entrada") @db.Decimal(12, 2)
+  monedaEntrada     Moneda?                 @map("moneda_entrada")
+  fechaCierre       DateTime?               @map("fecha_cierre")
+  gananciaPerdida   Decimal?                @map("ganancia_perdida") @db.Decimal(12, 2)
+  notas             String?
+  createdAt         DateTime                @default(now()) @map("created_at")
+  updatedAt         DateTime                @updatedAt @map("updated_at")
+  ajustes           AjusteFondo[]
+
+  @@map("operaciones_externas")
 }

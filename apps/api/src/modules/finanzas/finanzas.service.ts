@@ -1,6 +1,9 @@
-import { Injectable } from '@nestjs/common';
+import { Injectable, NotFoundException, BadRequestException } from '@nestjs/common';
 import { PrismaService } from '../../config/prisma.service';
 import { CreateGastoDto } from './dto/finanzas.dto';
+import { CreateConversionDto } from './dto/conversion.dto';
+import { CreateOperacionExternaDto, CerrarOperacionExternaDto, CreateAjusteManualDto } from './dto/operacion-externa.dto';
+import { MetodoPago, Moneda } from '@prisma/client';
 
 @Injectable()
 export class FinanzasService {
@@ -512,6 +515,517 @@ export class FinanzasService {
       porCategoria,
       porMes,
       promedio: total / 12,
+    };
+  }
+
+  // ============ CONVERSIONES DE MONEDA ============
+
+  async getConversiones(options: { page?: number; limit?: number }) {
+    const { page = 1, limit = 20 } = options;
+    const skip = (page - 1) * limit;
+
+    const [conversiones, total] = await Promise.all([
+      this.prisma.conversionMoneda.findMany({
+        skip,
+        take: limit,
+        orderBy: { fecha: 'desc' },
+        include: {
+          ajustes: true,
+        },
+      }),
+      this.prisma.conversionMoneda.count(),
+    ]);
+
+    return {
+      data: conversiones.map(c => ({
+        id: c.id,
+        fecha: c.fecha,
+        cuentaOrigen: c.cuentaOrigen,
+        montoOrigen: Number(c.montoOrigen),
+        monedaOrigen: c.monedaOrigen,
+        cuentaDestino: c.cuentaDestino,
+        montoDestino: Number(c.montoDestino),
+        monedaDestino: c.monedaDestino,
+        tasaCambio: Number(c.tasaCambio),
+        notas: c.notas,
+        createdAt: c.createdAt,
+      })),
+      total,
+      page,
+      limit,
+      totalPages: Math.ceil(total / limit),
+    };
+  }
+
+  async createConversion(dto: CreateConversionDto) {
+    const fecha = dto.fecha ? new Date(dto.fecha) : new Date();
+
+    // Crear la conversion y los ajustes de fondo en una transaccion
+    return this.prisma.$transaction(async (tx) => {
+      // Crear la conversion
+      const conversion = await tx.conversionMoneda.create({
+        data: {
+          fecha,
+          cuentaOrigen: dto.cuentaOrigen,
+          montoOrigen: dto.montoOrigen,
+          monedaOrigen: dto.monedaOrigen,
+          cuentaDestino: dto.cuentaDestino,
+          montoDestino: dto.montoDestino,
+          monedaDestino: dto.monedaDestino,
+          tasaCambio: dto.tasaCambio,
+          notas: dto.notas,
+        },
+      });
+
+      // Crear ajuste de SALIDA en cuenta origen (negativo)
+      await tx.ajusteFondo.create({
+        data: {
+          fecha,
+          tipo: 'CONVERSION_SALIDA',
+          metodoPago: dto.cuentaOrigen,
+          monto: -Math.abs(dto.montoOrigen),
+          moneda: dto.monedaOrigen,
+          conversionId: conversion.id,
+          descripcion: `Conversion a ${dto.cuentaDestino}`,
+        },
+      });
+
+      // Crear ajuste de ENTRADA en cuenta destino (positivo)
+      await tx.ajusteFondo.create({
+        data: {
+          fecha,
+          tipo: 'CONVERSION_ENTRADA',
+          metodoPago: dto.cuentaDestino,
+          monto: Math.abs(dto.montoDestino),
+          moneda: dto.monedaDestino,
+          conversionId: conversion.id,
+          descripcion: `Conversion desde ${dto.cuentaOrigen}`,
+        },
+      });
+
+      return {
+        id: conversion.id,
+        fecha: conversion.fecha,
+        cuentaOrigen: conversion.cuentaOrigen,
+        montoOrigen: Number(conversion.montoOrigen),
+        monedaOrigen: conversion.monedaOrigen,
+        cuentaDestino: conversion.cuentaDestino,
+        montoDestino: Number(conversion.montoDestino),
+        monedaDestino: conversion.monedaDestino,
+        tasaCambio: Number(conversion.tasaCambio),
+        notas: conversion.notas,
+      };
+    });
+  }
+
+  async deleteConversion(id: number) {
+    // Eliminar ajustes relacionados y la conversion
+    return this.prisma.$transaction(async (tx) => {
+      await tx.ajusteFondo.deleteMany({
+        where: { conversionId: id },
+      });
+
+      return tx.conversionMoneda.delete({
+        where: { id },
+      });
+    });
+  }
+
+  // ============ OPERACIONES EXTERNAS ============
+
+  async getOperacionesExternas(options: { estado?: string } = {}) {
+    const where: any = {};
+    if (options.estado) {
+      where.estado = options.estado;
+    }
+
+    const operaciones = await this.prisma.operacionExterna.findMany({
+      where,
+      orderBy: [
+        { estado: 'asc' }, // ACTIVA primero
+        { fechaInicio: 'desc' },
+      ],
+      include: {
+        ajustes: true,
+      },
+    });
+
+    return operaciones.map(op => ({
+      id: op.id,
+      nombre: op.nombre,
+      tipo: op.tipo,
+      estado: op.estado,
+      cuentaOrigen: op.cuentaOrigen,
+      montoSalida: Number(op.montoSalida),
+      monedaSalida: op.monedaSalida,
+      fechaInicio: op.fechaInicio,
+      cuentaDestino: op.cuentaDestino,
+      montoEntrada: op.montoEntrada ? Number(op.montoEntrada) : null,
+      monedaEntrada: op.monedaEntrada,
+      fechaCierre: op.fechaCierre,
+      gananciaPerdida: op.gananciaPerdida ? Number(op.gananciaPerdida) : null,
+      notas: op.notas,
+      createdAt: op.createdAt,
+    }));
+  }
+
+  async getOperacionesActivas() {
+    return this.getOperacionesExternas({ estado: 'ACTIVA' });
+  }
+
+  async createOperacionExterna(dto: CreateOperacionExternaDto) {
+    const fechaInicio = dto.fechaInicio ? new Date(dto.fechaInicio) : new Date();
+    const monedaSalida = dto.monedaSalida || 'USD';
+
+    return this.prisma.$transaction(async (tx) => {
+      // Crear la operacion externa
+      const operacion = await tx.operacionExterna.create({
+        data: {
+          nombre: dto.nombre,
+          tipo: dto.tipo,
+          estado: 'ACTIVA',
+          cuentaOrigen: dto.cuentaOrigen,
+          montoSalida: dto.montoSalida,
+          monedaSalida,
+          fechaInicio,
+          notas: dto.notas,
+        },
+      });
+
+      // Crear ajuste de SALIDA (el dinero sale de la cuenta)
+      await tx.ajusteFondo.create({
+        data: {
+          fecha: fechaInicio,
+          tipo: 'OPERACION_SALIDA',
+          metodoPago: dto.cuentaOrigen,
+          monto: -Math.abs(dto.montoSalida),
+          moneda: monedaSalida,
+          operacionExternaId: operacion.id,
+          descripcion: `${dto.tipo}: ${dto.nombre}`,
+        },
+      });
+
+      return {
+        id: operacion.id,
+        nombre: operacion.nombre,
+        tipo: operacion.tipo,
+        estado: operacion.estado,
+        cuentaOrigen: operacion.cuentaOrigen,
+        montoSalida: Number(operacion.montoSalida),
+        monedaSalida: operacion.monedaSalida,
+        fechaInicio: operacion.fechaInicio,
+        notas: operacion.notas,
+      };
+    });
+  }
+
+  async cerrarOperacionExterna(id: number, dto: CerrarOperacionExternaDto) {
+    const operacion = await this.prisma.operacionExterna.findUnique({
+      where: { id },
+    });
+
+    if (!operacion) {
+      throw new NotFoundException('Operacion externa no encontrada');
+    }
+
+    if (operacion.estado !== 'ACTIVA') {
+      throw new BadRequestException('Solo se pueden cerrar operaciones activas');
+    }
+
+    const fechaCierre = dto.fechaCierre ? new Date(dto.fechaCierre) : new Date();
+    const monedaEntrada = dto.monedaEntrada || operacion.monedaSalida;
+
+    // Calcular ganancia/perdida
+    // Para simplificar, asumimos misma moneda o convertimos a USD
+    let gananciaPerdida = 0;
+    const montoSalida = Number(operacion.montoSalida);
+    const montoEntrada = dto.montoEntrada;
+
+    if (operacion.monedaSalida === monedaEntrada) {
+      gananciaPerdida = montoEntrada - montoSalida;
+    } else {
+      // Si son monedas diferentes, reportamos la diferencia en la moneda de entrada
+      gananciaPerdida = montoEntrada - montoSalida;
+    }
+
+    return this.prisma.$transaction(async (tx) => {
+      // Actualizar la operacion
+      const updated = await tx.operacionExterna.update({
+        where: { id },
+        data: {
+          estado: 'COMPLETADA',
+          cuentaDestino: dto.cuentaDestino,
+          montoEntrada: dto.montoEntrada,
+          monedaEntrada,
+          fechaCierre,
+          gananciaPerdida,
+          notas: dto.notas ? `${operacion.notas || ''}\nCierre: ${dto.notas}` : operacion.notas,
+        },
+      });
+
+      // Crear ajuste de ENTRADA (el dinero entra a la cuenta destino)
+      await tx.ajusteFondo.create({
+        data: {
+          fecha: fechaCierre,
+          tipo: 'OPERACION_ENTRADA',
+          metodoPago: dto.cuentaDestino,
+          monto: Math.abs(dto.montoEntrada),
+          moneda: monedaEntrada,
+          operacionExternaId: id,
+          descripcion: `Cierre ${operacion.tipo}: ${operacion.nombre}`,
+        },
+      });
+
+      return {
+        id: updated.id,
+        nombre: updated.nombre,
+        tipo: updated.tipo,
+        estado: updated.estado,
+        cuentaOrigen: updated.cuentaOrigen,
+        montoSalida: Number(updated.montoSalida),
+        monedaSalida: updated.monedaSalida,
+        fechaInicio: updated.fechaInicio,
+        cuentaDestino: updated.cuentaDestino,
+        montoEntrada: Number(updated.montoEntrada),
+        monedaEntrada: updated.monedaEntrada,
+        fechaCierre: updated.fechaCierre,
+        gananciaPerdida: Number(updated.gananciaPerdida),
+        notas: updated.notas,
+      };
+    });
+  }
+
+  async cancelarOperacionExterna(id: number) {
+    const operacion = await this.prisma.operacionExterna.findUnique({
+      where: { id },
+    });
+
+    if (!operacion) {
+      throw new NotFoundException('Operacion externa no encontrada');
+    }
+
+    if (operacion.estado !== 'ACTIVA') {
+      throw new BadRequestException('Solo se pueden cancelar operaciones activas');
+    }
+
+    return this.prisma.$transaction(async (tx) => {
+      // Revertir el ajuste de salida (devolver el dinero a la cuenta origen)
+      await tx.ajusteFondo.create({
+        data: {
+          fecha: new Date(),
+          tipo: 'OPERACION_ENTRADA',
+          metodoPago: operacion.cuentaOrigen,
+          monto: Math.abs(Number(operacion.montoSalida)),
+          moneda: operacion.monedaSalida,
+          operacionExternaId: id,
+          descripcion: `Cancelacion: ${operacion.nombre}`,
+        },
+      });
+
+      // Actualizar estado
+      return tx.operacionExterna.update({
+        where: { id },
+        data: {
+          estado: 'CANCELADA',
+          fechaCierre: new Date(),
+        },
+      });
+    });
+  }
+
+  async deleteOperacionExterna(id: number) {
+    // Solo permitir eliminar operaciones canceladas o completadas
+    const operacion = await this.prisma.operacionExterna.findUnique({
+      where: { id },
+    });
+
+    if (!operacion) {
+      throw new NotFoundException('Operacion externa no encontrada');
+    }
+
+    if (operacion.estado === 'ACTIVA') {
+      throw new BadRequestException('No se pueden eliminar operaciones activas. Cancele primero.');
+    }
+
+    return this.prisma.$transaction(async (tx) => {
+      await tx.ajusteFondo.deleteMany({
+        where: { operacionExternaId: id },
+      });
+
+      return tx.operacionExterna.delete({
+        where: { id },
+      });
+    });
+  }
+
+  // ============ AJUSTES MANUALES ============
+
+  async createAjusteManual(dto: CreateAjusteManualDto) {
+    const fecha = dto.fecha ? new Date(dto.fecha) : new Date();
+    const moneda = dto.moneda || 'USD';
+
+    return this.prisma.ajusteFondo.create({
+      data: {
+        fecha,
+        tipo: 'AJUSTE_MANUAL',
+        metodoPago: dto.metodoPago,
+        monto: dto.monto,
+        moneda,
+        descripcion: dto.descripcion,
+      },
+    });
+  }
+
+  // ============ DISTRIBUCION DE FONDOS ACTUALIZADA ============
+
+  async getDistribucionFondosConAjustes() {
+    // Calcular distribución desde los pagos de ventas
+    const pagos = await this.prisma.ventaPago.groupBy({
+      by: ['metodoPago'],
+      _sum: { monto: true },
+    });
+
+    // Obtener ajustes de fondos agrupados por método de pago
+    const ajustes = await this.prisma.ajusteFondo.groupBy({
+      by: ['metodoPago', 'moneda'],
+      _sum: { monto: true },
+    });
+
+    // Obtener operaciones activas
+    const operacionesActivas = await this.getOperacionesActivas();
+    const totalOperacionesActivas = operacionesActivas.reduce(
+      (sum, op) => sum + op.montoSalida,
+      0
+    );
+
+    // Obtener tasa de cambio actual
+    const tasaCambio = await this.getTasaCambioActual();
+    const tasa = Number(tasaCambio?.tasa) || 36.5;
+
+    // Calcular totales por método de pago
+    const fondos: Record<string, { usd: number; bs: number }> = {};
+
+    // Inicializar con pagos de ventas
+    for (const pago of pagos) {
+      const monto = Number(pago._sum.monto) || 0;
+      if (!fondos[pago.metodoPago]) {
+        fondos[pago.metodoPago] = { usd: 0, bs: 0 };
+      }
+      // Los pagos de ventas se asumen en USD excepto los de bolivares
+      if (['EFECTIVO_BS', 'TRANSFERENCIA_BS', 'PAGO_MOVIL'].includes(pago.metodoPago)) {
+        fondos[pago.metodoPago].bs += monto;
+      } else {
+        fondos[pago.metodoPago].usd += monto;
+      }
+    }
+
+    // Aplicar ajustes de fondos
+    for (const ajuste of ajustes) {
+      const monto = Number(ajuste._sum.monto) || 0;
+      if (!fondos[ajuste.metodoPago]) {
+        fondos[ajuste.metodoPago] = { usd: 0, bs: 0 };
+      }
+      if (ajuste.moneda === 'VES') {
+        fondos[ajuste.metodoPago].bs += monto;
+      } else {
+        fondos[ajuste.metodoPago].usd += monto;
+      }
+    }
+
+    // Calcular totales
+    let totalVentasUsd = 0;
+    const cuentas: any[] = [];
+
+    // Helper para obtener info de cuenta
+    const getCuentaInfo = (codigo: string) => {
+      const info: Record<string, { nombre: string; icono: string; color: string }> = {
+        'EFECTIVO_USD': { nombre: 'Efectivo USD', icono: 'banknote', color: 'green' },
+        'ZELLE': { nombre: 'Zelle', icono: 'credit-card', color: 'purple' },
+        'BANESCO': { nombre: 'Banesco', icono: 'building', color: 'blue' },
+        'BINANCE': { nombre: 'Binance', icono: 'bitcoin', color: 'yellow' },
+        'BINANCE_USDT': { nombre: 'Binance USDT (Personal)', icono: 'bitcoin', color: 'yellow' },
+        'BINANCE_ELEVASHOP': { nombre: 'Binance Elevashop', icono: 'bitcoin', color: 'orange' },
+        'EFECTIVO_BS': { nombre: 'Efectivo Bs', icono: 'coins', color: 'yellow' },
+        'TRANSFERENCIA_BS': { nombre: 'Transferencia Bs', icono: 'arrow-right-left', color: 'yellow' },
+        'PAGO_MOVIL': { nombre: 'Pago Movil', icono: 'smartphone', color: 'yellow' },
+        'TRANSFERENCIA_USD': { nombre: 'Transferencia USD', icono: 'arrow-right-left', color: 'green' },
+        'EFECTIVO_CHILE': { nombre: 'Efectivo Chile', icono: 'banknote', color: 'red' },
+      };
+      return info[codigo] || { nombre: codigo, icono: 'wallet', color: 'gray' };
+    };
+
+    // Agregar cuentas con saldos
+    for (const [codigo, saldos] of Object.entries(fondos)) {
+      const info = getCuentaInfo(codigo);
+      const esBolivares = ['EFECTIVO_BS', 'TRANSFERENCIA_BS', 'PAGO_MOVIL'].includes(codigo);
+
+      if (esBolivares) {
+        const montoUsd = tasa > 0 ? saldos.bs / tasa : 0;
+        totalVentasUsd += montoUsd;
+        cuentas.push({
+          nombre: info.nombre,
+          codigo,
+          monto: saldos.bs,
+          moneda: 'BS',
+          montoUsd,
+          porcentaje: 0, // Se calcula después
+          icono: info.icono,
+          color: info.color,
+        });
+      } else {
+        const montoTotal = saldos.usd;
+        totalVentasUsd += montoTotal;
+        cuentas.push({
+          nombre: info.nombre,
+          codigo,
+          monto: montoTotal,
+          moneda: 'USD',
+          porcentaje: 0,
+          icono: info.icono,
+          color: info.color,
+        });
+      }
+    }
+
+    // Calcular porcentajes
+    for (const cuenta of cuentas) {
+      const montoEnUsd = cuenta.moneda === 'BS' ? cuenta.montoUsd : cuenta.monto;
+      cuenta.porcentaje = totalVentasUsd > 0 ? (montoEnUsd / totalVentasUsd) * 100 : 0;
+    }
+
+    // Ordenar: primero USD, luego Bs
+    cuentas.sort((a, b) => {
+      if (a.moneda === 'USD' && b.moneda !== 'USD') return -1;
+      if (a.moneda !== 'USD' && b.moneda === 'USD') return 1;
+      return b.monto - a.monto;
+    });
+
+    // Calcular resumen de bolivares
+    const cuentasBs = cuentas.filter(c => c.moneda === 'BS');
+    const totalBs = cuentasBs.reduce((sum, c) => sum + c.monto, 0);
+    const totalBsEnUsd = cuentasBs.reduce((sum, c) => sum + (c.montoUsd || 0), 0);
+    const totalUsd = cuentas.filter(c => c.moneda === 'USD').reduce((sum, c) => sum + c.monto, 0);
+
+    return {
+      totalVentas: totalVentasUsd,
+      tasaCambio: tasa,
+      cuentas,
+      resumen: {
+        enUsd: totalUsd,
+        enBs: totalBs,
+        enBsEquivalenteUsd: totalBsEnUsd,
+      },
+      operacionesActivas: {
+        cantidad: operacionesActivas.length,
+        montoTotal: totalOperacionesActivas,
+        operaciones: operacionesActivas.map(op => ({
+          id: op.id,
+          nombre: op.nombre,
+          tipo: op.tipo,
+          monto: op.montoSalida,
+          fechaInicio: op.fechaInicio,
+        })),
+      },
     };
   }
 }
