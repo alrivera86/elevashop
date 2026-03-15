@@ -272,6 +272,14 @@ export interface DistribucionFondosCompleta extends DistribucionFondos {
 export type CuentaBinance = 'SR_JOSE' | 'WILMEN' | 'ALBERTO' | 'ELEVASHOP';
 export type EstadoConversion = 'EN_CUENTA' | 'TRANSFERIDO' | 'GASTADO';
 
+export interface MovimientoConversion {
+  id: number;
+  fecha: string;
+  ubicacionAnterior?: string;
+  ubicacionNueva: string;
+  notas?: string;
+}
+
 export interface ConversionMoneda {
   id: number;
   fecha: string;
@@ -284,16 +292,24 @@ export interface ConversionMoneda {
   tasaCambio: number;
   cuentaBinanceDestino?: CuentaBinance;
   estadoActual?: EstadoConversion;
+  ubicacionActual?: string;
   notas?: string;
   createdAt: string;
   updatedAt?: string;
+  movimientos?: MovimientoConversion[];
 }
 
 export interface UpdateConversionData {
   cuentaBinanceDestino?: CuentaBinance;
   estadoActual?: EstadoConversion;
+  ubicacionActual?: string;
   notas?: string;
   fecha?: string;
+}
+
+export interface RegistrarMovimientoData {
+  ubicacionNueva: string;
+  notas?: string;
 }
 
 export interface CreateConversionData {
@@ -445,6 +461,10 @@ export const finanzasApi = {
   updateConversion: (id: number, data: UpdateConversionData) =>
     patch<ConversionMoneda>(`/finanzas/conversiones/${id}`, data),
   deleteConversion: (id: number) => del<void>(`/finanzas/conversiones/${id}`),
+  getMovimientosConversion: (id: number) =>
+    get<MovimientoConversion[]>(`/finanzas/conversiones/${id}/movimientos`),
+  registrarMovimiento: (id: number, data: RegistrarMovimientoData) =>
+    post<MovimientoConversion>(`/finanzas/conversiones/${id}/movimientos`, data),
 
   // Operaciones Externas
   getOperacionesExternas: (estado?: EstadoOperacionExterna) =>

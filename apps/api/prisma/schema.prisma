@@ -697,12 +697,28 @@ model ConversionMoneda {
   tasaCambio            Decimal         @map("tasa_cambio") @db.Decimal(10, 4)
   cuentaBinanceDestino  CuentaBinance?  @map("cuenta_binance_destino")
   estadoActual          String?         @map("estado_actual") // "EN_CUENTA", "TRANSFERIDO", "GASTADO"
+  ubicacionActual       String?         @map("ubicacion_actual") // Donde está el dinero actualmente
   notas                 String?
   createdAt             DateTime        @default(now()) @map("created_at")
   updatedAt             DateTime?       @updatedAt @map("updated_at")
   ajustes               AjusteFondo[]
+  movimientos           MovimientoConversion[]
 
   @@map("conversiones_moneda")
+}
+
+// Historial de movimientos de una conversión (tracking de ubicación)
+model MovimientoConversion {
+  id                Int              @id @default(autoincrement())
+  conversionId      Int              @map("conversion_id")
+  conversion        ConversionMoneda @relation(fields: [conversionId], references: [id], onDelete: Cascade)
+  fecha             DateTime         @default(now())
+  ubicacionAnterior String?          @map("ubicacion_anterior")
+  ubicacionNueva    String           @map("ubicacion_nueva")
+  notas             String?
+  createdAt         DateTime         @default(now()) @map("created_at")
+
+  @@map("movimientos_conversion")
 }
 
 // Operaciones externas (inversiones, préstamos, cambios)

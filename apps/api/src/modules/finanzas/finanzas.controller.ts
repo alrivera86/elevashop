@@ -4,7 +4,7 @@ import { FinanzasService } from './finanzas.service';
 import { BinanceP2PService } from './binance-p2p.service';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { SetTasaCambioDto, CreateGastoDto } from './dto/finanzas.dto';
-import { CreateConversionDto, UpdateConversionDto } from './dto/conversion.dto';
+import { CreateConversionDto, UpdateConversionDto, RegistrarMovimientoDto } from './dto/conversion.dto';
 import { CreateOperacionExternaDto, CerrarOperacionExternaDto, CreateAjusteManualDto } from './dto/operacion-externa.dto';
 
 @ApiTags('finanzas')
@@ -236,6 +236,21 @@ export class FinanzasController {
   @ApiOperation({ summary: 'Eliminar conversion' })
   deleteConversion(@Param('id', ParseIntPipe) id: number) {
     return this.finanzasService.deleteConversion(id);
+  }
+
+  @Get('conversiones/:id/movimientos')
+  @ApiOperation({ summary: 'Obtener historial de movimientos de una conversion' })
+  getMovimientosConversion(@Param('id', ParseIntPipe) id: number) {
+    return this.finanzasService.getMovimientosConversion(id);
+  }
+
+  @Post('conversiones/:id/movimientos')
+  @ApiOperation({ summary: 'Registrar movimiento de ubicación' })
+  registrarMovimiento(
+    @Param('id', ParseIntPipe) id: number,
+    @Body() dto: RegistrarMovimientoDto,
+  ) {
+    return this.finanzasService.registrarMovimiento(id, dto);
   }
 
   // ============ OPERACIONES EXTERNAS ============

@@ -66,6 +66,11 @@ export class UpdateConversionDto {
   @IsIn(['EN_CUENTA', 'TRANSFERIDO', 'GASTADO'])
   estadoActual?: string;
 
+  @ApiProperty({ description: 'Ubicación actual del dinero', required: false })
+  @IsOptional()
+  @IsString()
+  ubicacionActual?: string;
+
   @ApiProperty({ description: 'Notas adicionales', required: false })
   @IsOptional()
   @IsString()
@@ -75,4 +80,15 @@ export class UpdateConversionDto {
   @IsOptional()
   @IsDateString()
   fecha?: string;
+}
+
+export class RegistrarMovimientoDto {
+  @ApiProperty({ description: 'Nueva ubicación del dinero' })
+  @IsString()
+  ubicacionNueva: string;
+
+  @ApiProperty({ description: 'Notas sobre el movimiento', required: false })
+  @IsOptional()
+  @IsString()
+  notas?: string;
 }

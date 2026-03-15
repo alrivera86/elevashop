@@ -549,6 +549,7 @@ export class FinanzasService {
         tasaCambio: Number(c.tasaCambio),
         cuentaBinanceDestino: c.cuentaBinanceDestino,
         estadoActual: c.estadoActual,
+        ubicacionActual: c.ubicacionActual,
         notas: c.notas,
         createdAt: c.createdAt,
       })),
@@ -617,6 +618,7 @@ export class FinanzasService {
         tasaCambio: Number(conversion.tasaCambio),
         cuentaBinanceDestino: conversion.cuentaBinanceDestino,
         estadoActual: conversion.estadoActual,
+        ubicacionActual: conversion.ubicacionActual,
         notas: conversion.notas,
       };
     });
@@ -625,6 +627,11 @@ export class FinanzasService {
   async getConversionById(id: number) {
     const conversion = await this.prisma.conversionMoneda.findUnique({
       where: { id },
+      include: {
+        movimientos: {
+          orderBy: { fecha: 'desc' },
+        },
+      },
     });
 
     if (!conversion) {
@@ -643,15 +650,24 @@ export class FinanzasService {
       tasaCambio: Number(conversion.tasaCambio),
       cuentaBinanceDestino: conversion.cuentaBinanceDestino,
       estadoActual: conversion.estadoActual,
+      ubicacionActual: conversion.ubicacionActual,
       notas: conversion.notas,
       createdAt: conversion.createdAt,
       updatedAt: conversion.updatedAt,
+      movimientos: conversion.movimientos?.map(m => ({
+        id: m.id,
+        fecha: m.fecha,
+        ubicacionAnterior: m.ubicacionAnterior,
+        ubicacionNueva: m.ubicacionNueva,
+        notas: m.notas,
+      })) || [],
     };
   }
 
   async updateConversion(id: number, dto: {
     cuentaBinanceDestino?: string;
     estadoActual?: string;
+    ubicacionActual?: string;
     notas?: string;
     fecha?: string;
   }) {
@@ -660,6 +676,7 @@ export class FinanzasService {
       data: {
         ...(dto.cuentaBinanceDestino && { cuentaBinanceDestino: dto.cuentaBinanceDestino as any }),
         ...(dto.estadoActual && { estadoActual: dto.estadoActual }),
+        ...(dto.ubicacionActual !== undefined && { ubicacionActual: dto.ubicacionActual }),
         ...(dto.notas !== undefined && { notas: dto.notas }),
         ...(dto.fecha && { fecha: new Date(dto.fecha) }),
       },
@@ -677,8 +694,62 @@ export class FinanzasService {
       tasaCambio: Number(conversion.tasaCambio),
       cuentaBinanceDestino: conversion.cuentaBinanceDestino,
       estadoActual: conversion.estadoActual,
+      ubicacionActual: conversion.ubicacionActual,
       notas: conversion.notas,
     };
+  }
+
+  async registrarMovimiento(conversionId: number, dto: {
+    ubicacionNueva: string;
+    notas?: string;
+  }) {
+    // Obtener la conversión actual
+    const conversion = await this.prisma.conversionMoneda.findUnique({
+      where: { id: conversionId },
+    });
+
+    if (!conversion) {
+      throw new Error('Conversion no encontrada');
+    }
+
+    // Crear el movimiento y actualizar la ubicación actual
+    const [movimiento] = await this.prisma.$transaction([
+      this.prisma.movimientoConversion.create({
+        data: {
+          conversionId,
+          ubicacionAnterior: conversion.ubicacionActual,
+          ubicacionNueva: dto.ubicacionNueva,
+          notas: dto.notas,
+        },
+      }),
+      this.prisma.conversionMoneda.update({
+        where: { id: conversionId },
+        data: { ubicacionActual: dto.ubicacionNueva },
+      }),
+    ]);
+
+    return {
+      id: movimiento.id,
+      fecha: movimiento.fecha,
+      ubicacionAnterior: movimiento.ubicacionAnterior,
+      ubicacionNueva: movimiento.ubicacionNueva,
+      notas: movimiento.notas,
+    };
+  }
+
+  async getMovimientosConversion(conversionId: number) {
+    const movimientos = await this.prisma.movimientoConversion.findMany({
+      where: { conversionId },
+      orderBy: { fecha: 'desc' },
+    });
+
+    return movimientos.map(m => ({
+      id: m.id,
+      fecha: m.fecha,
+      ubicacionAnterior: m.ubicacionAnterior,
+      ubicacionNueva: m.ubicacionNueva,
+      notas: m.notas,
+    }));
   }
 
   async deleteConversion(id: number) {

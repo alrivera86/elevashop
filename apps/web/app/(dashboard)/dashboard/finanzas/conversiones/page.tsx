@@ -10,8 +10,9 @@ import {
   Loader2,
   Calculator,
   Pencil,
-  Eye,
-  Wallet,
+  MapPin,
+  History,
+  ArrowRight,
 } from 'lucide-react';
 import Link from 'next/link';
 import { Button } from '@/components/ui/button';
@@ -45,6 +46,8 @@ import {
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { Skeleton } from '@/components/ui/skeleton';
+import { Separator } from '@/components/ui/separator';
+import { ScrollArea } from '@/components/ui/scroll-area';
 import { finanzasApi, MetodoPago, Moneda, ConversionMoneda, CuentaBinance, EstadoConversion } from '@/lib/api';
 import { formatDate } from '@/lib/utils';
 import { useMonto } from '@/components/ui/monto';
@@ -71,24 +74,21 @@ const cuentasBinance: { value: CuentaBinance; label: string }[] = [
   { value: 'ELEVASHOP', label: 'Elevashop' },
 ];
 
-const estadosConversion: { value: EstadoConversion; label: string; color: string }[] = [
-  { value: 'EN_CUENTA', label: 'En Cuenta', color: 'bg-green-100 text-green-800' },
-  { value: 'TRANSFERIDO', label: 'Transferido', color: 'bg-blue-100 text-blue-800' },
-  { value: 'GASTADO', label: 'Gastado', color: 'bg-gray-100 text-gray-800' },
+const ubicacionesSugeridas = [
+  'Binance Sr. Jose',
+  'Binance Wilmen',
+  'Binance Alberto',
+  'Binance Elevashop',
+  'Banesco Panama',
+  'Zelle',
+  'Efectivo USD',
+  'Efectivo Bs',
+  'Transferido a tercero',
+  'Gastado',
 ];
 
 const getMetodoLabel = (value: MetodoPago) => {
   return metodosPago.find(m => m.value === value)?.label || value;
-};
-
-const getCuentaBinanceLabel = (value?: CuentaBinance) => {
-  if (!value) return null;
-  return cuentasBinance.find(c => c.value === value)?.label || value;
-};
-
-const getEstadoInfo = (value?: EstadoConversion) => {
-  if (!value) return null;
-  return estadosConversion.find(e => e.value === value);
 };
 
 function ConversionForm({
@@ -106,8 +106,7 @@ function ConversionForm({
     montoDestino: '',
     monedaDestino: 'USD' as Moneda,
     tasaCambio: '',
-    cuentaBinanceDestino: '' as CuentaBinance | '',
-    estadoActual: 'EN_CUENTA' as EstadoConversion,
+    ubicacionActual: '',
     notas: '',
   });
 
@@ -123,8 +122,7 @@ function ConversionForm({
         montoDestino: parseFloat(formData.montoDestino),
         monedaDestino: formData.monedaDestino,
         tasaCambio: parseFloat(formData.tasaCambio),
-        cuentaBinanceDestino: formData.cuentaBinanceDestino || undefined,
-        estadoActual: formData.estadoActual,
+        ubicacionActual: formData.ubicacionActual || undefined,
         notas: formData.notas || undefined,
       }),
     onSuccess: () => {
@@ -173,8 +171,6 @@ function ConversionForm({
   const isValid = formData.cuentaOrigen && formData.cuentaDestino &&
     parseFloat(formData.montoOrigen) > 0 && parseFloat(formData.montoDestino) > 0 &&
     parseFloat(formData.tasaCambio) > 0;
-
-  const showBinanceOptions = formData.cuentaDestino?.includes('BINANCE');
 
   return (
     <form onSubmit={handleSubmit} className="space-y-4">
@@ -268,49 +264,36 @@ function ConversionForm({
         </Button>
       </div>
 
-      {showBinanceOptions && (
-        <div className="grid grid-cols-2 gap-4 p-4 bg-yellow-50 rounded-lg">
-          <div className="space-y-2">
-            <Label>Cuenta Binance Específica</Label>
-            <Select
-              value={formData.cuentaBinanceDestino}
-              onValueChange={(v) => setFormData({ ...formData, cuentaBinanceDestino: v as CuentaBinance })}
-            >
-              <SelectTrigger>
-                <SelectValue placeholder="Seleccionar cuenta" />
-              </SelectTrigger>
-              <SelectContent>
-                {cuentasBinance.map((c) => (
-                  <SelectItem key={c.value} value={c.value}>{c.label}</SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          </div>
-          <div className="space-y-2">
-            <Label>Estado Actual</Label>
-            <Select
-              value={formData.estadoActual}
-              onValueChange={(v) => setFormData({ ...formData, estadoActual: v as EstadoConversion })}
-            >
-              <SelectTrigger>
-                <SelectValue placeholder="Seleccionar estado" />
-              </SelectTrigger>
-              <SelectContent>
-                {estadosConversion.map((e) => (
-                  <SelectItem key={e.value} value={e.value}>{e.label}</SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          </div>
+      <div className="space-y-2">
+        <Label>Ubicación actual del dinero</Label>
+        <div className="flex gap-2">
+          <Input
+            value={formData.ubicacionActual}
+            onChange={(e) => setFormData({ ...formData, ubicacionActual: e.target.value })}
+            placeholder="Ej: Binance Sr. Jose, Banesco, etc."
+            className="flex-1"
+          />
         </div>
-      )}
+        <div className="flex flex-wrap gap-1 mt-1">
+          {ubicacionesSugeridas.slice(0, 5).map((ub) => (
+            <Badge
+              key={ub}
+              variant="outline"
+              className="cursor-pointer hover:bg-primary hover:text-primary-foreground"
+              onClick={() => setFormData({ ...formData, ubicacionActual: ub })}
+            >
+              {ub}
+            </Badge>
+          ))}
+        </div>
+      </div>
 
       <div className="space-y-2">
         <Label>Notas (opcional)</Label>
         <Textarea
           value={formData.notas}
           onChange={(e) => setFormData({ ...formData, notas: e.target.value })}
-          placeholder="Notas adicionales sobre la conversion..."
+          placeholder="Notas adicionales..."
           rows={2}
         />
       </div>
@@ -340,130 +323,192 @@ function EditConversionDialog({
 }) {
   const { formatMonto } = useMonto();
   const queryClient = useQueryClient();
-  const [formData, setFormData] = useState({
-    cuentaBinanceDestino: conversion.cuentaBinanceDestino || '',
-    estadoActual: conversion.estadoActual || 'EN_CUENTA',
-    notas: conversion.notas || '',
+  const [nuevaUbicacion, setNuevaUbicacion] = useState('');
+  const [notasMovimiento, setNotasMovimiento] = useState('');
+
+  // Obtener detalle con movimientos
+  const { data: detalle, isLoading } = useQuery({
+    queryKey: ['conversion', conversion.id],
+    queryFn: () => finanzasApi.getConversionById(conversion.id),
+    enabled: open,
   });
 
-  const mutation = useMutation({
+  const movimientoMutation = useMutation({
     mutationFn: () =>
-      finanzasApi.updateConversion(conversion.id, {
-        cuentaBinanceDestino: formData.cuentaBinanceDestino as CuentaBinance || undefined,
-        estadoActual: formData.estadoActual as EstadoConversion || undefined,
-        notas: formData.notas,
+      finanzasApi.registrarMovimiento(conversion.id, {
+        ubicacionNueva: nuevaUbicacion,
+        notas: notasMovimiento || undefined,
       }),
     onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['conversion', conversion.id] });
       queryClient.invalidateQueries({ queryKey: ['conversiones'] });
-      toast({ title: 'Conversion actualizada', variant: 'success' });
-      onOpenChange(false);
+      toast({ title: 'Ubicación actualizada', variant: 'success' });
+      setNuevaUbicacion('');
+      setNotasMovimiento('');
     },
     onError: () => {
-      toast({ title: 'Error al actualizar', variant: 'destructive' });
+      toast({ title: 'Error al actualizar ubicación', variant: 'destructive' });
     },
   });
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleRegistrarMovimiento = (e: React.FormEvent) => {
     e.preventDefault();
-    mutation.mutate();
+    if (nuevaUbicacion) {
+      movimientoMutation.mutate();
+    }
   };
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-lg">
+      <DialogContent className="max-w-2xl max-h-[90vh]">
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
-            <Wallet className="h-5 w-5" />
-            Detalle de Conversion
+            <MapPin className="h-5 w-5" />
+            Tracking de Conversión
           </DialogTitle>
           <DialogDescription>
-            {formatDate(conversion.fecha)}
+            {formatDate(conversion.fecha)} - ${conversion.montoDestino.toFixed(2)} USDT
           </DialogDescription>
         </DialogHeader>
 
-        <div className="space-y-4">
-          {/* Resumen de la conversion */}
-          <div className="grid grid-cols-2 gap-4 p-4 bg-muted rounded-lg">
-            <div>
-              <p className="text-sm text-muted-foreground">Salió de</p>
-              <p className="font-medium">{getMetodoLabel(conversion.cuentaOrigen)}</p>
-              <p className="text-red-600 font-semibold">
-                -{formatMonto(conversion.montoOrigen, conversion.monedaOrigen === 'VES' ? 'VES' : 'USD')}
+        <ScrollArea className="max-h-[60vh]">
+          <div className="space-y-6 pr-4">
+            {/* Resumen de la conversion */}
+            <div className="grid grid-cols-2 gap-4 p-4 bg-muted rounded-lg">
+              <div>
+                <p className="text-sm text-muted-foreground">Salió de</p>
+                <p className="font-medium">{getMetodoLabel(conversion.cuentaOrigen)}</p>
+                <p className="text-red-600 font-semibold">
+                  -{formatMonto(conversion.montoOrigen, conversion.monedaOrigen === 'VES' ? 'VES' : 'USD')}
+                </p>
+              </div>
+              <div>
+                <p className="text-sm text-muted-foreground">Entró a</p>
+                <p className="font-medium">{getMetodoLabel(conversion.cuentaDestino)}</p>
+                <p className="text-green-600 font-semibold">
+                  +{formatMonto(conversion.montoDestino, conversion.monedaDestino === 'VES' ? 'VES' : 'USD')}
+                </p>
+              </div>
+            </div>
+
+            {/* Ubicación actual */}
+            <div className="p-4 bg-primary/10 rounded-lg border-2 border-primary/20">
+              <div className="flex items-center gap-2 mb-2">
+                <MapPin className="h-5 w-5 text-primary" />
+                <span className="font-semibold">Ubicación Actual</span>
+              </div>
+              <p className="text-xl font-bold text-primary">
+                {detalle?.ubicacionActual || conversion.ubicacionActual || 'Sin asignar'}
               </p>
             </div>
-            <div>
-              <p className="text-sm text-muted-foreground">Entró a</p>
-              <p className="font-medium">{getMetodoLabel(conversion.cuentaDestino)}</p>
-              <p className="text-green-600 font-semibold">
-                +{formatMonto(conversion.montoDestino, conversion.monedaDestino === 'VES' ? 'VES' : 'USD')}
-              </p>
-            </div>
-          </div>
 
-          <div className="text-center text-sm text-muted-foreground">
-            Tasa: {conversion.tasaCambio.toFixed(4)}
-          </div>
+            <Separator />
 
-          <form onSubmit={handleSubmit} className="space-y-4">
-            <div className="space-y-2">
-              <Label>Cuenta Binance donde está el USDT</Label>
-              <Select
-                value={formData.cuentaBinanceDestino}
-                onValueChange={(v) => setFormData({ ...formData, cuentaBinanceDestino: v })}
-              >
-                <SelectTrigger>
-                  <SelectValue placeholder="Seleccionar cuenta Binance" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="">Sin asignar</SelectItem>
-                  {cuentasBinance.map((c) => (
-                    <SelectItem key={c.value} value={c.value}>{c.label}</SelectItem>
+            {/* Formulario para registrar movimiento */}
+            <form onSubmit={handleRegistrarMovimiento} className="space-y-4">
+              <div className="space-y-2">
+                <Label className="flex items-center gap-2">
+                  <ArrowRight className="h-4 w-4" />
+                  Mover a nueva ubicación
+                </Label>
+                <Input
+                  value={nuevaUbicacion}
+                  onChange={(e) => setNuevaUbicacion(e.target.value)}
+                  placeholder="Nueva ubicación del dinero..."
+                />
+                <div className="flex flex-wrap gap-1">
+                  {ubicacionesSugeridas.map((ub) => (
+                    <Badge
+                      key={ub}
+                      variant="outline"
+                      className="cursor-pointer hover:bg-primary hover:text-primary-foreground text-xs"
+                      onClick={() => setNuevaUbicacion(ub)}
+                    >
+                      {ub}
+                    </Badge>
                   ))}
-                </SelectContent>
-              </Select>
-            </div>
-
-            <div className="space-y-2">
-              <Label>Estado Actual</Label>
-              <Select
-                value={formData.estadoActual}
-                onValueChange={(v) => setFormData({ ...formData, estadoActual: v })}
+                </div>
+              </div>
+              <div className="space-y-2">
+                <Label>Notas del movimiento (opcional)</Label>
+                <Input
+                  value={notasMovimiento}
+                  onChange={(e) => setNotasMovimiento(e.target.value)}
+                  placeholder="Motivo del movimiento..."
+                />
+              </div>
+              <Button
+                type="submit"
+                disabled={!nuevaUbicacion || movimientoMutation.isPending}
+                className="w-full"
               >
-                <SelectTrigger>
-                  <SelectValue placeholder="Seleccionar estado" />
-                </SelectTrigger>
-                <SelectContent>
-                  {estadosConversion.map((e) => (
-                    <SelectItem key={e.value} value={e.value}>{e.label}</SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
-
-            <div className="space-y-2">
-              <Label>Notas</Label>
-              <Textarea
-                value={formData.notas}
-                onChange={(e) => setFormData({ ...formData, notas: e.target.value })}
-                placeholder="Notas sobre esta conversion..."
-                rows={3}
-              />
-            </div>
-
-            <DialogFooter>
-              <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>
-                Cancelar
-              </Button>
-              <Button type="submit" disabled={mutation.isPending}>
-                {mutation.isPending ? (
-                  <><Loader2 className="mr-2 h-4 w-4 animate-spin" />Guardando...</>
+                {movimientoMutation.isPending ? (
+                  <><Loader2 className="mr-2 h-4 w-4 animate-spin" />Registrando...</>
                 ) : (
-                  'Guardar Cambios'
+                  <>
+                    <ArrowRight className="mr-2 h-4 w-4" />
+                    Registrar Movimiento
+                  </>
                 )}
               </Button>
-            </DialogFooter>
-          </form>
-        </div>
+            </form>
+
+            <Separator />
+
+            {/* Historial de movimientos */}
+            <div>
+              <h4 className="font-semibold flex items-center gap-2 mb-3">
+                <History className="h-4 w-4" />
+                Historial de Movimientos
+              </h4>
+              {isLoading ? (
+                <div className="space-y-2">
+                  <Skeleton className="h-12 w-full" />
+                  <Skeleton className="h-12 w-full" />
+                </div>
+              ) : detalle?.movimientos && detalle.movimientos.length > 0 ? (
+                <div className="space-y-2">
+                  {detalle.movimientos.map((mov) => (
+                    <div key={mov.id} className="p-3 bg-muted rounded-lg text-sm">
+                      <div className="flex items-center gap-2 text-muted-foreground mb-1">
+                        <span>{formatDate(mov.fecha)}</span>
+                      </div>
+                      <div className="flex items-center gap-2">
+                        <span className="text-muted-foreground">{mov.ubicacionAnterior || 'Inicial'}</span>
+                        <ArrowRight className="h-4 w-4" />
+                        <span className="font-medium">{mov.ubicacionNueva}</span>
+                      </div>
+                      {mov.notas && (
+                        <p className="text-muted-foreground mt-1 text-xs">{mov.notas}</p>
+                      )}
+                    </div>
+                  ))}
+                </div>
+              ) : (
+                <p className="text-muted-foreground text-sm text-center py-4">
+                  No hay movimientos registrados
+                </p>
+              )}
+            </div>
+
+            {/* Notas originales */}
+            {conversion.notas && (
+              <>
+                <Separator />
+                <div>
+                  <h4 className="font-semibold mb-2">Notas de la conversión</h4>
+                  <p className="text-sm text-muted-foreground">{conversion.notas}</p>
+                </div>
+              </>
+            )}
+          </div>
+        </ScrollArea>
+
+        <DialogFooter>
+          <Button variant="outline" onClick={() => onOpenChange(false)}>
+            Cerrar
+          </Button>
+        </DialogFooter>
       </DialogContent>
     </Dialog>
   );
@@ -505,7 +550,7 @@ export default function ConversionesPage() {
           <div>
             <h1 className="text-3xl font-bold tracking-tight">Conversiones</h1>
             <p className="text-muted-foreground">
-              Historial de conversiones entre cuentas y monedas
+              Historial de conversiones y tracking de ubicación
             </p>
           </div>
         </div>
@@ -538,7 +583,7 @@ export default function ConversionesPage() {
             Historial de Conversiones
           </CardTitle>
           <CardDescription>
-            Todas las conversiones realizadas entre cuentas
+            Haz clic en una conversión para ver el tracking completo
           </CardDescription>
         </CardHeader>
         <CardContent className="p-0">
@@ -550,8 +595,7 @@ export default function ConversionesPage() {
                 <TableHead className="text-right">Sale</TableHead>
                 <TableHead>Destino</TableHead>
                 <TableHead className="text-right">Entra</TableHead>
-                <TableHead>Cuenta Binance</TableHead>
-                <TableHead>Estado</TableHead>
+                <TableHead>Ubicación Actual</TableHead>
                 <TableHead className="w-20"></TableHead>
               </TableRow>
             </TableHeader>
@@ -564,83 +608,77 @@ export default function ConversionesPage() {
                     <TableCell><Skeleton className="h-4 w-20" /></TableCell>
                     <TableCell><Skeleton className="h-4 w-24" /></TableCell>
                     <TableCell><Skeleton className="h-4 w-20" /></TableCell>
-                    <TableCell><Skeleton className="h-4 w-20" /></TableCell>
-                    <TableCell><Skeleton className="h-4 w-16" /></TableCell>
+                    <TableCell><Skeleton className="h-4 w-32" /></TableCell>
                     <TableCell></TableCell>
                   </TableRow>
                 ))
               ) : !conversiones?.data || conversiones.data.length === 0 ? (
                 <TableRow>
-                  <TableCell colSpan={8} className="h-24 text-center">
+                  <TableCell colSpan={7} className="h-24 text-center">
                     No hay conversiones registradas
                   </TableCell>
                 </TableRow>
               ) : (
-                conversiones.data.map((conversion) => {
-                  const estadoInfo = getEstadoInfo(conversion.estadoActual);
-                  return (
-                    <TableRow key={conversion.id} className="cursor-pointer hover:bg-muted/50">
-                      <TableCell className="text-muted-foreground">
-                        {formatDate(conversion.fecha)}
-                      </TableCell>
-                      <TableCell>
-                        <Badge variant="outline" className="bg-red-50">
-                          {getMetodoLabel(conversion.cuentaOrigen)}
+                conversiones.data.map((conversion) => (
+                  <TableRow
+                    key={conversion.id}
+                    className="cursor-pointer hover:bg-muted/50"
+                    onClick={() => setEditingConversion(conversion)}
+                  >
+                    <TableCell className="text-muted-foreground">
+                      {formatDate(conversion.fecha)}
+                    </TableCell>
+                    <TableCell>
+                      <Badge variant="outline" className="bg-red-50">
+                        {getMetodoLabel(conversion.cuentaOrigen)}
+                      </Badge>
+                    </TableCell>
+                    <TableCell className="text-right font-medium text-red-600">
+                      -{formatMonto(conversion.montoOrigen, conversion.monedaOrigen === 'VES' ? 'VES' : 'USD')}
+                    </TableCell>
+                    <TableCell>
+                      <Badge variant="outline" className="bg-green-50">
+                        {getMetodoLabel(conversion.cuentaDestino)}
+                      </Badge>
+                    </TableCell>
+                    <TableCell className="text-right font-medium text-green-600">
+                      +{formatMonto(conversion.montoDestino, conversion.monedaDestino === 'VES' ? 'VES' : 'USD')}
+                    </TableCell>
+                    <TableCell>
+                      {conversion.ubicacionActual ? (
+                        <Badge variant="secondary" className="flex items-center gap-1 w-fit">
+                          <MapPin className="h-3 w-3" />
+                          {conversion.ubicacionActual}
                         </Badge>
-                      </TableCell>
-                      <TableCell className="text-right font-medium text-red-600">
-                        -{formatMonto(conversion.montoOrigen, conversion.monedaOrigen === 'VES' ? 'VES' : 'USD')}
-                      </TableCell>
-                      <TableCell>
-                        <Badge variant="outline" className="bg-green-50">
-                          {getMetodoLabel(conversion.cuentaDestino)}
-                        </Badge>
-                      </TableCell>
-                      <TableCell className="text-right font-medium text-green-600">
-                        +{formatMonto(conversion.montoDestino, conversion.monedaDestino === 'VES' ? 'VES' : 'USD')}
-                      </TableCell>
-                      <TableCell>
-                        {conversion.cuentaBinanceDestino ? (
-                          <Badge variant="secondary">
-                            {getCuentaBinanceLabel(conversion.cuentaBinanceDestino)}
-                          </Badge>
-                        ) : (
-                          <span className="text-muted-foreground text-sm">-</span>
-                        )}
-                      </TableCell>
-                      <TableCell>
-                        {estadoInfo ? (
-                          <Badge className={estadoInfo.color}>{estadoInfo.label}</Badge>
-                        ) : (
-                          <span className="text-muted-foreground text-sm">-</span>
-                        )}
-                      </TableCell>
-                      <TableCell>
-                        <div className="flex gap-1">
-                          <Button
-                            variant="ghost"
-                            size="icon"
-                            onClick={() => setEditingConversion(conversion)}
-                          >
-                            <Pencil className="h-4 w-4" />
-                          </Button>
-                          <Button
-                            variant="ghost"
-                            size="icon"
-                            onClick={() => {
-                              if (confirm('Eliminar esta conversion?')) {
-                                deleteMutation.mutate(conversion.id);
-                              }
-                            }}
-                            disabled={deleteMutation.isPending}
-                          >
-                            <Trash2 className="h-4 w-4 text-red-500" />
-                          </Button>
-                        </div>
-                      </TableCell>
-                    </TableRow>
-                  );
-                })
+                      ) : (
+                        <span className="text-muted-foreground text-sm">Sin asignar</span>
+                      )}
+                    </TableCell>
+                    <TableCell>
+                      <div className="flex gap-1" onClick={(e) => e.stopPropagation()}>
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          onClick={() => setEditingConversion(conversion)}
+                        >
+                          <Pencil className="h-4 w-4" />
+                        </Button>
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          onClick={() => {
+                            if (confirm('Eliminar esta conversion?')) {
+                              deleteMutation.mutate(conversion.id);
+                            }
+                          }}
+                          disabled={deleteMutation.isPending}
+                        >
+                          <Trash2 className="h-4 w-4 text-red-500" />
+                        </Button>
+                      </div>
+                    </TableCell>
+                  </TableRow>
+                ))
               )}
             </TableBody>
           </Table>
