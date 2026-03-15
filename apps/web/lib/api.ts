@@ -269,6 +269,9 @@ export interface DistribucionFondosCompleta extends DistribucionFondos {
 }
 
 // Conversiones
+export type CuentaBinance = 'SR_JOSE' | 'WILMEN' | 'ALBERTO' | 'ELEVASHOP';
+export type EstadoConversion = 'EN_CUENTA' | 'TRANSFERIDO' | 'GASTADO';
+
 export interface ConversionMoneda {
   id: number;
   fecha: string;
@@ -279,8 +282,18 @@ export interface ConversionMoneda {
   montoDestino: number;
   monedaDestino: Moneda;
   tasaCambio: number;
+  cuentaBinanceDestino?: CuentaBinance;
+  estadoActual?: EstadoConversion;
   notas?: string;
   createdAt: string;
+  updatedAt?: string;
+}
+
+export interface UpdateConversionData {
+  cuentaBinanceDestino?: CuentaBinance;
+  estadoActual?: EstadoConversion;
+  notas?: string;
+  fecha?: string;
 }
 
 export interface CreateConversionData {
@@ -425,8 +438,12 @@ export const finanzasApi = {
   // Conversiones
   getConversiones: (params?: { page?: number; limit?: number }) =>
     get<PaginatedResponse<ConversionMoneda>>('/finanzas/conversiones', { params }),
+  getConversionById: (id: number) =>
+    get<ConversionMoneda>(`/finanzas/conversiones/${id}`),
   createConversion: (data: CreateConversionData) =>
     post<ConversionMoneda>('/finanzas/conversiones', data),
+  updateConversion: (id: number, data: UpdateConversionData) =>
+    patch<ConversionMoneda>(`/finanzas/conversiones/${id}`, data),
   deleteConversion: (id: number) => del<void>(`/finanzas/conversiones/${id}`),
 
   // Operaciones Externas

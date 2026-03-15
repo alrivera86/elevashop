@@ -547,6 +547,8 @@ export class FinanzasService {
         montoDestino: Number(c.montoDestino),
         monedaDestino: c.monedaDestino,
         tasaCambio: Number(c.tasaCambio),
+        cuentaBinanceDestino: c.cuentaBinanceDestino,
+        estadoActual: c.estadoActual,
         notas: c.notas,
         createdAt: c.createdAt,
       })),
@@ -613,9 +615,70 @@ export class FinanzasService {
         montoDestino: Number(conversion.montoDestino),
         monedaDestino: conversion.monedaDestino,
         tasaCambio: Number(conversion.tasaCambio),
+        cuentaBinanceDestino: conversion.cuentaBinanceDestino,
+        estadoActual: conversion.estadoActual,
         notas: conversion.notas,
       };
     });
+  }
+
+  async getConversionById(id: number) {
+    const conversion = await this.prisma.conversionMoneda.findUnique({
+      where: { id },
+    });
+
+    if (!conversion) {
+      return null;
+    }
+
+    return {
+      id: conversion.id,
+      fecha: conversion.fecha,
+      cuentaOrigen: conversion.cuentaOrigen,
+      montoOrigen: Number(conversion.montoOrigen),
+      monedaOrigen: conversion.monedaOrigen,
+      cuentaDestino: conversion.cuentaDestino,
+      montoDestino: Number(conversion.montoDestino),
+      monedaDestino: conversion.monedaDestino,
+      tasaCambio: Number(conversion.tasaCambio),
+      cuentaBinanceDestino: conversion.cuentaBinanceDestino,
+      estadoActual: conversion.estadoActual,
+      notas: conversion.notas,
+      createdAt: conversion.createdAt,
+      updatedAt: conversion.updatedAt,
+    };
+  }
+
+  async updateConversion(id: number, dto: {
+    cuentaBinanceDestino?: string;
+    estadoActual?: string;
+    notas?: string;
+    fecha?: string;
+  }) {
+    const conversion = await this.prisma.conversionMoneda.update({
+      where: { id },
+      data: {
+        ...(dto.cuentaBinanceDestino && { cuentaBinanceDestino: dto.cuentaBinanceDestino as any }),
+        ...(dto.estadoActual && { estadoActual: dto.estadoActual }),
+        ...(dto.notas !== undefined && { notas: dto.notas }),
+        ...(dto.fecha && { fecha: new Date(dto.fecha) }),
+      },
+    });
+
+    return {
+      id: conversion.id,
+      fecha: conversion.fecha,
+      cuentaOrigen: conversion.cuentaOrigen,
+      montoOrigen: Number(conversion.montoOrigen),
+      monedaOrigen: conversion.monedaOrigen,
+      cuentaDestino: conversion.cuentaDestino,
+      montoDestino: Number(conversion.montoDestino),
+      monedaDestino: conversion.monedaDestino,
+      tasaCambio: Number(conversion.tasaCambio),
+      cuentaBinanceDestino: conversion.cuentaBinanceDestino,
+      estadoActual: conversion.estadoActual,
+      notas: conversion.notas,
+    };
   }
 
   async deleteConversion(id: number) {

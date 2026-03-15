@@ -656,6 +656,14 @@ enum EstadoOperacionExterna {
   CANCELADA
 }
 
+// Cuentas específicas de Binance (para trackear dónde está el USDT)
+enum CuentaBinance {
+  SR_JOSE
+  WILMEN
+  ALBERTO
+  ELEVASHOP
+}
+
 // ============ CONVERSIONES Y OPERACIONES EXTERNAS ============
 
 // Ajustes a fondos (conversiones, operaciones externas, ajustes manuales)
@@ -678,18 +686,21 @@ model AjusteFondo {
 
 // Conversiones entre cuentas/monedas
 model ConversionMoneda {
-  id              Int          @id @default(autoincrement())
-  fecha           DateTime     @default(now())
-  cuentaOrigen    MetodoPago   @map("cuenta_origen")
-  montoOrigen     Decimal      @map("monto_origen") @db.Decimal(12, 2)
-  monedaOrigen    Moneda       @map("moneda_origen")
-  cuentaDestino   MetodoPago   @map("cuenta_destino")
-  montoDestino    Decimal      @map("monto_destino") @db.Decimal(12, 2)
-  monedaDestino   Moneda       @map("moneda_destino")
-  tasaCambio      Decimal      @map("tasa_cambio") @db.Decimal(10, 4)
-  notas           String?
-  createdAt       DateTime     @default(now()) @map("created_at")
-  ajustes         AjusteFondo[]
+  id                    Int             @id @default(autoincrement())
+  fecha                 DateTime        @default(now())
+  cuentaOrigen          MetodoPago      @map("cuenta_origen")
+  montoOrigen           Decimal         @map("monto_origen") @db.Decimal(12, 2)
+  monedaOrigen          Moneda          @map("moneda_origen")
+  cuentaDestino         MetodoPago      @map("cuenta_destino")
+  montoDestino          Decimal         @map("monto_destino") @db.Decimal(12, 2)
+  monedaDestino         Moneda          @map("moneda_destino")
+  tasaCambio            Decimal         @map("tasa_cambio") @db.Decimal(10, 4)
+  cuentaBinanceDestino  CuentaBinance?  @map("cuenta_binance_destino")
+  estadoActual          String?         @map("estado_actual") // "EN_CUENTA", "TRANSFERIDO", "GASTADO"
+  notas                 String?
+  createdAt             DateTime        @default(now()) @map("created_at")
+  updatedAt             DateTime?       @updatedAt @map("updated_at")
+  ajustes               AjusteFondo[]
 
   @@map("conversiones_moneda")
 }

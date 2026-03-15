@@ -1,6 +1,6 @@
 import { IsString, IsNumber, IsOptional, IsIn, IsDateString, Min } from 'class-validator';
 import { ApiProperty } from '@nestjs/swagger';
-import { MetodoPago, Moneda } from '@prisma/client';
+import { MetodoPago, Moneda, CuentaBinance } from '@prisma/client';
 
 export class CreateConversionDto {
   @ApiProperty({ description: 'Cuenta de origen' })
@@ -39,8 +39,40 @@ export class CreateConversionDto {
   @IsDateString()
   fecha?: string;
 
+  @ApiProperty({ description: 'Cuenta Binance específica donde está el USDT', required: false, enum: ['SR_JOSE', 'WILMEN', 'ALBERTO', 'ELEVASHOP'] })
+  @IsOptional()
+  @IsIn(['SR_JOSE', 'WILMEN', 'ALBERTO', 'ELEVASHOP'])
+  cuentaBinanceDestino?: CuentaBinance;
+
+  @ApiProperty({ description: 'Estado actual del dinero', required: false, enum: ['EN_CUENTA', 'TRANSFERIDO', 'GASTADO'] })
+  @IsOptional()
+  @IsIn(['EN_CUENTA', 'TRANSFERIDO', 'GASTADO'])
+  estadoActual?: string;
+
   @ApiProperty({ description: 'Notas adicionales', required: false })
   @IsOptional()
   @IsString()
   notas?: string;
+}
+
+export class UpdateConversionDto {
+  @ApiProperty({ description: 'Cuenta Binance específica donde está el USDT', required: false, enum: ['SR_JOSE', 'WILMEN', 'ALBERTO', 'ELEVASHOP'] })
+  @IsOptional()
+  @IsIn(['SR_JOSE', 'WILMEN', 'ALBERTO', 'ELEVASHOP'])
+  cuentaBinanceDestino?: CuentaBinance;
+
+  @ApiProperty({ description: 'Estado actual del dinero', required: false, enum: ['EN_CUENTA', 'TRANSFERIDO', 'GASTADO'] })
+  @IsOptional()
+  @IsIn(['EN_CUENTA', 'TRANSFERIDO', 'GASTADO'])
+  estadoActual?: string;
+
+  @ApiProperty({ description: 'Notas adicionales', required: false })
+  @IsOptional()
+  @IsString()
+  notas?: string;
+
+  @ApiProperty({ description: 'Fecha de la conversion', required: false })
+  @IsOptional()
+  @IsDateString()
+  fecha?: string;
 }

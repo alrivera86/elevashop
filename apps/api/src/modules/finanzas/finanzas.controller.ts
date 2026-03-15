@@ -1,10 +1,10 @@
-import { Controller, Get, Post, Delete, Body, Query, Param, UseGuards, ParseIntPipe } from '@nestjs/common';
+import { Controller, Get, Post, Delete, Patch, Body, Query, Param, UseGuards, ParseIntPipe } from '@nestjs/common';
 import { ApiTags, ApiOperation, ApiBearerAuth, ApiQuery } from '@nestjs/swagger';
 import { FinanzasService } from './finanzas.service';
 import { BinanceP2PService } from './binance-p2p.service';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { SetTasaCambioDto, CreateGastoDto } from './dto/finanzas.dto';
-import { CreateConversionDto } from './dto/conversion.dto';
+import { CreateConversionDto, UpdateConversionDto } from './dto/conversion.dto';
 import { CreateOperacionExternaDto, CerrarOperacionExternaDto, CreateAjusteManualDto } from './dto/operacion-externa.dto';
 
 @ApiTags('finanzas')
@@ -215,6 +215,21 @@ export class FinanzasController {
   @ApiOperation({ summary: 'Crear nueva conversion de moneda' })
   createConversion(@Body() dto: CreateConversionDto) {
     return this.finanzasService.createConversion(dto);
+  }
+
+  @Get('conversiones/:id')
+  @ApiOperation({ summary: 'Obtener conversion por ID' })
+  getConversionById(@Param('id', ParseIntPipe) id: number) {
+    return this.finanzasService.getConversionById(id);
+  }
+
+  @Patch('conversiones/:id')
+  @ApiOperation({ summary: 'Actualizar conversion' })
+  updateConversion(
+    @Param('id', ParseIntPipe) id: number,
+    @Body() dto: UpdateConversionDto,
+  ) {
+    return this.finanzasService.updateConversion(id, dto);
   }
 
   @Delete('conversiones/:id')
