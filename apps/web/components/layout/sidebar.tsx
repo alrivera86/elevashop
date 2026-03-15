@@ -25,15 +25,25 @@ import {
   Receipt,
   ArrowLeftRight,
   Briefcase,
+  ChevronDown,
+  ChevronRight,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Sheet, SheetContent, SheetTrigger } from '@/components/ui/sheet';
 import { TasaDolarSidebar } from '@/components/tasa-dolar-sidebar';
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useAuthStore } from '@/stores/auth-store';
 
+type NavItem = {
+  name: string;
+  href: string;
+  icon: React.ComponentType<{ className?: string }>;
+  roles: string[];
+  children?: NavItem[];
+};
+
 // Roles que pueden ver cada opción
-const navigation = [
+const navigation: NavItem[] = [
   { name: 'Dashboard', href: '/dashboard', icon: LayoutDashboard, roles: ['ADMIN', 'VENDEDOR', 'ALMACEN', 'REPORTES'] },
   { name: 'Inventario', href: '/dashboard/inventario', icon: Package, roles: ['ADMIN', 'ALMACEN'] },
   { name: 'Seriales', href: '/dashboard/inventario/seriales', icon: ScanBarcode, roles: ['ADMIN', 'ALMACEN'] },
@@ -42,22 +52,127 @@ const navigation = [
   { name: 'Ventas', href: '/dashboard/ventas', icon: ShoppingCart, roles: ['ADMIN', 'VENDEDOR', 'REPORTES'] },
   { name: 'Clientes', href: '/dashboard/clientes', icon: Users, roles: ['ADMIN', 'VENDEDOR'] },
   { name: 'Importaciones', href: '/dashboard/importaciones', icon: Ship, roles: ['ADMIN'] },
-  { name: 'Finanzas', href: '/dashboard/finanzas', icon: DollarSign, roles: ['ADMIN'] },
-  { name: 'Conversiones', href: '/dashboard/finanzas/conversiones', icon: ArrowLeftRight, roles: ['ADMIN'] },
-  { name: 'Operaciones', href: '/dashboard/finanzas/operaciones', icon: Briefcase, roles: ['ADMIN'] },
+  {
+    name: 'Finanzas',
+    href: '/dashboard/finanzas',
+    icon: DollarSign,
+    roles: ['ADMIN'],
+    children: [
+      { name: 'Resumen', href: '/dashboard/finanzas', icon: DollarSign, roles: ['ADMIN'] },
+      { name: 'Conversiones', href: '/dashboard/finanzas/conversiones', icon: ArrowLeftRight, roles: ['ADMIN'] },
+      { name: 'Operaciones', href: '/dashboard/finanzas/operaciones', icon: Briefcase, roles: ['ADMIN'] },
+    ]
+  },
   { name: 'Gastos Operativos', href: '/dashboard/gastos', icon: Receipt, roles: ['ADMIN'] },
   { name: 'Reportes', href: '/dashboard/reportes', icon: BarChart3, roles: ['ADMIN', 'REPORTES'] },
   { name: 'Usuarios', href: '/dashboard/usuarios', icon: UserCog, roles: ['ADMIN'] },
   { name: 'Notificaciones', href: '/dashboard/notificaciones', icon: Bell, roles: ['ADMIN'] },
 ];
 
-const bottomNavigation = [
+const bottomNavigation: NavItem[] = [
   { name: 'Configuración', href: '/dashboard/configuracion', icon: Settings, roles: ['ADMIN'] },
 ];
+
+function NavItemComponent({
+  item,
+  pathname,
+  onNavigate,
+  userRole
+}: {
+  item: NavItem;
+  pathname: string;
+  onNavigate?: () => void;
+  userRole: string;
+}) {
+  const hasChildren = item.children && item.children.length > 0;
+  const isInSection = pathname.startsWith(item.href);
+  const [isExpanded, setIsExpanded] = useState(isInSection);
+
+  // Auto-expand when navigating to a child
+  useEffect(() => {
+    if (isInSection && hasChildren) {
+      setIsExpanded(true);
+    }
+  }, [isInSection, hasChildren]);
+
+  if (hasChildren) {
+    const filteredChildren = item.children!.filter(child => {
+      if (!child.roles) return true;
+      return child.roles.some(role => role.toUpperCase() === userRole);
+    });
+
+    if (filteredChildren.length === 0) return null;
+
+    return (
+      <div>
+        <button
+          onClick={() => setIsExpanded(!isExpanded)}
+          className={cn(
+            'flex w-full items-center justify-between gap-3 rounded-lg px-3 py-2 text-sm font-medium transition-colors',
+            isInSection
+              ? 'bg-primary/10 text-primary'
+              : 'text-muted-foreground hover:bg-muted hover:text-foreground'
+          )}
+        >
+          <div className="flex items-center gap-3">
+            <item.icon className="h-5 w-5" />
+            {item.name}
+          </div>
+          {isExpanded ? (
+            <ChevronDown className="h-4 w-4" />
+          ) : (
+            <ChevronRight className="h-4 w-4" />
+          )}
+        </button>
+        {isExpanded && (
+          <div className="ml-4 mt-1 space-y-1 border-l pl-3">
+            {filteredChildren.map((child) => {
+              const isActive = pathname === child.href;
+              return (
+                <Link
+                  key={child.name}
+                  href={child.href}
+                  onClick={onNavigate}
+                  className={cn(
+                    'flex items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium transition-colors',
+                    isActive
+                      ? 'bg-primary text-primary-foreground'
+                      : 'text-muted-foreground hover:bg-muted hover:text-foreground'
+                  )}
+                >
+                  <child.icon className="h-4 w-4" />
+                  {child.name}
+                </Link>
+              );
+            })}
+          </div>
+        )}
+      </div>
+    );
+  }
+
+  const isActive = pathname === item.href || pathname.startsWith(item.href + '/');
+  return (
+    <Link
+      href={item.href}
+      onClick={onNavigate}
+      className={cn(
+        'flex items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium transition-colors',
+        isActive
+          ? 'bg-primary text-primary-foreground'
+          : 'text-muted-foreground hover:bg-muted hover:text-foreground'
+      )}
+    >
+      <item.icon className="h-5 w-5" />
+      {item.name}
+    </Link>
+  );
+}
 
 function SidebarContent({ onNavigate }: { onNavigate?: () => void }) {
   const pathname = usePathname();
   const { user, logout } = useAuthStore();
+  const userRole = user?.rol?.nombre?.toUpperCase() || '';
 
   const handleLogout = () => {
     logout();
@@ -91,32 +206,21 @@ function SidebarContent({ onNavigate }: { onNavigate?: () => void }) {
       <TasaDolarSidebar />
 
       {/* Navigation */}
-      <nav className="flex-1 space-y-1 px-3 py-4">
+      <nav className="flex-1 space-y-1 px-3 py-4 overflow-y-auto">
         {navigation
           .filter((item) => {
             if (!item.roles) return true;
-            const userRole = user?.rol?.nombre?.toUpperCase() || '';
             return item.roles.some(role => role.toUpperCase() === userRole);
           })
-          .map((item) => {
-            const isActive = pathname === item.href || pathname.startsWith(item.href + '/');
-            return (
-              <Link
-                key={item.name}
-                href={item.href}
-                onClick={onNavigate}
-                className={cn(
-                  'flex items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium transition-colors',
-                  isActive
-                    ? 'bg-primary text-primary-foreground'
-                    : 'text-muted-foreground hover:bg-muted hover:text-foreground'
-                )}
-              >
-                <item.icon className="h-5 w-5" />
-                {item.name}
-              </Link>
-            );
-          })}
+          .map((item) => (
+            <NavItemComponent
+              key={item.name}
+              item={item}
+              pathname={pathname}
+              onNavigate={onNavigate}
+              userRole={userRole}
+            />
+          ))}
       </nav>
 
       {/* Bottom section */}
@@ -124,7 +228,6 @@ function SidebarContent({ onNavigate }: { onNavigate?: () => void }) {
         {bottomNavigation
           .filter((item) => {
             if (!item.roles) return true;
-            const userRole = user?.rol?.nombre?.toUpperCase() || '';
             return item.roles.some(role => role.toUpperCase() === userRole);
           })
           .map((item) => {
