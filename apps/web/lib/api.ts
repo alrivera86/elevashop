@@ -321,6 +321,8 @@ export interface CreateConversionData {
   monedaDestino: Moneda;
   tasaCambio: number;
   fecha?: string;
+  ubicacionActual?: string;
+  cuentaBinanceDestino?: CuentaBinance;
   notas?: string;
 }
 
